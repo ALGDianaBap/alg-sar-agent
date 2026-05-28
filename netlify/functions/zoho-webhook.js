@@ -19,6 +19,7 @@ const https  = require('https');
 const http   = require('http');
 const { getStore } = require('@netlify/blobs');
 const { buildDocument, Packer } = require('./_docx-builder');
+const { getClioToken } = require('./_clio-auth');
 
 const SLACK_CHANNEL = 'C09QF0PRLJ2';
 const CMS = [
@@ -220,15 +221,18 @@ exports.handler = async (event) => {
   }
   const atty = ATTORNEYS[dealType] || ATTORNEYS.cash_keep;
 
-  // ── 7. AUTO-SEARCH CLIO (optional — requires CLIO_TOKEN env var) ──────────
+  // ── 7. AUTO-SEARCH CLIO ───────────────────────────────────────────────────
+  // getClioToken() returns a valid token (auto-refreshing via refresh token).
+  // If no token is stored yet, this is a no-op and matter stays null.
   let matter = null;
-  if (process.env.CLIO_TOKEN) {
-    try {
-      matter = await searchClioMatter(dealer, process.env.CLIO_TOKEN);
+  try {
+    const clioToken = await getClioToken();
+    if (clioToken) {
+      matter = await searchClioMatter(dealer, clioToken);
       if (matter) console.log('Clio matter found:', matter.num, matter.name);
-    } catch (e) {
-      console.warn('Clio search failed:', e.message);
     }
+  } catch (e) {
+    console.warn('Clio search failed:', e.message);
   }
 
   // ── 8. STORE COMPLETE SAR IN BLOBS ────────────────────────────────────────
