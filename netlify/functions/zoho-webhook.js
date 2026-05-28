@@ -2,17 +2,14 @@
  * Zoho Forms webhook — full SAR pipeline.
  *
  * On POST (Zoho submission):
- *   1. Parse form fields
- *   2. Download RISC PDF attachment (if URL is present in payload)
+ *   1. Parse form fields (confirmed field names from debug 2026-05-28)
+ *   2. Fetch RISC PDF via Zoho Forms API (using entry ID + Zoho OAuth token)
  *   3. Extract vehicle/deal data from RISC via Claude
  *   4. Generate pre-filled .docx draft
  *   5. Assign next CM (round-robin, counter in Blobs)
- *   6. Auto-search Clio for dealer matter (if CLIO_TOKEN env var is set)
- *   7. Store complete SAR record in Netlify Blobs
+ *   6. Auto-search Clio for dealer matter
+ *   7. Store complete SAR record in sar-records Blobs store
  *   8. Notify #settlement-agreements: @CM assigned, draft ready/pending
- *
- * GET  — frontend fetches the pending-SAR queue
- * DELETE ?id= — frontend marks a SAR as imported (removes from queue)
  */
 
 const https  = require('https');
@@ -20,6 +17,7 @@ const http   = require('http');
 const { getStore } = require('@netlify/blobs');
 const { buildDocument, Packer } = require('./_docx-builder');
 const { getClioToken } = require('./_clio-auth');
+const { getZohoToken } = require('./_zoho-auth');
 
 const SLACK_CHANNEL = 'C09QF0PRLJ2';
 const CMS = [
@@ -89,32 +87,64 @@ exports.handler = async (event) => {
   const isRescission = /rescission|rescind|return.*vehicle|unwind/i.test(workDesc + dealerGiving);
   const dealType     = isRescission ? 'rescission' : 'cash_keep';
 
-  // ── 2. PDF ATTACHMENT ─────────────────────────────────────────────────────
-  // Zoho sends the file field as a plain filename (not a URL), so server-side
-  // RISC extraction is not possible. The CM uploads the RISC manually in the app.
-  const pdfUrl = (() => {
-    const raw = pick('Documents to Upload', 'Documents_to_Upload', 'Documents', 'Files', 'RISC');
-    if (!raw) return null;
-    const first = (Array.isArray(raw) ? String(raw[0]) : String(raw)).split(',')[0].trim();
-    return /^https?:\/\//i.test(first) ? first : null; // only use if it's actually a URL
-  })();
-
+  // ── 2. IDENTIFY ATTACHMENT FILENAMES ─────────────────────────────────────
+  // Zoho sends filenames only in the webhook. We use the Zoho Forms API
+  // (with stored OAuth tokens) to download the actual file content.
+  const rawAttach = pick('Documents to Upload', 'Documents_to_Upload', 'Documents', 'Files', 'RISC');
   const attachmentNames = (() => {
-    const raw = pick('Documents to Upload', 'Documents_to_Upload', 'Documents', 'Files', 'RISC');
-    if (!raw) return [];
-    const arr = Array.isArray(raw) ? raw : String(raw).split(',');
+    if (!rawAttach) return [];
+    const arr = Array.isArray(rawAttach) ? rawAttach : String(rawAttach).split(',');
     return arr.map(a => ({ name: (typeof a === 'object' ? a.name : String(a)).trim() })).filter(a => a.name);
   })();
 
+  // Entry ID and form name — present in Zoho webhook payload as system fields.
+  // These are used to fetch the file via the Zoho Forms API.
+  const entryId  = pick('Entry_Id', 'entry_id', 'entryId', 'Entry Id', 'Submission_Id', 'Record_Id');
+  const formName = pick('Form_Name', 'form_name', 'formName', 'Form Name')
+    || process.env.ZOHO_FORM_NAME || '';
+
+  // PDF URL: check if Zoho included a direct URL, otherwise use the API
+  const directUrl = (() => {
+    if (!rawAttach) return null;
+    const first = (Array.isArray(rawAttach) ? String(rawAttach[0]) : String(rawAttach)).split(',')[0].trim();
+    return /^https?:\/\//i.test(first) ? first : null;
+  })();
+
+  const pdfUrl = directUrl; // will be supplemented by Zoho API download below
+
   // ── 3. DOWNLOAD RISC PDF ──────────────────────────────────────────────────
   let riscBuffer = null;
+
   if (pdfUrl) {
+    // Direct URL in payload (uncommon but handle it)
     try {
       riscBuffer = await downloadWithTimeout(pdfUrl, 7000);
-      console.log('RISC PDF downloaded:', riscBuffer.length, 'bytes from', pdfUrl);
+      console.log('RISC PDF downloaded via direct URL:', riscBuffer.length, 'bytes');
     } catch (e) {
-      console.warn('PDF download failed:', e.message);
+      console.warn('Direct URL download failed:', e.message);
     }
+  }
+
+  if (!riscBuffer && entryId && formName && attachmentNames.length > 0) {
+    // Use Zoho Forms API to download the attachment
+    try {
+      const zohoToken = await getZohoToken();
+      if (zohoToken) {
+        const fileName = attachmentNames[0].name;
+        // Field link name: Zoho uses the field label with spaces → underscores
+        const fieldLinkName = 'Documents_to_Upload';
+        riscBuffer = await downloadZohoFile(zohoToken, formName, entryId, fieldLinkName, fileName);
+        console.log('RISC PDF downloaded via Zoho API:', riscBuffer.length, 'bytes');
+      } else {
+        console.log('No Zoho token — skipping API file download. Run Zoho OAuth setup.');
+      }
+    } catch (e) {
+      console.warn('Zoho API file download failed:', e.message);
+    }
+  }
+
+  if (!riscBuffer) {
+    console.log('No RISC PDF available — draft will use form data only, with placeholders for vehicle/VIN/dates.');
   }
 
   // ── 4. EXTRACT RISC FIELDS VIA CLAUDE ────────────────────────────────────
@@ -366,6 +396,51 @@ async function searchClioMatter(dealerName, token) {
     });
     req.on('error', () => resolve(null));
     req.setTimeout(5000, () => { req.destroy(); resolve(null); });
+    req.end();
+  });
+}
+
+function downloadZohoFile(token, formName, entryId, fieldLinkName, fileName) {
+  // Zoho Forms API: GET /api/v1/{formName}/entry/{entryId}/files/{fieldLinkName}
+  // Returns the raw file binary. Requires Authorization: Zoho-oauthtoken {token}
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error('Zoho download timeout')), 10000);
+    const path = `/api/v1/${encodeURIComponent(formName)}/entry/${encodeURIComponent(entryId)}/files/${encodeURIComponent(fieldLinkName)}`;
+    const options = {
+      hostname: 'forms.zoho.com',
+      path,
+      method:  'GET',
+      headers: { 'Authorization': `Zoho-oauthtoken ${token}` },
+    };
+    const req = https.request(options, (res) => {
+      // If 404 or non-200, try alternate endpoint format
+      if (res.statusCode === 404) {
+        clearTimeout(timer);
+        // Try the entries (plural) endpoint variant
+        const altPath = `/api/v1/${encodeURIComponent(formName)}/entries/${encodeURIComponent(entryId)}/files/${encodeURIComponent(fieldLinkName)}`;
+        const req2 = https.request({ ...options, path: altPath }, (res2) => {
+          const chunks = [];
+          res2.on('data', c => chunks.push(c));
+          res2.on('end', () => {
+            const buf = Buffer.concat(chunks);
+            if (res2.statusCode === 200 && buf.length > 0) resolve(buf);
+            else reject(new Error(`Zoho API ${res2.statusCode}: ${buf.toString().slice(0, 200)}`));
+          });
+        });
+        req2.on('error', reject);
+        req2.end();
+        return;
+      }
+      const chunks = [];
+      res.on('data', c => chunks.push(c));
+      res.on('end', () => {
+        clearTimeout(timer);
+        const buf = Buffer.concat(chunks);
+        if (res.statusCode === 200 && buf.length > 0) resolve(buf);
+        else reject(new Error(`Zoho API ${res.statusCode}: ${buf.toString().slice(0, 200)}`));
+      });
+    });
+    req.on('error', e => { clearTimeout(timer); reject(e); });
     req.end();
   });
 }

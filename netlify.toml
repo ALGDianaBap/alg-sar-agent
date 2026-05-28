@@ -15,6 +15,11 @@
   status = 200
 
 [[redirects]]
+  from = "/zoho-callback"
+  to = "/index.html?zoho_code=:code&zoho=1"
+  status = 200
+
+[[redirects]]
   from = "/api/webhook"
   to = "/.netlify/functions/zoho-webhook"
   status = 200

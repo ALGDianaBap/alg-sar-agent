@@ -328,10 +328,14 @@ select { appearance:none; background-image:url("data:image/svg+xml,%3Csvg xmlns=
         <div class="chip" data-f="sent" onclick="setFilter('sent')">Sent</div>
       </div>
       <div class="sidebar-list" id="sb-list"></div>
-      <div class="sidebar-footer">
-        <button class="btn primary" onclick="showNewSAR()">
+      <div class="sidebar-footer" style="display:flex;flex-direction:column;gap:6px">
+        <button class="btn primary" onclick="showNewSAR()" style="justify-content:center">
           <svg width="13" height="13" fill="none" viewBox="0 0 24 24"><line stroke="currentColor" stroke-width="2.5" x1="12" y1="5" x2="12" y2="19"/><line stroke="currentColor" stroke-width="2.5" x1="5" y1="12" x2="19" y2="12"/></svg>
           New SAR Request
+        </button>
+        <button class="btn sm ghost" id="zoho-connect-btn" onclick="connectZoho()" style="justify-content:center;font-size:11px">
+          <div id="zoho-dot" class="conn-dot off" style="width:7px;height:7px"></div>
+          <span id="zoho-label">Connect Zoho (admin)</span>
         </button>
       </div>
     </div>
@@ -654,8 +658,8 @@ function launchApp() {
     label.textContent = state.clioUser || 'Clio';
   }
   renderSidebar();
-  // Load shared SAR records from server; fall back to cached local state
   loadSARsFromServer();
+  checkZohoStatus();
   startPolling();
 }
 
@@ -1629,15 +1633,75 @@ function notify(type, msg) {
   el._t = setTimeout(() => el.className = 'notify ' + type, 3500);
 }
 
+// ── ZOHO CONNECT ──────────────────────────────────────────────────────────────
+async function connectZoho() {
+  try {
+    const r = await fetch('/.netlify/functions/zoho-setup?action=url');
+    const { url, error } = await r.json();
+    if (error) { notify('err', 'Zoho setup error: ' + error); return; }
+    window.location.href = url;
+  } catch(e) { notify('err', 'Could not reach Zoho setup: ' + e.message); }
+}
+
+async function handleZohoCallback(code) {
+  notify('info', 'Connecting Zoho…');
+  try {
+    const r = await fetch('/.netlify/functions/zoho-setup', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ code })
+    });
+    const d = await r.json();
+    if (d.ok) {
+      setZohoStatus(true);
+      notify('ok', 'Zoho connected — PDF extraction now automatic ✓');
+    } else {
+      notify('err', 'Zoho connect failed: ' + (d.error || JSON.stringify(d)));
+    }
+  } catch(e) { notify('err', 'Zoho connect error: ' + e.message); }
+}
+
+async function checkZohoStatus() {
+  if (state.demoMode) return;
+  try {
+    const r = await fetch('/.netlify/functions/zoho-setup?action=status');
+    const { connected } = await r.json();
+    setZohoStatus(connected);
+  } catch(e) {}
+}
+
+function setZohoStatus(connected) {
+  const dot   = document.getElementById('zoho-dot');
+  const label = document.getElementById('zoho-label');
+  if (!dot || !label) return;
+  dot.className   = 'conn-dot ' + (connected ? 'on' : 'off');
+  label.textContent = connected ? 'Zoho connected ✓' : 'Connect Zoho (admin)';
+  const btn = document.getElementById('zoho-connect-btn');
+  if (btn) btn.onclick = connected ? null : connectZoho;
+}
+
 // ── INIT ──────────────────────────────────────────────────────────────────────
 window.addEventListener('DOMContentLoaded', () => {
   loadState();
-  // Handle OAuth callback code
   const params = new URLSearchParams(location.search);
+
+  // Handle Zoho OAuth callback (/zoho-callback redirects here with ?code=)
+  if (location.pathname === '/zoho-callback' || params.get('zoho_code')) {
+    const zohoCode = params.get('code') || params.get('zoho_code');
+    if (zohoCode) {
+      history.replaceState({}, '', '/');
+      if (state.clioToken || state.demoMode) launchApp();
+      handleZohoCallback(zohoCode);
+      return;
+    }
+  }
+
+  // Handle Clio OAuth callback
   if (params.get('code')) {
     document.getElementById('code-input').value = params.get('code');
     history.replaceState({}, '', '/');
   }
+
   if (state.clioToken || state.demoMode) {
     launchApp();
   }
