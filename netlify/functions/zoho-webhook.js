@@ -97,8 +97,17 @@ exports.handler = async (event) => {
 
   // Zoho sends entry ID alongside form fields — try every known key variant.
   const entryId  = pick('Entry_Id', 'entry_id', 'entryId', 'Entry Id', 'Submission_Id', 'Record_Id', 'ID');
-  const formName = process.env.ZOHO_FORM_NAME
+
+  // Form name: extract just the slug from whatever was stored in ZOHO_FORM_NAME.
+  // Users sometimes paste the full URL — pull the part after /form/.
+  const rawFormName = process.env.ZOHO_FORM_NAME
     || pick('Form_Name', 'form_name', 'formName', 'Form Name');
+  const formName = (() => {
+    if (!rawFormName) return '';
+    if (rawFormName.includes('/form/')) return rawFormName.split('/form/')[1].split('/')[0];
+    if (rawFormName.includes('/')) return rawFormName.split('/').filter(Boolean).pop();
+    return rawFormName;
+  })();
 
   // ── 3. DOWNLOAD RISC PDF ──────────────────────────────────────────────────
   // Strategy:
