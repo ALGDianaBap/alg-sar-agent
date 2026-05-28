@@ -11,7 +11,7 @@
  */
 
 const https = require('https');
-const { getStore } = require('@netlify/blobs');
+const { store: getStore } = require('./_blobs');
 
 const BLOB_KEY   = 'tokens';
 const TOKEN_URL  = 'https://accounts.zoho.com/oauth/v2/token';

@@ -14,7 +14,7 @@
 
 const https  = require('https');
 const http   = require('http');
-const { getStore } = require('@netlify/blobs');
+const { store: getStore } = require('./_blobs');
 const { buildDocument, Packer } = require('./_docx-builder');
 const { getClioToken } = require('./_clio-auth');
 const { getZohoToken } = require('./_zoho-auth');

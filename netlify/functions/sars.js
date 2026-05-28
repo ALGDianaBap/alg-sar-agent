@@ -7,7 +7,7 @@
  * PATCH  ?id=      → merge-update fields on a SAR
  * DELETE ?id=      → delete SAR
  */
-const { getStore } = require('@netlify/blobs');
+const { store: getStore } = require('./_blobs');
 
 const cors = {
   'Access-Control-Allow-Origin': '*',

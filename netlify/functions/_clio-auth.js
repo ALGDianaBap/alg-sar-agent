@@ -10,7 +10,7 @@
  */
 
 const https = require('https');
-const { getStore } = require('@netlify/blobs');
+const { store: getStore } = require('./_blobs');
 
 const BLOB_KEY    = 'tokens';
 const CLIENT_ID   = 'aXxkdw7wIv9G52ok0tms9qctBeSNatloEmH5zlaJ';
