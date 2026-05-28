@@ -653,14 +653,9 @@ async function checkWebhookInbox() {
     const r = await fetch(API.webhook);
     if (!r.ok) return;
     const pending = await r.json();
-    state.pendingWebhooks = pending || [];
-    const banner = document.getElementById('webhook-banner');
-    if (state.pendingWebhooks.length > 0) {
-      document.getElementById('webhook-count').textContent = `⚡ ${state.pendingWebhooks.length} new from Zoho`;
-      banner.style.display = 'flex';
-    } else {
-      banner.style.display = 'none';
-    }
+    if (!pending || !pending.length) return;
+    state.pendingWebhooks = pending;
+    await importWebhookSARs();
   } catch(e) {
     // Silently fail — webhook inbox is optional
   }
@@ -670,7 +665,10 @@ async function importWebhookSARs() {
   if (!state.pendingWebhooks.length) return;
   let imported = 0;
   for (const wh of state.pendingWebhooks) {
-    const cm = getNextCM();
+    // CM was already assigned by the webhook function — honour it, don't re-assign
+    const cmName = wh.assignee || null;
+    const cmSlackId = wh.assigneeSlackId || (state.cms.find(c => c.name === cmName)?.slackId) || null;
+    const atty = getDefaultAtty(wh.dealType || 'cash_keep');
     const entry = {
       id: Date.now() + imported,
       created: wh.created || new Date().toISOString(),
@@ -687,13 +685,13 @@ async function importWebhookSARs() {
       vin: '',
       amount: '',
       attachments: wh.attachments || [],
-      zohoData: wh.zohoData || wh,
+      zohoData: wh.zohoData || null,
       fields: null,
       matter: null,
-      assignee: cm.name,
-      assigneeSlackId: cm.slackId,
-      attorney: null,
-      attorneySlackId: null,
+      assignee: cmName,
+      assigneeSlackId: cmSlackId,
+      attorney: atty.name,
+      attorneySlackId: atty.slackId,
       draftBase64: null,
       draftFilename: null,
       timeEntries: [],
@@ -702,18 +700,13 @@ async function importWebhookSARs() {
     };
     state.queue.unshift(entry);
     imported++;
-    // Mark processed
-    try {
-      await fetch(API.webhook + '?id=' + wh.id, {method:'DELETE'});
-    } catch(e) {}
-    // Slack assignment
-    await sendSlackAssignment(entry, cm);
+    try { await fetch(API.webhook + '?id=' + wh.id, {method:'DELETE'}); } catch(e) {}
   }
   state.pendingWebhooks = [];
   document.getElementById('webhook-banner').style.display = 'none';
   saveState();
   renderSidebar();
-  notify('ok', `Imported ${imported} SAR${imported>1?'s':''} from Zoho`);
+  notify('ok', `${imported} new SAR${imported>1?'s':''} imported from Zoho`);
   if (imported === 1) openSAR(state.queue[0].id);
 }
 
