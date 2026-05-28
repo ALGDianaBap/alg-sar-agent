@@ -1,0 +1,1070 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ALG · SAR Agent</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #faf9f7;
+  --sidebar: #f0eeeb;
+  --surface: #fff;
+  --border: #e4e0db;
+  --border2: #d4d0cb;
+  --text: #1a1816;
+  --text2: #6b6560;
+  --text3: #9e9891;
+  --accent: #b8860b;
+  --accent-bg: #fdf6e3;
+  --accent2: #8b6508;
+  --green: #2d8659;
+  --green-bg: #eef7f1;
+  --red: #c0392b;
+  --red-bg: #fdf0ee;
+  --yellow: #d4930d;
+  --yellow-bg: #fef9ed;
+  --blue: #2b6cb0;
+  --blue-bg: #edf2fa;
+  --radius: 8px;
+  --shadow: 0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.06);
+  --shadow2: 0 4px 12px rgba(0,0,0,0.06), 0 1px 3px rgba(0,0,0,0.08);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: var(--bg); color: var(--text); font-family: 'Plus Jakarta Sans', sans-serif; font-size: 14px; min-height: 100vh; }
+
+/* ── AUTH ── */
+#auth-screen { min-height:100vh; display:flex; align-items:center; justify-content:center; flex-direction:column; gap:24px; padding:40px; background:linear-gradient(135deg, #faf9f7 0%, #f0eeeb 100%); }
+.auth-brand { display:flex; align-items:center; gap:10px; }
+.auth-brand-mark { width:36px; height:36px; background:var(--accent); border-radius:8px; display:flex; align-items:center; justify-content:center; color:#fff; font-family:'Fraunces',serif; font-size:18px; font-weight:600; }
+.auth-brand-text { font-family:'Fraunces',serif; font-size:20px; color:var(--text); }
+.auth-card { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:32px; width:100%; max-width:420px; box-shadow:var(--shadow2); }
+.auth-title { font-family:'Fraunces',serif; font-size:20px; margin-bottom:6px; }
+.auth-sub { color:var(--text2); font-size:13px; line-height:1.6; margin-bottom:20px; }
+.auth-steps { font-size:12px; color:var(--text3); line-height:1.7; margin-bottom:16px; padding:12px; background:var(--bg); border-radius:var(--radius); }
+.auth-steps strong { color:var(--text2); }
+.auth-steps code { color:var(--accent); background:var(--accent-bg); padding:1px 4px; border-radius:3px; font-family:'JetBrains Mono',monospace; font-size:11px; }
+
+input[type="text"], input[type="password"], select, textarea {
+  width:100%; background:var(--bg); border:1px solid var(--border); border-radius:var(--radius);
+  color:var(--text); font-family:'Plus Jakarta Sans',sans-serif; font-size:13px; padding:10px 12px;
+  outline:none; transition:border-color 0.15s, box-shadow 0.15s;
+}
+input:focus, select:focus, textarea:focus { border-color:var(--accent); box-shadow:0 0 0 3px rgba(184,134,11,0.1); }
+textarea { font-family:'JetBrains Mono',monospace; font-size:12px; min-height:140px; resize:vertical; line-height:1.6; }
+
+.btn { display:inline-flex; align-items:center; gap:6px; padding:9px 16px; border-radius:var(--radius); font-family:'Plus Jakarta Sans',sans-serif; font-size:13px; font-weight:500; cursor:pointer; transition:all 0.15s; border:1px solid var(--border); background:var(--surface); color:var(--text); }
+.btn:hover { border-color:var(--border2); box-shadow:var(--shadow); }
+.btn.primary { background:var(--accent); border-color:var(--accent); color:#fff; font-weight:600; }
+.btn.primary:hover { background:var(--accent2); border-color:var(--accent2); }
+.btn.success { background:var(--green); border-color:var(--green); color:#fff; }
+.btn.danger { background:var(--red); border-color:var(--red); color:#fff; }
+.btn.sm { padding:6px 10px; font-size:12px; }
+.btn.ghost { border:none; background:none; color:var(--text2); padding:6px 8px; }
+.btn.ghost:hover { background:var(--bg); color:var(--text); }
+.btn:disabled { opacity:0.4; cursor:not-allowed; }
+.btn-row { display:flex; gap:8px; flex-wrap:wrap; }
+
+/* ── LAYOUT ── */
+#app { display:none; height:100vh; overflow:hidden; }
+.layout { display:grid; grid-template-columns:300px 1fr; height:100%; }
+
+/* ── SIDEBAR ── */
+.sidebar { background:var(--sidebar); border-right:1px solid var(--border); display:flex; flex-direction:column; height:100vh; overflow:hidden; }
+.sidebar-header { padding:16px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; flex-shrink:0; }
+.sidebar-brand { display:flex; align-items:center; gap:8px; }
+.sidebar-mark { width:28px; height:28px; background:var(--accent); border-radius:6px; display:flex; align-items:center; justify-content:center; color:#fff; font-family:'Fraunces',serif; font-size:14px; font-weight:600; }
+.sidebar-title { font-family:'Fraunces',serif; font-size:15px; }
+.sidebar-subtitle { font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--text3); letter-spacing:0.05em; }
+
+.sidebar-search { padding:12px 16px 8px; flex-shrink:0; }
+.sidebar-search input { font-size:12px; padding:8px 10px 8px 30px; background:var(--surface); background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' fill='none' viewBox='0 0 24 24'%3E%3Ccircle cx='11' cy='11' r='8' stroke='%239e9891' stroke-width='2'/%3E%3Cpath stroke='%239e9891' stroke-width='2' d='m21 21-4.35-4.35'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:10px center; }
+
+.sidebar-filters { display:flex; gap:4px; padding:4px 16px 12px; flex-wrap:wrap; flex-shrink:0; }
+.filter-chip { padding:4px 10px; border-radius:20px; font-size:11px; cursor:pointer; border:1px solid var(--border); background:var(--surface); color:var(--text2); transition:all 0.12s; font-weight:500; }
+.filter-chip:hover { border-color:var(--border2); }
+.filter-chip.active { background:var(--accent); border-color:var(--accent); color:#fff; }
+
+.sidebar-list { flex:1; overflow-y:auto; padding:0 8px 8px; }
+.sar-item { padding:12px; border-radius:var(--radius); cursor:pointer; transition:background 0.1s; margin-bottom:2px; border-left:3px solid transparent; }
+.sar-item:hover { background:var(--surface); }
+.sar-item.active { background:var(--surface); border-left-color:var(--accent); box-shadow:var(--shadow); }
+.sar-item-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:4px; }
+.sar-item-buyer { font-weight:600; font-size:13px; display:flex; align-items:center; gap:6px; }
+.sar-item-dealer { font-size:12px; color:var(--text2); margin-bottom:3px; }
+.sar-item-meta { display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text3); }
+.sar-item-time { font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--text3); }
+
+.urgency-pip { width:7px; height:7px; border-radius:50%; flex-shrink:0; }
+.urgency-pip.urgent { background:var(--red); box-shadow:0 0 0 2px var(--red-bg); }
+.urgency-pip.normal { background:var(--text3); }
+
+.badge { display:inline-flex; align-items:center; padding:2px 7px; border-radius:4px; font-size:10px; font-weight:600; font-family:'JetBrains Mono',monospace; letter-spacing:0.02em; }
+.badge.draft { background:var(--blue-bg); color:var(--blue); }
+.badge.review { background:var(--yellow-bg); color:var(--yellow); }
+.badge.approved { background:var(--green-bg); color:var(--green); }
+.badge.sent { background:var(--accent-bg); color:var(--accent); }
+.badge.unassigned { background:var(--bg); color:var(--text3); }
+
+.tag { display:inline-block; padding:2px 6px; border-radius:3px; font-size:10px; font-weight:500; font-family:'JetBrains Mono',monospace; }
+.tag.en { background:var(--blue-bg); color:var(--blue); }
+.tag.es { background:var(--red-bg); color:var(--red); }
+.tag.ck { background:var(--green-bg); color:var(--green); }
+.tag.rescission { background:var(--yellow-bg); color:var(--yellow); }
+
+.sidebar-new { padding:12px 16px; border-top:1px solid var(--border); flex-shrink:0; }
+.sidebar-new .btn { width:100%; justify-content:center; }
+
+/* ── MAIN PANEL ── */
+.main { height:100vh; overflow-y:auto; background:var(--bg); }
+.main-empty { height:100%; display:flex; align-items:center; justify-content:center; flex-direction:column; gap:16px; color:var(--text3); }
+.main-empty-icon { width:56px; height:56px; background:var(--sidebar); border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:24px; }
+.main-empty-text { font-size:14px; text-align:center; line-height:1.6; }
+
+/* ── SAR DETAIL VIEW ── */
+.sar-detail { padding:24px 28px; max-width:900px; }
+.sar-detail-header { display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:24px; padding-bottom:16px; border-bottom:1px solid var(--border); }
+.sar-detail-title { font-family:'Fraunces',serif; font-size:22px; margin-bottom:4px; }
+.sar-detail-sub { font-size:13px; color:var(--text2); display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+
+.detail-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:24px; }
+@media(max-width:800px) { .detail-grid { grid-template-columns:1fr; } }
+
+.detail-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; box-shadow:var(--shadow); }
+.detail-card-header { padding:10px 14px; border-bottom:1px solid var(--border); background:var(--bg); display:flex; align-items:center; justify-content:space-between; }
+.detail-card-title { font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:0.08em; color:var(--text2); display:flex; align-items:center; gap:6px; }
+.detail-card-body { padding:14px; }
+
+.field-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+.field { display:flex; flex-direction:column; gap:2px; }
+.field-label { font-size:10px; font-weight:600; text-transform:uppercase; letter-spacing:0.08em; color:var(--text3); }
+.field-value { font-size:13px; font-weight:500; color:var(--text); }
+.field-value.mono { font-family:'JetBrains Mono',monospace; font-size:12px; }
+.field-value.missing { color:var(--red); font-style:italic; font-size:12px; }
+.field-value.editable { background:transparent; border:none; font-family:'Plus Jakarta Sans',sans-serif; font-size:13px; font-weight:500; color:var(--text); outline:none; width:100%; padding:0; }
+.field-value.editable:focus { color:var(--accent); }
+.field.full { grid-column:1/-1; }
+
+/* ── STATUS ROW ── */
+.status-row { display:flex; align-items:center; gap:12px; padding:14px; background:var(--bg); border-radius:var(--radius); border:1px solid var(--border); margin-bottom:16px; }
+.status-step { display:flex; align-items:center; gap:6px; font-size:12px; color:var(--text3); }
+.status-step.done { color:var(--green); }
+.status-step.active { color:var(--accent); font-weight:600; }
+.status-dot { width:8px; height:8px; border-radius:50%; border:2px solid currentColor; flex-shrink:0; }
+.status-step.done .status-dot { background:var(--green); }
+.status-step.active .status-dot { background:var(--accent); }
+.status-line { flex:1; height:1px; background:var(--border); min-width:12px; }
+
+/* ── TIME ENTRIES ── */
+.time-entry-row { display:flex; align-items:center; gap:10px; padding:8px 0; border-bottom:1px solid var(--bg); font-size:12px; }
+.time-entry-row:last-child { border-bottom:none; }
+.time-user { font-weight:600; min-width:80px; }
+.time-hours { font-family:'JetBrains Mono',monospace; color:var(--accent); font-weight:500; }
+.time-note { color:var(--text2); flex:1; }
+.time-date { color:var(--text3); font-family:'JetBrains Mono',monospace; font-size:11px; }
+
+/* ── NEW SAR FLOW ── */
+.new-sar-view { padding:24px 28px; max-width:800px; }
+.new-sar-title { font-family:'Fraunces',serif; font-size:22px; margin-bottom:16px; }
+
+.step-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); margin-bottom:16px; box-shadow:var(--shadow); overflow:hidden; }
+.step-card.disabled { opacity:0.5; pointer-events:none; }
+.step-header { padding:12px 16px; border-bottom:1px solid var(--border); background:var(--bg); display:flex; align-items:center; gap:10px; }
+.step-num { width:24px; height:24px; border-radius:50%; border:2px solid var(--border); display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:600; color:var(--text3); flex-shrink:0; }
+.step-card.active .step-num { border-color:var(--accent); color:var(--accent); background:var(--accent-bg); }
+.step-card.done .step-num { border-color:var(--green); color:#fff; background:var(--green); }
+.step-label { font-size:13px; font-weight:600; }
+.step-body { padding:16px; }
+
+/* ── CLIO RESULTS ── */
+.clio-result { padding:10px 12px; border:1px solid var(--border); border-radius:var(--radius); cursor:pointer; transition:all 0.12s; margin-bottom:6px; display:flex; align-items:center; justify-content:space-between; }
+.clio-result:hover { border-color:var(--accent); background:var(--accent-bg); }
+.clio-result.selected { border-color:var(--green); background:var(--green-bg); }
+.clio-result.general { border-left:3px solid var(--accent); }
+.clio-result-name { font-weight:600; font-size:13px; }
+.clio-result-meta { font-size:11px; color:var(--text2); font-family:'JetBrains Mono',monospace; margin-top:2px; }
+
+/* ── DEAL TYPE ── */
+.choice-row { display:flex; gap:8px; }
+.choice-btn { flex:1; padding:10px; border:1px solid var(--border); border-radius:var(--radius); background:var(--surface); font-size:13px; cursor:pointer; text-align:center; transition:all 0.12s; font-weight:500; font-family:'Plus Jakarta Sans',sans-serif; }
+.choice-btn:hover { border-color:var(--border2); }
+.choice-btn.selected { border-color:var(--accent); background:var(--accent-bg); color:var(--accent); font-weight:600; }
+
+/* ── MODAL ── */
+.modal-bg { position:fixed; inset:0; background:rgba(0,0,0,0.3); backdrop-filter:blur(4px); z-index:200; display:none; align-items:center; justify-content:center; padding:20px; }
+.modal-bg.open { display:flex; }
+.modal { background:var(--surface); border:1px solid var(--border); border-radius:12px; width:100%; max-width:480px; max-height:80vh; overflow-y:auto; box-shadow:var(--shadow2); }
+.modal-header { padding:16px 20px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; }
+.modal-title { font-family:'Fraunces',serif; font-size:18px; }
+.modal-close { background:none; border:none; color:var(--text3); font-size:18px; cursor:pointer; padding:4px; }
+.modal-close:hover { color:var(--text); }
+.modal-body { padding:20px; }
+.modal-footer { padding:12px 20px; border-top:1px solid var(--border); display:flex; justify-content:flex-end; gap:8px; }
+
+/* ── AI OUTPUT ── */
+.ai-box { background:var(--bg); border:1px solid var(--border); border-radius:var(--radius); padding:14px; font-family:'JetBrains Mono',monospace; font-size:12px; line-height:1.7; color:var(--text); white-space:pre-wrap; word-break:break-word; }
+
+/* ── SPINNER ── */
+.spin { width:14px; height:14px; border:2px solid var(--border); border-top-color:var(--accent); border-radius:50%; animation:sp 0.6s linear infinite; display:inline-block; }
+@keyframes sp { to { transform:rotate(360deg); } }
+
+/* ── NOTIFY ── */
+.notify { position:fixed; bottom:20px; right:20px; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:12px 16px; font-size:13px; display:flex; align-items:center; gap:8px; box-shadow:var(--shadow2); z-index:999; transform:translateY(60px); opacity:0; transition:all 0.25s cubic-bezier(0.34,1.56,0.64,1); }
+.notify.show { transform:translateY(0); opacity:1; }
+.notify.ok { border-left:3px solid var(--green); }
+.notify.err { border-left:3px solid var(--red); }
+
+/* ── FORM GROUPS ── */
+.form-group { margin-bottom:14px; }
+.form-label { font-size:12px; font-weight:600; color:var(--text2); margin-bottom:4px; display:block; }
+
+/* ── SCROLLBAR ── */
+::-webkit-scrollbar { width:5px; }
+::-webkit-scrollbar-track { background:transparent; }
+::-webkit-scrollbar-thumb { background:var(--border); border-radius:3px; }
+::-webkit-scrollbar-thumb:hover { background:var(--text3); }
+
+/* ── CONNECTION DOT ── */
+.conn { display:flex; align-items:center; gap:5px; font-size:11px; font-family:'JetBrains Mono',monospace; color:var(--text3); }
+.conn-dot { width:6px; height:6px; border-radius:50%; }
+.conn-dot.on { background:var(--green); }
+.conn-dot.off { background:var(--red); }
+</style>
+</head>
+<body>
+
+<!-- AUTH SCREEN -->
+<div id="auth-screen">
+  <div class="auth-brand">
+    <div class="auth-brand-mark">A</div>
+    <div class="auth-brand-text">ALG SAR Agent</div>
+  </div>
+  <div class="auth-card">
+    <div class="auth-title">Connect to Clio</div>
+    <div class="auth-sub">Paste your Clio API access token, or authorize through the Clio flow below.</div>
+    <div class="form-group">
+      <input type="text" id="token-input" placeholder="Paste Clio access token here..." style="font-family:'JetBrains Mono',monospace;font-size:11px" />
+    </div>
+    <div class="btn-row" style="margin-bottom:16px">
+      <button class="btn primary" onclick="connectWithToken()" style="flex:1;justify-content:center">Connect</button>
+    </div>
+    <div class="auth-steps">
+      <strong>Need a token?</strong><br>
+      1. Click below to authorize with Clio<br>
+      2. Copy the <code>code</code> from the redirect URL<br>
+      3. Paste it and click Exchange
+    </div>
+    <div class="btn-row" style="margin-bottom:8px">
+      <button class="btn sm" onclick="startClioAuth()" style="flex:1;justify-content:center">Authorize with Clio →</button>
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:12px">
+      <input type="text" id="code-input" placeholder="Auth code..." style="flex:1;font-family:'JetBrains Mono',monospace;font-size:11px" />
+      <button class="btn sm" onclick="exchangeCode()">Exchange</button>
+    </div>
+    <div id="auth-status" style="font-size:12px;text-align:center;min-height:18px"></div>
+    <div style="text-align:center;margin-top:12px">
+      <button class="btn ghost sm" onclick="skipAuth()">Continue in demo mode</button>
+    </div>
+  </div>
+</div>
+
+<!-- MAIN APP -->
+<div id="app">
+  <div class="layout">
+    <!-- SIDEBAR -->
+    <div class="sidebar">
+      <div class="sidebar-header">
+        <div class="sidebar-brand">
+          <div class="sidebar-mark">A</div>
+          <div>
+            <div class="sidebar-title">SAR Agent</div>
+            <div class="sidebar-subtitle">Auto Legal Group</div>
+          </div>
+        </div>
+        <div class="conn" id="conn-status">
+          <div class="conn-dot on" id="conn-dot"></div>
+          <span id="conn-label">Clio</span>
+        </div>
+      </div>
+      <div class="sidebar-search">
+        <input type="text" id="sb-search" placeholder="Search SARs..." oninput="renderSidebar()" />
+      </div>
+      <div class="sidebar-filters" id="sb-filters">
+        <div class="filter-chip active" data-filter="" onclick="setFilter('')">All</div>
+        <div class="filter-chip" data-filter="unassigned" onclick="setFilter('unassigned')">New</div>
+        <div class="filter-chip" data-filter="draft" onclick="setFilter('draft')">Draft</div>
+        <div class="filter-chip" data-filter="review" onclick="setFilter('review')">In Review</div>
+        <div class="filter-chip" data-filter="approved" onclick="setFilter('approved')">Approved</div>
+        <div class="filter-chip" data-filter="sent" onclick="setFilter('sent')">Sent</div>
+      </div>
+      <div class="sidebar-list" id="sb-list"></div>
+      <div class="sidebar-new">
+        <button class="btn primary" onclick="showNewSAR()">
+          <svg width="14" height="14" fill="none" viewBox="0 0 24 24"><line stroke="currentColor" stroke-width="2" x1="12" y1="5" x2="12" y2="19"/><line stroke="currentColor" stroke-width="2" x1="5" y1="12" x2="19" y2="12"/></svg>
+          New SAR Request
+        </button>
+      </div>
+    </div>
+
+    <!-- MAIN CONTENT -->
+    <div class="main" id="main-panel">
+      <div class="main-empty" id="empty-state">
+        <div class="main-empty-icon">📋</div>
+        <div class="main-empty-text">Select a SAR from the sidebar<br>or create a new request</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- TIME ENTRY MODAL -->
+<div class="modal-bg" id="time-modal" onclick="if(event.target===this)closeTimeModal()">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Log Time Entry</div>
+      <button class="modal-close" onclick="closeTimeModal()">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Matter</label>
+        <input type="text" id="te-matter" readonly style="color:var(--text2)" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Logging time for</label>
+        <select id="te-user">
+          <option value="">— Select person —</option>
+          <optgroup label="Case Managers" id="te-cm-options"></optgroup>
+          <optgroup label="Attorneys" id="te-atty-options"></optgroup>
+        </select>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div class="form-group">
+          <label class="form-label">Hours</label>
+          <input type="text" id="te-hours" placeholder="1.0" value="1.0" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Activity</label>
+          <select id="te-activity">
+            <option value="draft">Drafting Settlement Agreement</option>
+            <option value="review">Reviewing & Approving Settlement Agreement</option>
+            <option value="analyze">Analyzing Documents & Deal Jacket</option>
+            <option value="revisions">Revisions to Settlement Agreement</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Note</label>
+        <input type="text" id="te-note" placeholder="Optional note..." />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Date</label>
+        <input type="text" id="te-date" />
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeTimeModal()">Cancel</button>
+      <button class="btn primary" onclick="submitTimeEntry()">Log Time</button>
+    </div>
+  </div>
+</div>
+
+<!-- NOTIFY -->
+<div class="notify" id="notify"><span id="notify-msg"></span></div>
+
+<script>
+// ── CONFIG ──
+const CLIO_CLIENT_ID = 'aXxkdw7wIv9G52ok0tms9qctBeSNatloEmH5zlaJ';
+const CLIO_REDIRECT  = 'https://alg-sar-agent.netlify.app/callback';
+const CLIO_AUTH_URL  = 'https://app.clio.com/oauth/authorize';
+const CLIO_TOKEN_URL = '/.netlify/functions/clio-token';
+const AI_URL         = '/.netlify/functions/ai';
+
+const SAR_TEMPLATES = {
+  en: { id: 10314507, name: '26-05-19 Private SAR ENGLISH .docx' },
+  es: { id: 9993670, name: '25-12-29 Private SAR - Spanish Template.docx' },
+  es_rescission: { id: 9993655, name: '25-12-29 PRIVATE SAR (Spanish Rescission).docx' }
+};
+
+// ── STATE ──
+let state = {
+  clioToken: null, clioUser: null, demoMode: false,
+  queue: [], cms: [
+    {name:'Pedro', slackId:'U09QP4Z4KUG'},
+    {name:'Samir', slackId:'U09PDBV7287'},
+    {name:'Daniel M', slackId:'U09Q7NJ7C5P'},
+    {name:'Gabriel J', slackId:'U09QP4ZKY0G'},
+    {name:'Linda', slackId:'U09PYC93DNY'},
+    {name:'Viena', slackId:'U09Q7NGHA0H'}
+  ], roundRobinIndex: 0,
+  settings: { atty_cashkeep:'Amir N', atty_rescission:'Ali R / Ali K' },
+  attorneys: [
+    {name:'Amir N', slackId:'U09PQU2F737'},
+    {name:'Ali R', slackId:'U09PUC0EBLJ'},
+    {name:'Ali K', slackId:'U09QP4X69PA'}
+  ],
+  activeView: null, // 'new' or SAR id
+  activeFilter: '',
+  // Current new SAR session
+  newSAR: { step:1, fields:null, matter:null, dealType:'cash_keep', lang:'en' }
+};
+
+// ── INIT ──
+window.addEventListener('DOMContentLoaded', () => {
+  loadState();
+  const params = new URLSearchParams(window.location.search);
+  if (params.get('code')) {
+    document.getElementById('code-input').value = params.get('code');
+    window.history.replaceState({}, '', '/');
+  }
+  if (state.clioToken) launchApp();
+  renderSidebar();
+});
+
+function loadState() { try { const s = localStorage.getItem('alg_sar_v2'); if(s) state = {...state,...JSON.parse(s)}; } catch(e){} }
+function saveState() { try { localStorage.setItem('alg_sar_v2', JSON.stringify({clioToken:state.clioToken,clioUser:state.clioUser,demoMode:state.demoMode,queue:state.queue,cms:state.cms,settings:state.settings,roundRobinIndex:state.roundRobinIndex})); } catch(e){} }
+
+// ── AUTH ──
+function startClioAuth() { window.location.href = `${CLIO_AUTH_URL}?response_type=code&client_id=${CLIO_CLIENT_ID}&redirect_uri=${encodeURIComponent(CLIO_REDIRECT)}`; }
+
+async function connectWithToken() {
+  const token = document.getElementById('token-input').value.trim();
+  if(!token) return;
+  setAuthStatus('Testing...','');
+  try {
+    const r = await fetch('/.netlify/functions/clio-api?path=users/who_am_i', {headers:{'Authorization':'Bearer '+token}});
+    if(!r.ok) throw new Error('Token rejected');
+    const d = await r.json();
+    state.clioToken = token; state.clioUser = d.data?.name||'Connected'; state.demoMode = false;
+    saveState();
+    setAuthStatus('✓ Connected as '+state.clioUser,'color:var(--green)');
+    setTimeout(()=>launchApp(), 600);
+  } catch(e) { setAuthStatus('Error: '+e.message,'color:var(--red)'); }
+}
+
+async function exchangeCode() {
+  const code = document.getElementById('code-input').value.trim();
+  if(!code) return;
+  setAuthStatus('Exchanging...','');
+  try {
+    const r = await fetch(CLIO_TOKEN_URL, {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code})});
+    const raw = await r.text();
+    if(!raw) throw new Error('Empty response');
+    const d = JSON.parse(raw);
+    if(d.access_token) {
+      document.getElementById('token-input').value = d.access_token;
+      setAuthStatus('✓ Token received — click Connect','color:var(--green)');
+    } else throw new Error(d.error_description||d.error||JSON.stringify(d));
+  } catch(e) { setAuthStatus('Error: '+e.message,'color:var(--red)'); }
+}
+
+function skipAuth() { state.demoMode = true; launchApp(); }
+function setAuthStatus(msg,style) { const el=document.getElementById('auth-status'); el.textContent=msg; el.style.cssText=style||''; }
+
+function launchApp() {
+  document.getElementById('auth-screen').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+  if(state.demoMode) {
+    document.getElementById('conn-dot').className = 'conn-dot off';
+    document.getElementById('conn-label').textContent = 'Demo';
+  } else {
+    document.getElementById('conn-dot').className = 'conn-dot on';
+    document.getElementById('conn-label').textContent = state.clioUser||'Clio';
+  }
+  renderSidebar();
+}
+
+// ── CLIO API ──
+async function clioGet(endpoint, params={}) {
+  if(state.demoMode) return null;
+  const url = new URL('/.netlify/functions/clio-api', window.location.origin);
+  url.searchParams.set('path', endpoint);
+  Object.entries(params).forEach(([k,v])=>url.searchParams.set(k,v));
+  const r = await fetch(url.toString(), {headers:{'Authorization':'Bearer '+state.clioToken}});
+  if(!r.ok) throw new Error('Clio API '+r.status);
+  return r.json();
+}
+
+async function clioPost(endpoint, body) {
+  if(state.demoMode) return null;
+  const r = await fetch('/.netlify/functions/clio-api?path='+encodeURIComponent(endpoint), {
+    method:'POST', headers:{'Authorization':'Bearer '+state.clioToken,'Content-Type':'application/json','X-Clio-Method':'POST'},
+    body:JSON.stringify(body)
+  });
+  if(!r.ok) throw new Error('Clio POST '+r.status);
+  return r.json();
+}
+
+// ── SIDEBAR ──
+function renderSidebar() {
+  const search = (document.getElementById('sb-search')?.value||'').toLowerCase();
+  const items = state.queue.filter(i => {
+    const matchSearch = !search || i.buyer.toLowerCase().includes(search) || i.dealer.toLowerCase().includes(search) || (i.assignee||'').toLowerCase().includes(search);
+    const matchFilter = !state.activeFilter || i.status === state.activeFilter;
+    return matchSearch && matchFilter;
+  });
+  const list = document.getElementById('sb-list');
+  if(!list) return;
+  if(items.length === 0) {
+    list.innerHTML = '<div style="text-align:center;padding:40px 16px;color:var(--text3);font-size:12px">No SARs found</div>';
+    return;
+  }
+  list.innerHTML = items.map(i => `
+    <div class="sar-item${state.activeView===i.id?' active':''}" onclick="openSAR(${i.id})">
+      <div class="sar-item-header">
+        <div class="sar-item-buyer">
+          <div class="urgency-pip ${i.urgency==='urgent'?'urgent':'normal'}"></div>
+          ${esc(i.buyer)}
+        </div>
+        <span class="badge ${i.status}">${statusLabel(i.status)}</span>
+      </div>
+      <div class="sar-item-dealer">${esc(i.dealer)}</div>
+      <div class="sar-item-meta">
+        <span class="tag ${i.deal_type==='rescission'?'rescission':'ck'}">${i.deal_type==='rescission'?'Resc':'C&K'}</span>
+        <span class="tag ${i.lang==='es'?'es':'en'}">${i.lang==='es'?'ES':'EN'}</span>
+        ${i.assignee?'<span>→ '+esc(i.assignee)+'</span>':''}
+        <span class="sar-item-time">${fmtDate(i.created)}</span>
+      </div>
+    </div>
+  `).join('');
+}
+
+function setFilter(f) {
+  state.activeFilter = f;
+  document.querySelectorAll('.filter-chip').forEach(c => c.classList.toggle('active', c.dataset.filter === f));
+  renderSidebar();
+}
+
+// ── OPEN SAR DETAIL ──
+function openSAR(id) {
+  const item = state.queue.find(i=>i.id===id);
+  if(!item) return;
+  state.activeView = id;
+  renderSidebar();
+
+  const atty = item.deal_type==='rescission' ? state.settings.atty_rescission : state.settings.atty_cashkeep;
+  const main = document.getElementById('main-panel');
+  main.innerHTML = `
+    <div class="sar-detail">
+      <div class="sar-detail-header">
+        <div>
+          <div class="sar-detail-title">${esc(item.buyer)}</div>
+          <div class="sar-detail-sub">
+            ${item.urgency==='urgent'?'<span style="color:var(--red);font-weight:600">⚡ URGENT</span>':''}
+            <span>${esc(item.dealer)}</span>
+            <span style="color:var(--text3)">·</span>
+            <span>${esc(item.vehicle)}</span>
+            <span style="color:var(--text3)">·</span>
+            <span class="tag ${item.deal_type==='rescission'?'rescission':'ck'}">${item.deal_type==='rescission'?'Rescission':'Cash & Keep'}</span>
+            <span class="tag ${item.lang==='es'?'es':'en'}">${item.lang==='es'?'Spanish':'English'}</span>
+          </div>
+        </div>
+        <div class="btn-row">
+          <button class="btn sm" onclick="openTimeModal(${id})">⏱ Log Time</button>
+          <button class="btn sm danger" onclick="deleteSAR(${id})">Delete</button>
+        </div>
+      </div>
+
+      <div class="status-row">
+        <div class="status-step ${item.status!=='unassigned'?'done':'active'}"><div class="status-dot"></div>Intake</div>
+        <div class="status-line"></div>
+        <div class="status-step ${['review','approved','sent'].includes(item.status)?'done':item.status==='draft'?'active':''}"><div class="status-dot"></div>Draft</div>
+        <div class="status-line"></div>
+        <div class="status-step ${['approved','sent'].includes(item.status)?'done':item.status==='review'?'active':''}"><div class="status-dot"></div>Review</div>
+        <div class="status-line"></div>
+        <div class="status-step ${item.status==='sent'?'done':item.status==='approved'?'active':''}"><div class="status-dot"></div>Sent</div>
+      </div>
+
+      <div class="detail-grid">
+        <div class="detail-card">
+          <div class="detail-card-header">
+            <div class="detail-card-title">📋 Case Details</div>
+          </div>
+          <div class="detail-card-body">
+            <div class="field-grid">
+              <div class="field"><div class="field-label">Buyer</div><div class="field-value">${esc(item.buyer)}</div></div>
+              <div class="field"><div class="field-label">Dealer</div><div class="field-value">${esc(item.dealer)}</div></div>
+              <div class="field"><div class="field-label">Vehicle</div><div class="field-value">${esc(item.vehicle)}</div></div>
+              <div class="field"><div class="field-label">VIN</div><div class="field-value mono">${esc(item.vin||'—')}</div></div>
+              <div class="field"><div class="field-label">Settlement</div><div class="field-value">${item.amount?'$'+item.amount:'—'}</div></div>
+              <div class="field"><div class="field-label">Down Payment</div><div class="field-value">${item.fields?.down_payment||'—'}</div></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="detail-card">
+          <div class="detail-card-header">
+            <div class="detail-card-title">⚙️ Workflow</div>
+          </div>
+          <div class="detail-card-body">
+            <div class="field-grid">
+              <div class="field">
+                <div class="field-label">Status</div>
+                <select onchange="updateSAR(${id},'status',this.value)" style="font-size:12px;padding:6px 8px">
+                  ${['unassigned','draft','review','approved','sent'].map(s=>`<option value="${s}" ${item.status===s?'selected':''}>${statusLabel(s)}</option>`).join('')}
+                </select>
+              </div>
+              <div class="field">
+                <div class="field-label">Assigned To</div>
+                <select onchange="updateSAR(${id},'assignee',this.value)" style="font-size:12px;padding:6px 8px">
+                  <option value="">Unassigned</option>
+                  ${state.cms.map(cm=>`<option value="${cm.name}" ${item.assignee===cm.name?'selected':''}>${cm.name}</option>`).join('')}
+                </select>
+              </div>
+              <div class="field"><div class="field-label">Reviewing Attorney</div><div class="field-value">${esc(atty)}</div></div>
+              <div class="field full"><div class="field-label">Clio Matter</div><div class="field-value mono">${item.matter?'<span style="color:var(--accent)">#'+item.matter.num+'</span> · '+esc(item.matter.name)+(item.matter.client?' · '+esc(item.matter.client):''):'— Not linked'}</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TIME ENTRIES -->
+      <div class="detail-card" style="margin-bottom:16px">
+        <div class="detail-card-header">
+          <div class="detail-card-title">⏱ Time Entries</div>
+          <div class="btn-row">
+            <button class="btn sm" onclick="openTimeModal(${id}, '${esc(item.assignee||'')}')">+ CM Time</button>
+            <button class="btn sm" onclick="openTimeModal(${id}, '${esc(atty)}')">+ Attorney Time</button>
+          </div>
+        </div>
+        <div class="detail-card-body" id="time-entries-${id}">
+          ${renderTimeEntries(item)}
+        </div>
+      </div>
+
+      ${item.notes?`
+      <div class="detail-card">
+        <div class="detail-card-header"><div class="detail-card-title">📝 Notes</div></div>
+        <div class="detail-card-body"><div style="font-size:13px;color:var(--yellow);line-height:1.5">${esc(item.notes)}</div></div>
+      </div>`:''}
+    </div>
+  `;
+}
+
+function renderTimeEntries(item) {
+  const entries = item.timeEntries || [];
+  if(entries.length === 0) return '<div style="font-size:12px;color:var(--text3);text-align:center;padding:12px">No time logged yet</div>';
+  return entries.map(e => `
+    <div class="time-entry-row">
+      <span class="time-user">${esc(e.user)}</span>
+      <span class="time-hours">${e.hours}h</span>
+      <span class="time-note">${esc(e.activity)} ${e.note?'— '+esc(e.note):''}</span>
+      <span class="time-date">${e.date}</span>
+    </div>
+  `).join('');
+}
+
+function updateSAR(id, field, value) {
+  const item = state.queue.find(i=>i.id===id);
+  if(!item) return;
+  if(field === 'assignee') item.assignee = value || null;
+  else item[field] = value;
+  saveState(); renderSidebar();
+}
+
+function deleteSAR(id) {
+  if(!confirm('Delete this SAR?')) return;
+  state.queue = state.queue.filter(i=>i.id!==id);
+  state.activeView = null;
+  saveState(); renderSidebar();
+  document.getElementById('main-panel').innerHTML = '<div class="main-empty" id="empty-state"><div class="main-empty-icon">📋</div><div class="main-empty-text">Select a SAR from the sidebar<br>or create a new request</div></div>';
+}
+
+// ── TIME ENTRY MODAL ──
+let timeModalSARId = null;
+function openTimeModal(id, preselect) {
+  timeModalSARId = id;
+  const item = state.queue.find(i=>i.id===id);
+  if(!item) return;
+  document.getElementById('te-matter').value = item.matter ? '#'+item.matter.num+' — '+item.matter.name : item.dealer;
+  document.getElementById('te-date').value = new Date().toISOString().split('T')[0];
+  document.getElementById('te-hours').value = '1.0';
+  document.getElementById('te-note').value = '';
+
+  // Populate user dropdown
+  const cmOpts = document.getElementById('te-cm-options');
+  const attyOpts = document.getElementById('te-atty-options');
+  cmOpts.innerHTML = state.cms.map(cm => '<option value="' + esc(cm.name) + '">' + esc(cm.name) + '</option>').join('');
+  attyOpts.innerHTML = state.attorneys.map(a => '<option value="' + esc(a.name) + '">' + esc(a.name) + '</option>').join('');
+
+  // Pre-select if provided, or default to assignee
+  const sel = document.getElementById('te-user');
+  sel.value = preselect || item.assignee || '';
+
+  document.getElementById('time-modal').classList.add('open');
+}
+function closeTimeModal() { document.getElementById('time-modal').classList.remove('open'); }
+
+async function submitTimeEntry() {
+  const item = state.queue.find(i=>i.id===timeModalSARId);
+  if(!item) return;
+  const hours = parseFloat(document.getElementById('te-hours').value) || 1.0;
+  const activity = document.getElementById('te-activity').selectedOptions[0].text;
+  const activityVal = document.getElementById('te-activity').value;
+  const note = document.getElementById('te-note').value.trim();
+  const date = document.getElementById('te-date').value;
+
+  const selectedUser = document.getElementById('te-user').value;
+  if(!selectedUser) { notify('err','Select who is logging time'); return; }
+
+  // Add to local record
+  if(!item.timeEntries) item.timeEntries = [];
+  item.timeEntries.push({ user: selectedUser, hours, activity, note, date });
+  saveState();
+
+  // Try to create in Clio if connected and matter exists
+  if(!state.demoMode && item.matter) {
+    try {
+      const noteText = activity + (note ? ' — ' + note : '') + ' (SAR: ' + item.buyer + ' v. ' + item.dealer + ') [Logged for: ' + selectedUser + ']';
+      await clioPost('activities', {
+        data: {
+          type: 'TimeEntry',
+          date: date,
+          quantity: hours * 3600, // Clio wants seconds
+          note: noteText,
+          matter: { id: item.matter.id }
+        }
+      });
+      notify('ok','Time entry logged in Clio');
+    } catch(e) {
+      notify('err','Saved locally. Clio error: '+e.message);
+    }
+  } else {
+    notify('ok','Time entry saved locally');
+  }
+
+  closeTimeModal();
+  openSAR(timeModalSARId); // Refresh detail view
+}
+
+// ── NEW SAR FLOW ──
+function showNewSAR() {
+  state.activeView = 'new';
+  state.newSAR = { step:1, fields:null, matter:null, dealType:'cash_keep', lang:'en' };
+  renderSidebar();
+  renderNewSAR();
+}
+
+function renderNewSAR() {
+  const s = state.newSAR;
+  document.getElementById('main-panel').innerHTML = `
+    <div class="new-sar-view">
+      <div class="new-sar-title">New SAR Request</div>
+
+      <!-- STEP 1: PASTE EMAIL -->
+      <div class="step-card ${s.step===1?'active':s.step>1?'done':'disabled'}">
+        <div class="step-header">
+          <div class="step-num">${s.step>1?'✓':'1'}</div>
+          <div class="step-label">Paste Zoho Form Email</div>
+        </div>
+        <div class="step-body">
+          <textarea id="email-input" placeholder="Paste the Zoho SAR notification email content here...">${s._emailText||''}</textarea>
+          <div class="btn-row" style="margin-top:10px">
+            <button class="btn primary" onclick="doExtract()" id="extract-btn">Extract with AI</button>
+            <button class="btn sm" onclick="loadSample()">Load Sample</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- STEP 2: EXTRACTED FIELDS -->
+      <div class="step-card ${s.step===2?'active':s.step>2?'done':'disabled'}" id="step2-card">
+        <div class="step-header">
+          <div class="step-num">${s.step>2?'✓':'2'}</div>
+          <div class="step-label">Verify Extracted Fields</div>
+        </div>
+        <div class="step-body" id="fields-body">
+          ${s.fields ? renderFieldsHTML(s.fields) : '<div style="color:var(--text3);font-size:13px">Waiting for extraction...</div>'}
+        </div>
+      </div>
+
+      <!-- STEP 3: CLIO LOOKUP -->
+      <div class="step-card ${s.step===3?'active':s.step>3?'done':'disabled'}" id="step3-card">
+        <div class="step-header">
+          <div class="step-num">${s.step>3?'✓':'3'}</div>
+          <div class="step-label">Link to Clio Matter</div>
+        </div>
+        <div class="step-body">
+          <div style="display:flex;gap:8px;margin-bottom:10px">
+            <input type="text" id="clio-search" placeholder="Search dealer name..." value="${s.fields?.dealer_name||''}" />
+            <button class="btn primary sm" onclick="doClioSearch()">Search</button>
+          </div>
+          <div id="clio-results"></div>
+        </div>
+      </div>
+
+      <!-- STEP 4: GENERATE -->
+      <div class="step-card ${s.step===4?'active':'disabled'}" id="step4-card">
+        <div class="step-header">
+          <div class="step-num">4</div>
+          <div class="step-label">Generate Draft & Add to Queue</div>
+        </div>
+        <div class="step-body">
+          <div id="gen-output" class="ai-box" style="margin-bottom:12px;min-height:60px">${s.matter ? 'Matter: <span style="color:var(--accent)">#' + esc(s.matter.num) + '</span> — ' + esc(s.matter.name) + (s.matter.client ? ' (' + esc(s.matter.client) + ')' : '') + '\nDeal: ' + (s.dealType==='cash_keep'?'Cash & Keep':'Rescission') + ' · ' + (s.lang==='en'?'English':'Spanish') + '\n\nReady to generate draft.' : 'Select a Clio matter first.'}</div>
+          <div class="btn-row">
+            <button class="btn primary" onclick="doGenerate()" id="gen-btn">Generate Draft</button>
+            <button class="btn success" onclick="addToQueue()" id="queue-btn" disabled>Add to Queue</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderFieldsHTML(f) {
+  const s = state.newSAR;
+  return `
+    <div class="field-grid" style="margin-bottom:14px">
+      <div class="field"><div class="field-label">Buyer</div><input class="field-value editable" value="${esc(f.buyer_name||'')}" onchange="state.newSAR.fields.buyer_name=this.value" /></div>
+      <div class="field"><div class="field-label">Dealer</div><input class="field-value editable" value="${esc(f.dealer_name||'')}" onchange="state.newSAR.fields.dealer_name=this.value" /></div>
+      <div class="field"><div class="field-label">Year</div><input class="field-value editable" value="${esc(f.vehicle_year||'')}" onchange="state.newSAR.fields.vehicle_year=this.value" /></div>
+      <div class="field"><div class="field-label">Make</div><input class="field-value editable" value="${esc(f.vehicle_make||'')}" onchange="state.newSAR.fields.vehicle_make=this.value" /></div>
+      <div class="field"><div class="field-label">Model</div><input class="field-value editable" value="${esc(f.vehicle_model||'')}" onchange="state.newSAR.fields.vehicle_model=this.value" /></div>
+      <div class="field"><div class="field-label">VIN</div><input class="field-value editable mono" value="${esc(f.vin||'')}" onchange="state.newSAR.fields.vin=this.value" /></div>
+      <div class="field"><div class="field-label">Purchase Date</div><input class="field-value editable" value="${esc(f.purchase_date||'')}" onchange="state.newSAR.fields.purchase_date=this.value" /></div>
+      <div class="field"><div class="field-label">Settlement $</div><input class="field-value editable" value="${esc(f.settlement_amount||'')}" onchange="state.newSAR.fields.settlement_amount=this.value" /></div>
+      <div class="field"><div class="field-label">Down Payment</div><input class="field-value editable" value="${esc(f.down_payment||'')}" onchange="state.newSAR.fields.down_payment=this.value" /></div>
+      <div class="field"><div class="field-label">Miles Driven</div><input class="field-value editable" value="${esc(f.miles_driven||'')}" onchange="state.newSAR.fields.miles_driven=this.value" /></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+      <div>
+        <div class="field-label" style="margin-bottom:6px">Deal Type</div>
+        <div class="choice-row">
+          <button class="choice-btn ${s.dealType==='cash_keep'?'selected':''}" onclick="state.newSAR.dealType='cash_keep';renderNewSAR()">💰 Cash & Keep</button>
+          <button class="choice-btn ${s.dealType==='rescission'?'selected':''}" onclick="state.newSAR.dealType='rescission';renderNewSAR()">🔄 Rescission</button>
+        </div>
+      </div>
+      <div>
+        <div class="field-label" style="margin-bottom:6px">Language</div>
+        <div class="choice-row">
+          <button class="choice-btn ${s.lang==='en'?'selected':''}" onclick="state.newSAR.lang='en';renderNewSAR()">🇺🇸 English</button>
+          <button class="choice-btn ${s.lang==='es'?'selected':''}" onclick="state.newSAR.lang='es';renderNewSAR()">🇲🇽 Spanish</button>
+        </div>
+      </div>
+    </div>
+    ${f.notes?'<div style="padding:8px 10px;background:var(--yellow-bg);border-radius:var(--radius);font-size:12px;color:var(--yellow)">⚠ '+esc(f.notes)+'</div>':''}
+    <div class="btn-row" style="margin-top:10px">
+      <button class="btn primary sm" onclick="state.newSAR.step=3;renderNewSAR()">Continue to Clio Lookup →</button>
+    </div>
+  `;
+}
+
+// ── EXTRACT ──
+async function doExtract() {
+  const raw = document.getElementById('email-input').value.trim();
+  if(!raw) { notify('err','Paste email first'); return; }
+  state.newSAR._emailText = raw;
+  const btn = document.getElementById('extract-btn');
+  btn.innerHTML = '<div class="spin"></div> Extracting...'; btn.disabled = true;
+
+  try {
+    const r = await fetch(AI_URL, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        model:'claude-sonnet-4-20250514', max_tokens:1000,
+        system:`You extract structured data from Zoho settlement agreement request form emails for a California auto law firm. Return ONLY valid JSON, no markdown. Extract: {"buyer_name":"ALL CAPS","buyer_email":"","buyer_phone":"","dealer_name":"ALL CAPS","vehicle_year":"","vehicle_make":"","vehicle_model":"","vin":"","purchase_date":"MM/DD/YYYY","settlement_amount":"number string","settlement_amount_words":"written out","down_payment":"","miles_driven":"","deal_type":"cash_keep or rescission","language":"en or es","urgency":"urgent or normal","notes":"flags or missing info","missing_fields":[]}`,
+        messages:[{role:'user',content:'Extract from this SAR email:\n\n'+raw.substring(0,8000)}]
+      })
+    });
+    const d = await r.json();
+    const text = d.content?.find(b=>b.type==='text')?.text||'';
+    const fields = JSON.parse(text.replace(/```json|```/g,'').trim());
+    state.newSAR.fields = fields;
+    state.newSAR.step = 2;
+    if(fields.deal_type) state.newSAR.dealType = fields.deal_type;
+    if(fields.language) state.newSAR.lang = fields.language;
+    renderNewSAR();
+    notify('ok','Fields extracted');
+  } catch(e) { notify('err','Extraction failed: '+e.message); }
+
+  btn.innerHTML = 'Extract with AI'; btn.disabled = false;
+}
+
+// ── CLIO SEARCH ──
+async function doClioSearch() {
+  const q = document.getElementById('clio-search').value.trim();
+  if(!q) return;
+  const container = document.getElementById('clio-results');
+  container.innerHTML = '<div style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--text2)"><div class="spin"></div> Searching Clio...</div>';
+
+  if(state.demoMode) {
+    container.innerHTML = ['General Matter','Case #2'].map((n,i) =>
+      `<div class="clio-result general" onclick="selectMatter(${1000+i},'00${i}','${q} — ${n}','${q}')"><div><div class="clio-result-name">${q} — ${n}</div><div class="clio-result-meta">#00${i} · Open · General Matters</div></div></div>`
+    ).join('');
+    return;
+  }
+
+  try {
+    const data = await clioGet('matters', {query:q, limit:10, fields:'id,display_number,description,client,status,practice_area'});
+    if(!data?.data?.length) { container.innerHTML = '<div style="font-size:12px;color:var(--text3)">No matters found</div>'; return; }
+    // Store results so we can reference by index on click
+    window._clioResults = data.data;
+    container.innerHTML = data.data.map((m, idx) => {
+      const desc = m.description||'Unnamed';
+      const num = m.display_number||'';
+      const client = m.client?.name||'';
+      const pa = m.practice_area?.name||'';
+      const isGen = pa.toLowerCase().includes('general');
+      const st = m.status||'';
+      return '<div class="clio-result' + (isGen ? ' general' : '') + '" onclick="pickMatter(' + idx + ')">'
+        + '<div><div class="clio-result-name">' + esc(desc) + '</div>'
+        + '<div class="clio-result-meta"><span style="color:var(--accent)">#' + esc(num) + '</span> · <span style="color:' + (st==='Open'?'var(--green)':'var(--text3)') + '">' + esc(st) + '</span> · ' + esc(pa) + (client ? ' · ' + esc(client) : '') + '</div></div>'
+        + (isGen ? '<span class="tag ck">General</span>' : '')
+        + '</div>';
+    }).join('');
+  } catch(e) { container.innerHTML = '<div style="color:var(--red);font-size:12px">Error: '+esc(e.message)+'</div>'; }
+}
+
+function pickMatter(idx) {
+  const m = window._clioResults[idx];
+  if(!m) return;
+  selectMatter(m.id, m.display_number||'', m.description||'', m.client?.name||'');
+}
+
+function selectMatter(id, num, name, client) {
+  state.newSAR.matter = {id, num, name, client:client||''};
+  document.querySelectorAll('.clio-result').forEach(el=>el.classList.remove('selected'));
+  if(event && event.currentTarget) event.currentTarget.classList.add('selected');
+  state.newSAR.step = 4;
+  renderNewSAR();
+  notify('ok','Matter #'+num+' selected');
+}
+
+// ── GENERATE ──
+async function doGenerate() {
+  const f = state.newSAR.fields;
+  if(!f) { notify('err','Extract fields first'); return; }
+  const btn = document.getElementById('gen-btn');
+  btn.innerHTML = '<div class="spin"></div> Generating...'; btn.disabled = true;
+  const out = document.getElementById('gen-output');
+  out.textContent = 'Generating draft analysis...';
+
+  const atty = state.newSAR.dealType==='rescission' ? state.settings.atty_rescission : state.settings.atty_cashkeep;
+  try {
+    const r = await fetch(AI_URL, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        model:'claude-sonnet-4-20250514', max_tokens:1000,
+        system:'You are a paralegal assistant at Auto Legal Group, a California auto law firm. Generate a concise pre-fill checklist for a Settlement Agreement draft. Be direct and practical.',
+        messages:[{role:'user',content:`SAR draft pre-fill checklist:
+DEAL: ${state.newSAR.dealType==='cash_keep'?'Cash & Keep':'Rescission'} | LANG: ${state.newSAR.lang==='en'?'English':'Spanish'} | ATTY: ${atty}
+MATTER: ${state.newSAR.matter?'#'+state.newSAR.matter.num+' '+state.newSAR.matter.name:'None'}
+Buyer: ${f.buyer_name||'?'} | Dealer: ${f.dealer_name||'?'}
+Vehicle: ${f.vehicle_year} ${f.vehicle_make} ${f.vehicle_model}, VIN: ${f.vin||'?'}
+Date: ${f.purchase_date||'?'} | Amount: $${f.settlement_amount||'?'} (${f.settlement_amount_words||'?'})
+Down: ${f.down_payment||'?'} | Miles: ${f.miles_driven||'?'} | Notes: ${f.notes||'none'}
+Provide: 1) READY TO FILL fields 2) NEEDS VERIFICATION 3) RECITALS GUIDANCE 4) ROUTING`}]
+      })
+    });
+    const d = await r.json();
+    out.textContent = d.content?.find(b=>b.type==='text')?.text||'No response';
+    document.getElementById('queue-btn').disabled = false;
+    notify('ok','Draft analysis ready');
+  } catch(e) { out.textContent = 'Error: '+e.message; notify('err','Failed'); }
+  btn.innerHTML = 'Generate Draft'; btn.disabled = false;
+}
+
+// ── ADD TO QUEUE ──
+function getNextCM() {
+  const idx = state.roundRobinIndex || 0;
+  const cm = state.cms[idx % state.cms.length];
+  state.roundRobinIndex = (idx + 1) % state.cms.length;
+  saveState();
+  return cm;
+}
+
+async function sendSlackAssignment(entry, cm) {
+  // Send to #settlement-agreements channel
+  const channelId = 'C09QF0PRLJ2';
+  const dealTypeLabel = entry.deal_type === 'rescission' ? 'Rescission' : 'Cash & Keep';
+  const langLabel = entry.lang === 'es' ? 'Spanish' : 'English';
+  const urgencyEmoji = entry.urgency === 'urgent' ? '🚨 *URGENT* ' : '';
+  const matterInfo = entry.matter ? '#' + entry.matter.num + ' — ' + entry.matter.name : 'Not linked';
+
+  const message = urgencyEmoji + '*New SAR Assignment*\n\n' +
+    '<@' + cm.slackId + '> — you\'ve been assigned a new Settlement Agreement Request.\n\n' +
+    '*Buyer:* ' + entry.buyer + '\n' +
+    '*Dealer:* ' + entry.dealer + '\n' +
+    '*Vehicle:* ' + entry.vehicle + (entry.vin ? ' (VIN: ' + entry.vin + ')' : '') + '\n' +
+    '*Type:* ' + dealTypeLabel + ' · ' + langLabel + '\n' +
+    '*Settlement:* ' + (entry.amount ? '$' + entry.amount : 'TBD') + '\n' +
+    '*Attorney:* ' + (entry.attorney || 'TBD') + '\n' +
+    '*Matter:* ' + matterInfo +
+    (entry.notes ? '\n*Notes:* ' + entry.notes : '') +
+    '\n\nTemplate: *' + (langLabel === 'Spanish' ? 'Private SAR - Spanish' : 'Private SAR ENGLISH') + '*\n' +
+    'Please open the SAR Agent to review and create the draft.';
+
+  try {
+    const r = await fetch('/.netlify/functions/slack-notify', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ channel: channelId, text: message })
+    });
+    if (r.ok) notify('ok', 'Slack notification sent to ' + cm.name);
+    else notify('err', 'Slack notify failed');
+  } catch(e) {
+    console.error('Slack notify error:', e);
+  }
+}
+
+async function addToQueue() {
+  const f = state.newSAR.fields;
+  if(!f) return;
+  const atty = state.newSAR.dealType==='rescission' ? state.settings.atty_rescission : state.settings.atty_cashkeep;
+  const cm = getNextCM();
+  const entry = {
+    id: Date.now(), created: new Date().toISOString(),
+    buyer: f.buyer_name||'Unknown', dealer: f.dealer_name||'Unknown',
+    vehicle: `${f.vehicle_year||''} ${f.vehicle_make||''} ${f.vehicle_model||''}`.trim(),
+    vin: f.vin, amount: f.settlement_amount, deal_type: state.newSAR.dealType,
+    lang: state.newSAR.lang, urgency: f.urgency||'normal', status:'draft',
+    assignee: cm.name, attorney:atty, matter:state.newSAR.matter,
+    notes:f.notes, fields:f, timeEntries:[]
+  };
+  state.queue.unshift(entry);
+  saveState(); renderSidebar();
+  notify('ok', 'Assigned to ' + cm.name + ' and added to queue');
+
+  // Send Slack notification
+  await sendSlackAssignment(entry, cm);
+
+  setTimeout(()=>openSAR(entry.id), 600);
+}
+
+// ── SAMPLE ──
+function loadSample() {
+  document.getElementById('email-input').value = `From: newcases@autolegalgroup.com
+Subject: New Settlement Agreement Request
+
+SETTLEMENT AGREEMENT REQUEST FORM
+
+Dealer Name: Auto Race, Inc.
+Client Name: David J Sanchez
+Client Email: david.sanchez@email.com
+Client Phone: (408) 555-0192
+
+Vehicle Information:
+Year: 2018
+Make: Chevrolet
+Model: Tahoe
+VIN: 1GNSKBKC3JR287327
+Purchase Date: 04/26/2026
+
+Settlement Details:
+Settlement Type: Rescission
+Settlement Amount: $800.00
+Down Payment Paid: $3,000.00
+Miles Driven: 3,000
+Language Preference: English
+
+Notes: Vehicle was repossessed. Client failed to complete financing. Urgent - client expects response today.`;
+  notify('ok','Sample loaded');
+}
+
+// ── HELPERS ──
+function statusLabel(s) { return {unassigned:'New',draft:'Draft',review:'In Review',approved:'Approved',sent:'Sent'}[s]||s; }
+function fmtDate(iso) { return new Date(iso).toLocaleDateString('en-US',{month:'short',day:'numeric'}); }
+function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+function notify(type,msg) { const el=document.getElementById('notify'); document.getElementById('notify-msg').textContent=msg; el.className='notify '+type+' show'; setTimeout(()=>el.className='notify '+type,3000); }
+</script>
+</body>
+</html>

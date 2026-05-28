@@ -1,0 +1,8 @@
+{
+  "name": "alg-sar-agent",
+  "version": "2.0.0",
+  "description": "ALG Settlement Agreement Request Agent",
+  "dependencies": {
+    "docx": "^9.0.0"
+  }
+}
