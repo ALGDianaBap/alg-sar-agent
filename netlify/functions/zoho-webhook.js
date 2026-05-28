@@ -44,30 +44,6 @@ exports.handler = async (event) => {
 
   if (event.httpMethod === 'OPTIONS') return { statusCode: 204, headers: cors, body: '' };
 
-  // ── GET: return pending SAR queue ─────────────────────────────────────────
-  if (event.httpMethod === 'GET') {
-    try {
-      const store = getStore('sar-queue');
-      const { blobs } = await store.list();
-      const items = await Promise.all(
-        blobs.filter(b => b.key !== 'rr-index').map(async ({ key }) => {
-          const data = await store.get(key, { type: 'json' });
-          return data ? { id: key, ...data } : null;
-        })
-      );
-      return { statusCode: 200, headers: { ...cors, 'Content-Type': 'application/json' }, body: JSON.stringify(items.filter(Boolean)) };
-    } catch (e) {
-      return { statusCode: 200, headers: cors, body: '[]' };
-    }
-  }
-
-  // ── DELETE: mark SAR as imported ──────────────────────────────────────────
-  if (event.httpMethod === 'DELETE') {
-    const id = (event.queryStringParameters || {}).id;
-    if (id) { try { await getStore('sar-queue').delete(id); } catch (e) {} }
-    return { statusCode: 200, headers: cors, body: JSON.stringify({ ok: true }) };
-  }
-
   if (event.httpMethod !== 'POST') return { statusCode: 405, headers: cors, body: 'Method Not Allowed' };
 
   // ── 1. PARSE ZOHO FIELDS ──────────────────────────────────────────────────
@@ -235,10 +211,11 @@ exports.handler = async (event) => {
     console.warn('Clio search failed:', e.message);
   }
 
-  // ── 8. STORE COMPLETE SAR IN BLOBS ────────────────────────────────────────
+  // ── 8. STORE COMPLETE SAR IN sar-records (shared dashboard store) ─────────
   const id = Date.now().toString();
   const vehicle = [fields.vehicle_year, fields.vehicle_make, fields.vehicle_model].filter(Boolean).join(' ');
   const sarData = {
+    id,
     created:         new Date().toISOString(),
     status:          draftBase64 ? 'draft' : 'new',
     source:          'webhook',
@@ -257,8 +234,9 @@ exports.handler = async (event) => {
     matter,
     assignee:        cm.name,
     assigneeSlackId: cm.slackId,
-    attorney:        atty.name,
-    attorneySlackId: atty.slackId,
+    // No attorney set here — CM selects attorney when submitting for review
+    attorney:        null,
+    attorneySlackId: null,
     draftBase64,
     draftFilename,
     zohoContext,
@@ -269,7 +247,7 @@ exports.handler = async (event) => {
   };
 
   try {
-    const store = getStore('sar-queue');
+    const store = getStore('sar-records');
     await store.set(id, JSON.stringify(sarData));
   } catch (e) {
     console.error('Blob store error:', e.message);
@@ -295,9 +273,11 @@ exports.handler = async (event) => {
     `*Matter:* ${matterStr}\n\n` +
     draftReady;
 
-  // Temporary debug block — remove once Zoho field names are confirmed correct.
-  const fieldKeys  = Object.keys(body).slice(0, 25).join(', ');
-  const debugText  = `🔍 *Debug — raw Zoho field keys:* \`${fieldKeys}\`\n_Remove this from zoho-webhook.js once field names look correct._`;
+  // Debug: key=value dump so we can fix Zoho field name mapping. Remove once confirmed.
+  const debugLines = Object.entries(body).slice(0, 20)
+    .map(([k, v]) => `  • \`${k}\`: ${String(v).slice(0, 80)}`)
+    .join('\n');
+  const debugText = `🔍 *Debug — raw Zoho fields (remove once mapping confirmed):*\n${debugLines}`;
 
   try {
     await postSlack(SLACK_CHANNEL, slackText);

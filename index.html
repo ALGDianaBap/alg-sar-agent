@@ -317,18 +317,12 @@ select { appearance:none; background-image:url("data:image/svg+xml,%3Csvg xmlns=
       </div>
       <div class="sidebar-filters">
         <div class="chip active" data-f="" onclick="setFilter('')">All</div>
+        <div class="chip" data-f="mine" onclick="setFilter('mine')">Mine</div>
         <div class="chip" data-f="new" onclick="setFilter('new')">New</div>
         <div class="chip" data-f="draft" onclick="setFilter('draft')">Draft</div>
         <div class="chip" data-f="review" onclick="setFilter('review')">Review</div>
         <div class="chip" data-f="approved" onclick="setFilter('approved')">Approved</div>
         <div class="chip" data-f="sent" onclick="setFilter('sent')">Sent</div>
-      </div>
-      <div id="webhook-banner" class="webhook-banner" style="display:none" onclick="importWebhookSARs()">
-        <div>
-          <div class="webhook-banner-text" id="webhook-count">⚡ New from Zoho</div>
-          <div class="webhook-banner-sub">Click to import</div>
-        </div>
-        <svg width="14" height="14" fill="none" viewBox="0 0 24 24"><path stroke="#4a90c4" stroke-width="2" d="M9 18l6-6-6-6"/></svg>
       </div>
       <div class="sidebar-list" id="sb-list"></div>
       <div class="sidebar-footer">
@@ -439,7 +433,7 @@ const API = {
   ai:        '/.netlify/functions/ai',
   slack:     '/.netlify/functions/slack-notify',
   docx:      '/.netlify/functions/generate-docx',
-  webhook:   '/.netlify/functions/zoho-webhook',
+  sars:      '/.netlify/functions/sars',
 };
 const SLACK_SAR_CHANNEL = 'C09QF0PRLJ2';
 const STORAGE_KEY = 'alg_sar_v2';
@@ -471,17 +465,19 @@ let state = {
 };
 
 // ── STORAGE ──────────────────────────────────────────────────────────────────
+// localStorage caches auth + a local copy of the queue.
+// Netlify Blobs (via /sars function) is the source of truth for SAR records.
+
 function loadState() {
   try {
     const s = localStorage.getItem(STORAGE_KEY);
     if (!s) return;
     const saved = JSON.parse(s);
-    // Merge persisted fields; always keep fresh CMs/attorneys from source
     Object.assign(state, {
       clioToken: saved.clioToken ?? null,
-      clioUser: saved.clioUser ?? null,
-      demoMode: saved.demoMode ?? false,
-      queue: saved.queue ?? [],
+      clioUser:  saved.clioUser  ?? null,
+      demoMode:  saved.demoMode  ?? false,
+      queue:     saved.queue     ?? [],
       roundRobinIndex: saved.roundRobinIndex ?? 0,
     });
   } catch(e) {}
@@ -491,12 +487,69 @@ function saveState() {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({
       clioToken: state.clioToken,
-      clioUser: state.clioUser,
-      demoMode: state.demoMode,
-      queue: state.queue,
+      clioUser:  state.clioUser,
+      demoMode:  state.demoMode,
+      queue:     state.queue,
       roundRobinIndex: state.roundRobinIndex,
     }));
   } catch(e) {}
+}
+
+// ── SERVER SYNC ───────────────────────────────────────────────────────────────
+// All mutations write to the server so every user sees the same data.
+
+async function loadSARsFromServer() {
+  if (state.demoMode) return;
+  try {
+    const r = await fetch(API.sars);
+    if (!r.ok) return;
+    const sars = await r.json();
+    state.queue = sars;
+    saveState();
+    renderSidebar();
+    // Re-open active view if still present
+    if (state.activeView && state.activeView !== 'new') {
+      const item = state.queue.find(i => i.id === state.activeView);
+      if (item) renderDetail(item);
+    }
+  } catch(e) { /* silently fall back to cached data */ }
+}
+
+async function patchSAR(id, changes) {
+  const item = state.queue.find(i => i.id === id);
+  if (item) Object.assign(item, changes);
+  saveState();
+  renderSidebar();
+  if (state.demoMode) return;
+  try {
+    await fetch(API.sars + '?id=' + id, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(changes)
+    });
+  } catch(e) { console.warn('Sync error:', e.message); }
+}
+
+async function createSAROnServer(item) {
+  if (state.demoMode) return;
+  try {
+    await fetch(API.sars, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(item)
+    });
+  } catch(e) { console.warn('Create error:', e.message); }
+}
+
+async function deleteSAROnServer(id) {
+  if (state.demoMode) return;
+  try { await fetch(API.sars + '?id=' + id, { method: 'DELETE' }); } catch(e) {}
+}
+
+// Poll for updates every 30 seconds so the dashboard stays in sync for all users
+function startPolling() {
+  if (state.demoMode) return;
+  setInterval(loadSARsFromServer, 30000);
 }
 
 // ── AUTH ─────────────────────────────────────────────────────────────────────
@@ -583,7 +636,9 @@ function launchApp() {
     label.textContent = state.clioUser || 'Clio';
   }
   renderSidebar();
-  checkWebhookInbox();
+  // Load shared SAR records from server; fall back to cached local state
+  loadSARsFromServer();
+  startPolling();
 }
 
 // ── CLIO API ─────────────────────────────────────────────────────────────────
@@ -614,7 +669,15 @@ function renderSidebar() {
   const f = state.activeFilter;
   const items = state.queue.filter(i => {
     const matchSearch = !q || i.buyer.toLowerCase().includes(q) || i.dealer.toLowerCase().includes(q) || (i.assignee||'').toLowerCase().includes(q);
-    const matchFilter = !f || i.status === f;
+    let matchFilter = true;
+    if (f === 'mine') {
+      // Match if current Clio user name overlaps with the assignee name
+      const cu = (state.clioUser || '').toLowerCase();
+      const as = (i.assignee || '').toLowerCase();
+      matchFilter = !!cu && (as.includes(cu.split(' ')[0]) || cu.includes(as.split(' ')[0]));
+    } else if (f) {
+      matchFilter = i.status === f;
+    }
     return matchSearch && matchFilter;
   });
   const list = document.getElementById('sb-list');
@@ -649,70 +712,8 @@ function setFilter(f) {
   renderSidebar();
 }
 
-// ── WEBHOOK INBOX ─────────────────────────────────────────────────────────────
-async function checkWebhookInbox() {
-  if (state.demoMode) return;
-  try {
-    const r = await fetch(API.webhook);
-    if (!r.ok) return;
-    const pending = await r.json();
-    if (!pending || !pending.length) return;
-    state.pendingWebhooks = pending;
-    await importWebhookSARs();
-  } catch(e) {
-    // Silently fail — webhook inbox is optional
-  }
-}
-
-async function importWebhookSARs() {
-  if (!state.pendingWebhooks.length) return;
-  let imported = 0;
-  for (const wh of state.pendingWebhooks) {
-    // CM was already assigned by the webhook function — honour it, don't re-assign
-    const cmName = wh.assignee || null;
-    const cmSlackId = wh.assigneeSlackId || (state.cms.find(c => c.name === cmName)?.slackId) || null;
-    const atty = getDefaultAtty(wh.dealType || 'cash_keep');
-    const entry = {
-      id: Date.now() + imported,
-      created: wh.created || new Date().toISOString(),
-      status: 'new',
-      source: 'webhook',
-      urgency: wh.urgency || 'normal',
-      buyer: wh.buyer || 'Unknown Buyer',
-      dealer: wh.dealer || 'Unknown Dealer',
-      phone: wh.phone || '',
-      email: wh.email || '',
-      language: wh.language || 'en',
-      dealType: wh.dealType || 'cash_keep',
-      vehicle: '',
-      vin: '',
-      amount: '',
-      attachments: wh.attachments || [],
-      zohoData: wh.zohoData || null,
-      zohoContext: wh.zohoContext || null,
-      fields: wh.fields || null,
-      matter: null,
-      assignee: cmName,
-      assigneeSlackId: cmSlackId,
-      attorney: atty.name,
-      attorneySlackId: atty.slackId,
-      draftBase64: null,
-      draftFilename: null,
-      timeEntries: [],
-      notes: wh.notes || '',
-      reviewNotes: ''
-    };
-    state.queue.unshift(entry);
-    imported++;
-    try { await fetch(API.webhook + '?id=' + wh.id, {method:'DELETE'}); } catch(e) {}
-  }
-  state.pendingWebhooks = [];
-  document.getElementById('webhook-banner').style.display = 'none';
-  saveState();
-  renderSidebar();
-  notify('ok', `${imported} new SAR${imported>1?'s':''} imported from Zoho`);
-  if (imported === 1) openSAR(state.queue[0].id);
-}
+// Webhook SARs now land directly in the shared sar-records store.
+// loadSARsFromServer() picks them up automatically — no import step needed.
 
 // ── NEW SAR FORM ───────────────────────────────────────────────────────────────
 let newSAR = { dealType:'cash_keep', language:'en', urgency:'normal' };
@@ -810,7 +811,6 @@ async function createNewSAR() {
   const dealer = document.getElementById('ns-dealer').value.trim();
   if (!buyer || !dealer) { notify('err', 'Buyer and dealer name required'); return; }
   const cm = getNextCM();
-  const atty = getDefaultAtty(newSAR.dealType);
   const entry = {
     id: Date.now(),
     created: new Date().toISOString(),
@@ -828,12 +828,13 @@ async function createNewSAR() {
     amount: '',
     attachments: [],
     zohoData: null,
+    zohoContext: null,
     fields: null,
     matter: null,
     assignee: cm.name,
     assigneeSlackId: cm.slackId,
-    attorney: atty.name,
-    attorneySlackId: atty.slackId,
+    attorney: null,
+    attorneySlackId: null,
     draftBase64: null,
     draftFilename: null,
     timeEntries: [],
@@ -844,6 +845,7 @@ async function createNewSAR() {
   saveState();
   renderSidebar();
   notify('ok', `Assigned to ${cm.name}`);
+  await createSAROnServer(entry);
   await sendSlackAssignment(entry, cm);
   openSAR(entry.id);
 }
@@ -1269,9 +1271,8 @@ function selectMatter(sarId, idx) {
   item.matter = { id: m.id, num: m.display_number||'', name: m.description||'', client: m.client?.name||'' };
   document.querySelectorAll(`#clio-res-${sarId} .clio-result`).forEach((el,i) => el.classList.toggle('selected', i===idx));
   markAgentStep(3, 'done', `#${item.matter.num} — ${item.matter.name}`);
-  saveState();
+  patchSAR(sarId, { matter: item.matter });
   notify('ok', 'Matter #' + item.matter.num + ' selected');
-  // Enable step 4
   enableGenerateStep(sarId);
 }
 
@@ -1305,10 +1306,17 @@ async function generateDraft(id) {
     });
     const d = await r.json();
     if (!d.ok) throw new Error(d.error || 'Generation failed');
-    item.draftBase64 = d.base64;
-    item.draftFilename = d.filename;
-    item.status = 'draft';
-    saveState();
+    // Persist draft + all extracted data server-side
+    await patchSAR(item.id, {
+      draftBase64: d.base64,
+      draftFilename: d.filename,
+      status: 'draft',
+      fields: item.fields,
+      vehicle: item.vehicle,
+      vin: item.vin,
+      amount: item.amount,
+      matter: item.matter
+    });
     markAgentStep(4, 'done', `${d.filename} (${(d.size/1024).toFixed(0)} KB)`);
     notify('ok', 'Draft generated — status → Draft');
     setTimeout(() => openSAR(id), 800);
@@ -1319,9 +1327,9 @@ async function generateDraft(id) {
 }
 
 function skipToManualDraft(id) {
-  markStatus(id, 'draft');
-  notify('ok', 'Status set to Draft — generate or upload the .docx manually');
+  patchSAR(id, { status: 'draft' });
   openSAR(id);
+  notify('ok', 'Status set to Draft — generate or upload the .docx manually');
 }
 
 // ── DRAFT DOWNLOAD ─────────────────────────────────────────────────────────────
@@ -1412,13 +1420,15 @@ async function submitForReview() {
   const notes = document.getElementById('review-notes').value.trim();
   const attyObj = state.attorneys.find(a => a.name === attyName);
 
-  item.attorney = attyName;
-  item.attorneySlackId = attyObj?.slackId || '';
-  item.reviewNotes = notes;
-  item.status = 'review';
-  saveState();
+  await patchSAR(item.id, {
+    attorney: attyName,
+    attorneySlackId: attyObj?.slackId || '',
+    reviewNotes: notes,
+    status: 'review'
+  });
+  // Update local reference for Slack send
+  Object.assign(item, { attorney: attyName, attorneySlackId: attyObj?.slackId || '', reviewNotes: notes, status: 'review' });
   closeReviewModal();
-  renderSidebar();
   openSAR(item.id);
   notify('ok', `Submitted for ${attyName}'s review`);
   await sendSlackReview(item);
@@ -1426,47 +1436,35 @@ async function submitForReview() {
 
 // ── STATUS / FIELD UPDATES ─────────────────────────────────────────────────────
 function markStatus(id, status) {
-  const item = state.queue.find(i => i.id === id);
-  if (!item) return;
-  item.status = status;
-  saveState();
-  renderSidebar();
+  patchSAR(id, { status });
   openSAR(id);
   notify('ok', 'Status → ' + statusLabel(status));
 }
 
 function updateAssignee(id, name) {
-  const item = state.queue.find(i => i.id === id);
-  if (!item) return;
   const cm = state.cms.find(c => c.name === name);
-  item.assignee = name || null;
-  item.assigneeSlackId = cm?.slackId || null;
-  saveState();
-  renderSidebar();
+  patchSAR(id, { assignee: name || null, assigneeSlackId: cm?.slackId || null });
 }
 
 function updateField(id, field, value) {
   const item = state.queue.find(i => i.id === id);
   if (!item || !item.fields) return;
   item.fields[field] = value;
-  // Also update top-level derived fields
-  if (field === 'buyer_name') item.buyer = value;
-  if (field === 'dealer_name') item.dealer = value;
+  const derived = {};
+  if (field === 'buyer_name')  { item.buyer = value;  derived.buyer = value; }
+  if (field === 'dealer_name') { item.dealer = value; derived.dealer = value; }
   if (['vehicle_year','vehicle_make','vehicle_model'].includes(field)) {
     item.vehicle = [item.fields.vehicle_year, item.fields.vehicle_make, item.fields.vehicle_model].filter(Boolean).join(' ');
+    derived.vehicle = item.vehicle;
   }
-  if (field === 'vin') item.vin = value;
-  if (field === 'settlement_amount') item.amount = value;
-  saveState();
-  renderSidebar();
+  if (field === 'vin')               { item.vin = value;    derived.vin = value; }
+  if (field === 'settlement_amount') { item.amount = value; derived.amount = value; }
+  patchSAR(id, { fields: item.fields, ...derived });
 }
 
 function clearFields(id) {
   if (!confirm('Clear extracted RISC data?')) return;
-  const item = state.queue.find(i => i.id === id);
-  if (!item) return;
-  item.fields = null;
-  saveState();
+  patchSAR(id, { fields: null });
   openSAR(id);
 }
 
@@ -1475,6 +1473,7 @@ function deleteSAR(id) {
   state.queue = state.queue.filter(i => i.id !== id);
   state.activeView = null;
   saveState();
+  deleteSAROnServer(id);
   renderSidebar();
   cancelNewSAR();
 }
@@ -1513,7 +1512,7 @@ async function submitTimeEntry() {
 
   if (!item.timeEntries) item.timeEntries = [];
   item.timeEntries.push({user, hours, activity, note, date});
-  saveState();
+  patchSAR(item.id, { timeEntries: item.timeEntries });
   const teContainer = document.getElementById('te-list-' + teId);
   if (teContainer) teContainer.innerHTML = renderTimeEntries(item);
 
