@@ -143,14 +143,17 @@ exports.handler = async (event) => {
     } else {
       pipelineLog.push(`Zoho token ✓  formName="${formName}"  entryId="${entryId || 'not in payload'}"`);
       try {
-        const entry = await fetchZohoEntry(zohoToken, formName, entryId);
+        const { entry, debugLines } = await fetchZohoEntry(zohoToken, formName, entryId);
+        // Always show API call results so we can diagnose failures
+        debugLines.forEach(l => pipelineLog.push('  ' + l));
+
         if (!entry) {
-          pipelineLog.push('✗ Could not fetch Zoho entry');
+          pipelineLog.push('✗ No usable entry returned from any URL format');
         } else {
-          pipelineLog.push('✓ Zoho entry fetched — keys: ' + Object.keys(entry).slice(0, 15).join(', '));
+          pipelineLog.push('✓ Entry fetched — fields: ' + Object.keys(entry).slice(0, 15).join(', '));
           const fileUrl = findFileUrlInEntry(entry);
           if (!fileUrl) {
-            pipelineLog.push('✗ No file URL found in entry — file field may need URL sharing enabled in Zoho');
+            pipelineLog.push('✗ No file URL in entry — check Zoho webhook "Include file URLs" setting');
           } else {
             pipelineLog.push('✓ File URL found');
             try {
@@ -351,14 +354,45 @@ function downloadWithTimeout(url, timeoutMs, extraHeaders = {}) {
   });
 }
 
-// Fetch a Zoho Forms entry by entry ID (or the most recent entry if no ID).
-// The API response includes real download URLs for file fields, unlike the
-// webhook which only sends filenames.
-function fetchZohoEntry(token, formName, entryId) {
-  const path = entryId
-    ? `/api/v1/${encodeURIComponent(formName)}/entry/${encodeURIComponent(entryId)}`
-    : `/api/v1/${encodeURIComponent(formName)}/entries?page=1&per_page=1`;
+// Fetch a Zoho Forms entry, trying multiple URL formats.
+// Returns { entry, debugLines } — debugLines go into the pipeline Slack log
+// so we can see exactly what the API returns on every attempt.
+async function fetchZohoEntry(token, formName, entryId) {
+  const debugLines = [];
 
+  // Build list of URL candidates — Zoho's API docs are inconsistent about
+  // whether the org prefix or /form/ segment is required.
+  const candidates = entryId ? [
+    `/api/v1/${formName}/entry/${encodeURIComponent(entryId)}`,
+    `/api/v1/${formName}/entries/${encodeURIComponent(entryId)}`,
+  ] : [
+    `/api/v1/${formName}/entries?page=1&per_page=1`,
+    `/api/v1/${formName}/report/All_Entries?per_page=1`,
+    `/api/v1/form/${formName}/entries?page=1&per_page=1`,
+  ];
+
+  for (const path of candidates) {
+    const { status, body } = await zohoApiGet(token, path);
+    const snippet = body.slice(0, 180).replace(/\s+/g, ' ');
+    debugLines.push(`${path} → HTTP ${status}: ${snippet}`);
+
+    if (status === 200) {
+      try {
+        const parsed = JSON.parse(body);
+        const entry = entryId
+          ? (parsed.data || (Array.isArray(parsed) ? parsed[0] : null))
+          : (() => { const l = parsed.data || parsed.entries || []; return Array.isArray(l) ? l[0] : null; })();
+        if (entry) return { entry, debugLines };
+      } catch (e) {
+        debugLines.push('Parse error: ' + e.message);
+      }
+    }
+  }
+
+  return { entry: null, debugLines };
+}
+
+function zohoApiGet(token, path) {
   return new Promise((resolve) => {
     const options = {
       hostname: 'forms.zoho.com',
@@ -367,24 +401,12 @@ function fetchZohoEntry(token, formName, entryId) {
       headers: { 'Authorization': `Zoho-oauthtoken ${token}`, 'Accept': 'application/json' },
     };
     const req = https.request(options, (res) => {
-      let data = '';
-      res.on('data', c => { data += c; });
-      res.on('end', () => {
-        try {
-          const parsed = JSON.parse(data);
-          // Single-entry response: { data: {...} }
-          // List response:         { data: [{...}, ...] }
-          if (entryId) {
-            resolve(parsed.data || (Array.isArray(parsed) ? parsed[0] : null));
-          } else {
-            const list = parsed.data || parsed.entries || [];
-            resolve(Array.isArray(list) ? list[0] : null);
-          }
-        } catch (e) { resolve(null); }
-      });
+      let body = '';
+      res.on('data', c => { body += c; });
+      res.on('end', () => resolve({ status: res.statusCode, body }));
     });
-    req.on('error', () => resolve(null));
-    req.setTimeout(8000, () => { req.destroy(); resolve(null); });
+    req.on('error', e => resolve({ status: 0, body: e.message }));
+    req.setTimeout(8000, () => { req.destroy(); resolve({ status: 0, body: 'timeout' }); });
     req.end();
   });
 }
