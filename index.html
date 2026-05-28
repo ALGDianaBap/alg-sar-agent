@@ -307,9 +307,12 @@ select { appearance:none; background-image:url("data:image/svg+xml,%3Csvg xmlns=
             <div class="sidebar-sub">Auto Legal Group</div>
           </div>
         </div>
-        <div class="conn" id="conn" onclick="disconnectClio()">
-          <div class="conn-dot" id="conn-dot"></div>
-          <span id="conn-label">—</span>
+        <div style="display:flex;align-items:center;gap:8px">
+          <button class="btn ghost" style="padding:4px 6px;font-size:11px" onclick="loadSARsFromServer()" title="Refresh">↻</button>
+          <div class="conn" id="conn" onclick="disconnectClio()">
+            <div class="conn-dot" id="conn-dot"></div>
+            <span id="conn-label">—</span>
+          </div>
         </div>
       </div>
       <div class="sidebar-search">
@@ -503,16 +506,31 @@ async function loadSARsFromServer() {
   try {
     const r = await fetch(API.sars);
     if (!r.ok) return;
-    const sars = await r.json();
-    state.queue = sars;
-    saveState();
-    renderSidebar();
+    const serverSARs = await r.json();
+    if (!Array.isArray(serverSARs)) return;
+
+    if (serverSARs.length > 0) {
+      // Server has records — it's the source of truth
+      const prevCount = state.queue.length;
+      state.queue = serverSARs;
+      saveState();
+      renderSidebar();
+      if (serverSARs.length > prevCount) {
+        notify('info', `${serverSARs.length - prevCount} new SAR${serverSARs.length - prevCount > 1 ? 's' : ''} loaded`);
+      }
+    } else if (state.queue.length > 0) {
+      // Server is empty but we have local records — push them up so
+      // everyone can see them (handles the migration from localStorage)
+      for (const item of state.queue) {
+        createSAROnServer(item).catch(() => {});
+      }
+    }
     // Re-open active view if still present
     if (state.activeView && state.activeView !== 'new') {
-      const item = state.queue.find(i => i.id === state.activeView);
+      const item = state.queue.find(i => String(i.id) === String(state.activeView));
       if (item) renderDetail(item);
     }
-  } catch(e) { /* silently fall back to cached data */ }
+  } catch(e) { /* fall back to cached data silently */ }
 }
 
 async function patchSAR(id, changes) {

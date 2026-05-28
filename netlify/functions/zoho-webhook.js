@@ -184,7 +184,6 @@ exports.handler = async (event) => {
   } catch (e) {
     console.error('RR error:', e.message);
   }
-  const atty = ATTORNEYS[dealType] || ATTORNEYS.cash_keep;
 
   // ── 7. AUTO-SEARCH CLIO ───────────────────────────────────────────────────
   // getClioToken() returns a valid token (auto-refreshing via refresh token).
@@ -258,7 +257,6 @@ exports.handler = async (event) => {
     `*Type:* ${dealLabel} · ${langLabel}\n` +
     (fields.settlement_amount ? `*Settlement:* $${fields.settlement_amount}\n` : '') +
     (fields.down_payment      ? `*Down payment:* $${fields.down_payment}\n`      : '') +
-    `*Attorney:* ${atty.name}\n` +
     `*Matter:* ${matterStr}\n\n` +
     draftReady;
 
