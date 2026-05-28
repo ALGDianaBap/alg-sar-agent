@@ -3,6 +3,12 @@
   functions = "netlify/functions"
   command = "npm install"
 
+[functions]
+  node_bundler = "zisi"
+
+[functions."zoho-webhook"]
+  timeout = 26
+
 [[redirects]]
   from = "/callback"
   to = "/index.html"
