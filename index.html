@@ -686,7 +686,8 @@ async function importWebhookSARs() {
       amount: '',
       attachments: wh.attachments || [],
       zohoData: wh.zohoData || null,
-      fields: null,
+      zohoContext: wh.zohoContext || null,
+      fields: wh.fields || null,
       matter: null,
       assignee: cmName,
       assigneeSlackId: cmSlackId,
@@ -1297,7 +1298,7 @@ async function generateDraft(id) {
     const r = await fetch(API.docx, {
       method: 'POST',
       headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({ fields: item.fields, dealType: item.dealType, language: item.language })
+      body: JSON.stringify({ fields: item.fields, dealType: item.dealType, language: item.language, zohoContext: item.zohoContext || {} })
     });
     const d = await r.json();
     if (!d.ok) throw new Error(d.error || 'Generation failed');

@@ -11,10 +11,10 @@ exports.handler = async (event) => {
   if (event.httpMethod !== 'POST') return { statusCode: 405, headers: cors, body: 'Method Not Allowed' };
 
   try {
-    const { fields, dealType } = JSON.parse(event.body || '{}');
+    const { fields, dealType, zohoContext } = JSON.parse(event.body || '{}');
     if (!fields) return { statusCode: 400, headers: cors, body: JSON.stringify({ error: 'Missing fields' }) };
 
-    const doc = buildDocument(fields, dealType || 'cash_keep');
+    const doc = buildDocument(fields, dealType || 'cash_keep', zohoContext || {});
     const base64 = await Packer.toBase64String(doc);
 
     const buyerSlug  = (fields.buyer_name  || 'Unknown').replace(/[^a-zA-Z0-9]/g, '_').replace(/_+/g, '_');

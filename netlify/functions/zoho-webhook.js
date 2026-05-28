@@ -180,11 +180,23 @@ exports.handler = async (event) => {
   }
 
   // ── 5. GENERATE .docx DRAFT ───────────────────────────────────────────────
+  // Pass the full Zoho form context so the document reflects negotiation terms,
+  // prior actions, repairs, refunds, and third-party obligations.
+  const zohoContext = {
+    workDesc,
+    dealerGiving,
+    refundNotes,
+    hasHappened: pick('Has_this_already_happened', 'Already_Happened', 'Has_this_happened'),
+    whoWork:     pick('Who_is_doing_the_work', 'Who_Doing_Work', 'Who_does_work'),
+    thirdParty,
+    priorRepairs: pick('Repairs_completed', 'Prior_repairs', 'Repairs_done', 'What_repairs'),
+  };
+
   let draftBase64 = null;
   let draftFilename = null;
   let draftSize = 0;
   try {
-    const doc = buildDocument(fields, dealType);
+    const doc = buildDocument(fields, dealType, zohoContext);
     draftBase64 = await Packer.toBase64String(doc);
     const buyerSlug  = buyer.replace(/[^a-zA-Z0-9]/g, '_').replace(/_+/g, '_');
     const dealerSlug = dealer.replace(/[^a-zA-Z0-9]/g, '_').replace(/_+/g, '_');
@@ -245,6 +257,7 @@ exports.handler = async (event) => {
     attorneySlackId: atty.slackId,
     draftBase64,
     draftFilename,
+    zohoContext,
     notes: [workDesc, dealerGiving, refundNotes, thirdParty, fields.notes].filter(Boolean).join(' | '),
     reviewNotes:     '',
     timeEntries:     [],
