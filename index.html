@@ -537,8 +537,12 @@ async function loadSARsFromServer() {
   } catch(e) { /* fall back to cached data silently */ }
 }
 
+function findSAR(id) {
+  return state.queue.find(i => String(i.id) === String(id));
+}
+
 async function patchSAR(id, changes) {
-  const item = state.queue.find(i => i.id === id);
+  const item = findSAR(id);
   if (item) Object.assign(item, changes);
   saveState();
   renderSidebar();
@@ -709,7 +713,7 @@ function renderSidebar() {
     return;
   }
   list.innerHTML = items.map(i => `
-    <div class="sar-item${state.activeView===i.id?' active':''}" onclick="openSAR(${i.id})">
+    <div class="sar-item${String(state.activeView)===String(i.id)?' active':''}" onclick="openSAR('${i.id}')">
       <div class="sar-item-row1">
         <div class="sar-item-buyer">
           <div class="urgency-pip ${i.urgency==='urgent'?'urgent':'normal'}"></div>
@@ -880,7 +884,7 @@ function cancelNewSAR() {
 
 // ── SAR DETAIL ────────────────────────────────────────────────────────────────
 function openSAR(id) {
-  const item = state.queue.find(i => i.id === id);
+  const item = findSAR(id);
   if (!item) return;
   state.activeView = id;
   renderSidebar();
@@ -895,27 +899,27 @@ function renderDetail(item) {
   // Action buttons by status
   let actions = '';
   if (item.status === 'new') {
-    actions = `<button class="btn primary" onclick="runAgent(${item.id})">🤖 Run Agent</button>`;
+    actions = `<button class="btn primary" onclick="runAgent('${item.id}')">🤖 Run Agent</button>`;
   } else if (item.status === 'draft') {
     actions = `
-      ${item.draftBase64 ? `<button class="btn success" onclick="downloadDraft(${item.id})">⬇ Download Draft</button>` : ''}
-      <button class="btn primary" onclick="openReviewModal(${item.id})">Submit for Review →</button>`;
+      ${item.draftBase64 ? `<button class="btn success" onclick="downloadDraft('${item.id}')">⬇ Download Draft</button>` : ''}
+      <button class="btn primary" onclick="openReviewModal('${item.id}')">Submit for Review →</button>`;
   } else if (item.status === 'review') {
     actions = `
-      ${item.draftBase64 ? `<button class="btn" onclick="downloadDraft(${item.id})">⬇ Download Draft</button>` : ''}
-      <button class="btn" onclick="uploadToClio(${item.id})">↑ Upload to Clio</button>
-      <button class="btn success" onclick="markStatus(${item.id},'approved')">✓ Mark Approved</button>`;
+      ${item.draftBase64 ? `<button class="btn" onclick="downloadDraft('${item.id}')">⬇ Download Draft</button>` : ''}
+      <button class="btn" onclick="uploadToClio('${item.id}')">↑ Upload to Clio</button>
+      <button class="btn success" onclick="markStatus('${item.id}','approved')">✓ Mark Approved</button>`;
   } else if (item.status === 'approved') {
     actions = `
-      ${item.draftBase64 ? `<button class="btn" onclick="downloadDraft(${item.id})">⬇ Download</button>` : ''}
-      <button class="btn" onclick="uploadToClio(${item.id})">↑ Upload to Clio</button>
-      <button class="btn success" onclick="markStatus(${item.id},'sent')">✓ Mark Sent</button>`;
+      ${item.draftBase64 ? `<button class="btn" onclick="downloadDraft('${item.id}')">⬇ Download</button>` : ''}
+      <button class="btn" onclick="uploadToClio('${item.id}')">↑ Upload to Clio</button>
+      <button class="btn success" onclick="markStatus('${item.id}','sent')">✓ Mark Sent</button>`;
   } else if (item.status === 'sent') {
-    actions = `${item.draftBase64 ? `<button class="btn sm" onclick="downloadDraft(${item.id})">⬇ Download</button>` : ''}`;
+    actions = `${item.draftBase64 ? `<button class="btn sm" onclick="downloadDraft('${item.id}')">⬇ Download</button>` : ''}`;
   }
   actions += `
-    <button class="btn sm" onclick="openTimeModal(${item.id})">⏱ Log Time</button>
-    <button class="btn sm danger" onclick="deleteSAR(${item.id})">Delete</button>`;
+    <button class="btn sm" onclick="openTimeModal('${item.id}')">⏱ Log Time</button>
+    <button class="btn sm danger" onclick="deleteSAR('${item.id}')">Delete</button>`;
 
   const pipeline = buildPipeline(item.status);
 
@@ -927,20 +931,20 @@ function renderDetail(item) {
       <div class="card">
         <div class="card-header">
           <div class="card-title">📄 RISC Extracted Data</div>
-          <button class="btn xs ghost" onclick="clearFields(${item.id})">Clear</button>
+          <button class="btn xs ghost" onclick="clearFields('${item.id}')">Clear</button>
         </div>
         <div class="card-body">
           <div class="field-grid">
-            <div class="field"><div class="field-label">Buyer</div><input class="field-value editable" value="${esc(f.buyer_name||'')}" onchange="updateField(${item.id},'buyer_name',this.value)" /></div>
-            <div class="field"><div class="field-label">Dealer</div><input class="field-value editable" value="${esc(f.dealer_name||'')}" onchange="updateField(${item.id},'dealer_name',this.value)" /></div>
-            <div class="field"><div class="field-label">Year</div><input class="field-value editable" value="${esc(f.vehicle_year||'')}" onchange="updateField(${item.id},'vehicle_year',this.value)" /></div>
-            <div class="field"><div class="field-label">Make</div><input class="field-value editable" value="${esc(f.vehicle_make||'')}" onchange="updateField(${item.id},'vehicle_make',this.value)" /></div>
-            <div class="field"><div class="field-label">Model</div><input class="field-value editable" value="${esc(f.vehicle_model||'')}" onchange="updateField(${item.id},'vehicle_model',this.value)" /></div>
-            <div class="field"><div class="field-label">VIN</div><input class="field-value editable mono" value="${esc(f.vin||'')}" onchange="updateField(${item.id},'vin',this.value)" /></div>
-            <div class="field"><div class="field-label">Purchase Date</div><input class="field-value editable" value="${esc(f.purchase_date||'')}" onchange="updateField(${item.id},'purchase_date',this.value)" /></div>
-            <div class="field"><div class="field-label">Settlement $</div><input class="field-value editable" value="${esc(f.settlement_amount||'')}" onchange="updateField(${item.id},'settlement_amount',this.value)" /></div>
-            <div class="field"><div class="field-label">Down Payment</div><input class="field-value editable" value="${esc(f.down_payment||'')}" onchange="updateField(${item.id},'down_payment',this.value)" /></div>
-            <div class="field"><div class="field-label">Miles Driven</div><input class="field-value editable" value="${esc(f.miles_driven||'')}" onchange="updateField(${item.id},'miles_driven',this.value)" /></div>
+            <div class="field"><div class="field-label">Buyer</div><input class="field-value editable" value="${esc(f.buyer_name||'')}" onchange="updateField('${item.id}','buyer_name',this.value)" /></div>
+            <div class="field"><div class="field-label">Dealer</div><input class="field-value editable" value="${esc(f.dealer_name||'')}" onchange="updateField('${item.id}','dealer_name',this.value)" /></div>
+            <div class="field"><div class="field-label">Year</div><input class="field-value editable" value="${esc(f.vehicle_year||'')}" onchange="updateField('${item.id}','vehicle_year',this.value)" /></div>
+            <div class="field"><div class="field-label">Make</div><input class="field-value editable" value="${esc(f.vehicle_make||'')}" onchange="updateField('${item.id}','vehicle_make',this.value)" /></div>
+            <div class="field"><div class="field-label">Model</div><input class="field-value editable" value="${esc(f.vehicle_model||'')}" onchange="updateField('${item.id}','vehicle_model',this.value)" /></div>
+            <div class="field"><div class="field-label">VIN</div><input class="field-value editable mono" value="${esc(f.vin||'')}" onchange="updateField('${item.id}','vin',this.value)" /></div>
+            <div class="field"><div class="field-label">Purchase Date</div><input class="field-value editable" value="${esc(f.purchase_date||'')}" onchange="updateField('${item.id}','purchase_date',this.value)" /></div>
+            <div class="field"><div class="field-label">Settlement $</div><input class="field-value editable" value="${esc(f.settlement_amount||'')}" onchange="updateField('${item.id}','settlement_amount',this.value)" /></div>
+            <div class="field"><div class="field-label">Down Payment</div><input class="field-value editable" value="${esc(f.down_payment||'')}" onchange="updateField('${item.id}','down_payment',this.value)" /></div>
+            <div class="field"><div class="field-label">Miles Driven</div><input class="field-value editable" value="${esc(f.miles_driven||'')}" onchange="updateField('${item.id}','miles_driven',this.value)" /></div>
           </div>
           ${f.notes ? `<div style="margin-top:10px;padding:8px 10px;background:var(--yellow-bg);border-radius:var(--radius);font-size:12px;color:var(--yellow)">⚠ ${esc(f.notes)}</div>` : ''}
           ${(f.missing_fields||[]).length ? `<div style="margin-top:8px;font-size:12px;color:var(--red)">Missing: ${f.missing_fields.join(', ')}</div>` : ''}
@@ -996,13 +1000,13 @@ function renderDetail(item) {
             <div class="field-grid">
               <div class="field">
                 <div class="field-label">Status</div>
-                <select style="font-size:12px;padding:6px 28px 6px 8px;margin-top:2px" onchange="markStatus(${item.id},this.value)">
+                <select style="font-size:12px;padding:6px 28px 6px 8px;margin-top:2px" onchange="markStatus('${item.id}',this.value)">
                   ${['new','draft','review','approved','sent'].map(s=>`<option value="${s}"${item.status===s?' selected':''}>${statusLabel(s)}</option>`).join('')}
                 </select>
               </div>
               <div class="field">
                 <div class="field-label">Assigned CM</div>
-                <select style="font-size:12px;padding:6px 28px 6px 8px;margin-top:2px" onchange="updateAssignee(${item.id},this.value)">
+                <select style="font-size:12px;padding:6px 28px 6px 8px;margin-top:2px" onchange="updateAssignee('${item.id}',this.value)">
                   <option value="">Unassigned</option>
                   ${state.cms.map(cm=>`<option value="${cm.name}"${item.assignee===cm.name?' selected':''}>${cm.name}</option>`).join('')}
                 </select>
@@ -1031,8 +1035,8 @@ function renderDetail(item) {
         <div class="card-header">
           <div class="card-title">⏱ Time Entries</div>
           <div class="btn-row">
-            <button class="btn xs" onclick="openTimeModal(${item.id},'${esc(item.assignee||'')}')">+ CM Time</button>
-            <button class="btn xs" onclick="openTimeModal(${item.id},'${esc(item.attorney||'')}')">+ Atty Time</button>
+            <button class="btn xs" onclick="openTimeModal('${item.id}','${esc(item.assignee||'')}')">+ CM Time</button>
+            <button class="btn xs" onclick="openTimeModal('${item.id}','${esc(item.attorney||'')}')">+ Atty Time</button>
           </div>
         </div>
         <div class="card-body" id="te-list-${item.id}" style="padding:8px 14px">
@@ -1091,7 +1095,7 @@ function buildAgentPanel(item) {
             <div id="clio-search-area-${item.id}" style="display:none;margin-top:8px">
               <div style="display:flex;gap:8px;margin-bottom:8px">
                 <input type="text" id="clio-q-${item.id}" placeholder="Search dealer name…" style="flex:1" />
-                <button class="btn sm" onclick="doClioSearch(${item.id})">Search</button>
+                <button class="btn sm" onclick="doClioSearch('${item.id}')">Search</button>
               </div>
               <div id="clio-res-${item.id}"></div>
             </div>
@@ -1105,8 +1109,8 @@ function buildAgentPanel(item) {
           </div>
         </div>
         <div class="btn-row" style="margin-top:16px">
-          <button class="btn primary" onclick="runAgent(${item.id})" id="run-agent-btn-${item.id}">▶ Run Agent</button>
-          <button class="btn sm ghost" onclick="skipToManualDraft(${item.id})">Skip — draft manually</button>
+          <button class="btn primary" onclick="runAgent('${item.id}')" id="run-agent-btn-${item.id}">▶ Run Agent</button>
+          <button class="btn sm ghost" onclick="skipToManualDraft('${item.id}')">Skip — draft manually</button>
         </div>
       </div>
     </div>`;
@@ -1116,7 +1120,7 @@ function buildAgentPanel(item) {
 let agentState = {}; // per-SAR agent run state
 
 async function runAgent(id) {
-  const item = state.queue.find(i => i.id === id);
+  const item = findSAR(id);
   if (!item) return;
 
   const btn = document.getElementById('run-agent-btn-' + id);
@@ -1288,7 +1292,7 @@ function renderClioResults(id) {
 function selectMatter(sarId, idx) {
   const m = (clioResults[sarId] || [])[idx];
   if (!m) return;
-  const item = state.queue.find(i => i.id === sarId);
+  const item = findSAR(sarId);
   if (!item) return;
   item.matter = { id: m.id, num: m.display_number||'', name: m.description||'', client: m.client?.name||'' };
   document.querySelectorAll(`#clio-res-${sarId} .clio-result`).forEach((el,i) => el.classList.toggle('selected', i===idx));
@@ -1299,7 +1303,7 @@ function selectMatter(sarId, idx) {
 }
 
 function enableGenerateStep(id) {
-  const item = state.queue.find(i => i.id === id);
+  const item = findSAR(id);
   if (!item || !item.matter) return;
   setAgentStepNote(4, '');
   markAgentStepActive(4);
@@ -1307,13 +1311,13 @@ function enableGenerateStep(id) {
   if (note) {
     note.innerHTML = `
       <div class="btn-row" style="margin-top:6px">
-        <button class="btn primary sm" onclick="generateDraft(${id})" id="gen-btn-${id}">Generate Draft</button>
+        <button class="btn primary sm" onclick="generateDraft('${id}')" id="gen-btn-${id}">Generate Draft</button>
       </div>`;
   }
 }
 
 async function generateDraft(id) {
-  const item = state.queue.find(i => i.id === id);
+  const item = findSAR(id);
   if (!item || !item.fields || !item.matter) {
     notify('err', 'Extract RISC fields and select a Clio matter first');
     return;
@@ -1356,7 +1360,7 @@ function skipToManualDraft(id) {
 
 // ── DRAFT DOWNLOAD ─────────────────────────────────────────────────────────────
 function downloadDraft(id) {
-  const item = state.queue.find(i => i.id === id);
+  const item = findSAR(id);
   if (!item?.draftBase64) { notify('err', 'No draft available'); return; }
   const bytes = atob(item.draftBase64);
   const arr = new Uint8Array(bytes.length);
@@ -1371,7 +1375,7 @@ function downloadDraft(id) {
 
 // ── UPLOAD TO CLIO ────────────────────────────────────────────────────────────
 async function uploadToClio(id) {
-  const item = state.queue.find(i => i.id === id);
+  const item = findSAR(id);
   if (!item) return;
   if (!item.draftBase64) { notify('err', 'No draft to upload'); return; }
   if (!item.matter) { notify('err', 'No Clio matter linked'); return; }
@@ -1412,7 +1416,7 @@ async function uploadToClio(id) {
 let reviewSARId = null;
 
 function openReviewModal(id) {
-  const item = state.queue.find(i => i.id === id);
+  const item = findSAR(id);
   if (!item) return;
   reviewSARId = id;
   const atty = item.dealType === 'rescission' ? 'Ali R' : 'Amir N';
@@ -1436,7 +1440,7 @@ function closeReviewModal() {
 }
 
 async function submitForReview() {
-  const item = state.queue.find(i => i.id === reviewSARId);
+  const item = findSAR(reviewSARId);
   if (!item) return;
   const attyName = document.getElementById('review-atty').value;
   const notes = document.getElementById('review-notes').value.trim();
@@ -1469,7 +1473,7 @@ function updateAssignee(id, name) {
 }
 
 function updateField(id, field, value) {
-  const item = state.queue.find(i => i.id === id);
+  const item = findSAR(id);
   if (!item || !item.fields) return;
   item.fields[field] = value;
   const derived = {};
@@ -1505,7 +1509,7 @@ let teId = null;
 
 function openTimeModal(id, preselect) {
   teId = id;
-  const item = state.queue.find(i => i.id === id);
+  const item = findSAR(id);
   if (!item) return;
   document.getElementById('te-matter').value = item.matter ? '#'+item.matter.num+' — '+item.matter.name : item.dealer;
   document.getElementById('te-date').value = new Date().toISOString().split('T')[0];
@@ -1523,7 +1527,7 @@ function openTimeModal(id, preselect) {
 function closeTimeModal() { document.getElementById('time-modal').classList.remove('open'); teId = null; }
 
 async function submitTimeEntry() {
-  const item = state.queue.find(i => i.id === teId);
+  const item = findSAR(teId);
   if (!item) return;
   const user = document.getElementById('te-user').value;
   if (!user) { notify('err', 'Select who is logging time'); return; }
