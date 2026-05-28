@@ -30,294 +30,325 @@
   --shadow: 0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.06);
   --shadow2: 0 4px 12px rgba(0,0,0,0.06), 0 1px 3px rgba(0,0,0,0.08);
 }
-
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body { background: var(--bg); color: var(--text); font-family: 'Plus Jakarta Sans', sans-serif; font-size: 14px; min-height: 100vh; }
 
-/* ── AUTH ── */
-#auth-screen { min-height:100vh; display:flex; align-items:center; justify-content:center; flex-direction:column; gap:24px; padding:40px; background:linear-gradient(135deg, #faf9f7 0%, #f0eeeb 100%); }
+/* AUTH */
+#auth-screen { min-height:100vh; display:flex; align-items:center; justify-content:center; flex-direction:column; gap:24px; padding:40px; background:linear-gradient(135deg,#faf9f7 0%,#f0eeeb 100%); }
 .auth-brand { display:flex; align-items:center; gap:10px; }
-.auth-brand-mark { width:36px; height:36px; background:var(--accent); border-radius:8px; display:flex; align-items:center; justify-content:center; color:#fff; font-family:'Fraunces',serif; font-size:18px; font-weight:600; }
-.auth-brand-text { font-family:'Fraunces',serif; font-size:20px; color:var(--text); }
+.auth-mark { width:36px; height:36px; background:var(--accent); border-radius:8px; display:flex; align-items:center; justify-content:center; color:#fff; font-family:'Fraunces',serif; font-size:18px; font-weight:600; }
+.auth-brand-text { font-family:'Fraunces',serif; font-size:20px; }
 .auth-card { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:32px; width:100%; max-width:420px; box-shadow:var(--shadow2); }
 .auth-title { font-family:'Fraunces',serif; font-size:20px; margin-bottom:6px; }
 .auth-sub { color:var(--text2); font-size:13px; line-height:1.6; margin-bottom:20px; }
-.auth-steps { font-size:12px; color:var(--text3); line-height:1.7; margin-bottom:16px; padding:12px; background:var(--bg); border-radius:var(--radius); }
+.auth-steps { font-size:12px; color:var(--text3); line-height:1.8; margin-bottom:16px; padding:12px; background:var(--bg); border-radius:var(--radius); }
 .auth-steps strong { color:var(--text2); }
 .auth-steps code { color:var(--accent); background:var(--accent-bg); padding:1px 4px; border-radius:3px; font-family:'JetBrains Mono',monospace; font-size:11px; }
+#auth-status { font-size:12px; text-align:center; min-height:18px; }
 
-input[type="text"], input[type="password"], select, textarea {
+/* INPUTS */
+input[type="text"], input[type="file"], select, textarea {
   width:100%; background:var(--bg); border:1px solid var(--border); border-radius:var(--radius);
   color:var(--text); font-family:'Plus Jakarta Sans',sans-serif; font-size:13px; padding:10px 12px;
-  outline:none; transition:border-color 0.15s, box-shadow 0.15s;
+  outline:none; transition:border-color .15s, box-shadow .15s;
 }
-input:focus, select:focus, textarea:focus { border-color:var(--accent); box-shadow:0 0 0 3px rgba(184,134,11,0.1); }
-textarea { font-family:'JetBrains Mono',monospace; font-size:12px; min-height:140px; resize:vertical; line-height:1.6; }
+input:focus, select:focus, textarea:focus { border-color:var(--accent); box-shadow:0 0 0 3px rgba(184,134,11,.1); }
+input[type="file"] { padding:8px 10px; cursor:pointer; }
+textarea { font-family:'JetBrains Mono',monospace; font-size:12px; min-height:100px; resize:vertical; line-height:1.6; }
+select { appearance:none; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239e9891' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 10px center; padding-right:28px; }
 
-.btn { display:inline-flex; align-items:center; gap:6px; padding:9px 16px; border-radius:var(--radius); font-family:'Plus Jakarta Sans',sans-serif; font-size:13px; font-weight:500; cursor:pointer; transition:all 0.15s; border:1px solid var(--border); background:var(--surface); color:var(--text); }
+/* BUTTONS */
+.btn { display:inline-flex; align-items:center; gap:6px; padding:9px 16px; border-radius:var(--radius); font-family:'Plus Jakarta Sans',sans-serif; font-size:13px; font-weight:500; cursor:pointer; transition:all .15s; border:1px solid var(--border); background:var(--surface); color:var(--text); }
 .btn:hover { border-color:var(--border2); box-shadow:var(--shadow); }
 .btn.primary { background:var(--accent); border-color:var(--accent); color:#fff; font-weight:600; }
 .btn.primary:hover { background:var(--accent2); border-color:var(--accent2); }
-.btn.success { background:var(--green); border-color:var(--green); color:#fff; }
+.btn.success { background:var(--green); border-color:var(--green); color:#fff; font-weight:600; }
+.btn.success:hover { opacity:.9; }
 .btn.danger { background:var(--red); border-color:var(--red); color:#fff; }
+.btn.warning { background:var(--yellow); border-color:var(--yellow); color:#fff; font-weight:600; }
 .btn.sm { padding:6px 10px; font-size:12px; }
+.btn.xs { padding:4px 8px; font-size:11px; }
 .btn.ghost { border:none; background:none; color:var(--text2); padding:6px 8px; }
 .btn.ghost:hover { background:var(--bg); color:var(--text); }
-.btn:disabled { opacity:0.4; cursor:not-allowed; }
-.btn-row { display:flex; gap:8px; flex-wrap:wrap; }
+.btn:disabled { opacity:.4; cursor:not-allowed; pointer-events:none; }
+.btn-row { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
 
-/* ── LAYOUT ── */
+/* LAYOUT */
 #app { display:none; height:100vh; overflow:hidden; }
-.layout { display:grid; grid-template-columns:300px 1fr; height:100%; }
+.layout { display:grid; grid-template-columns:290px 1fr; height:100%; }
 
-/* ── SIDEBAR ── */
+/* SIDEBAR */
 .sidebar { background:var(--sidebar); border-right:1px solid var(--border); display:flex; flex-direction:column; height:100vh; overflow:hidden; }
-.sidebar-header { padding:16px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; flex-shrink:0; }
+.sidebar-header { padding:14px 16px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; flex-shrink:0; }
 .sidebar-brand { display:flex; align-items:center; gap:8px; }
 .sidebar-mark { width:28px; height:28px; background:var(--accent); border-radius:6px; display:flex; align-items:center; justify-content:center; color:#fff; font-family:'Fraunces',serif; font-size:14px; font-weight:600; }
-.sidebar-title { font-family:'Fraunces',serif; font-size:15px; }
-.sidebar-subtitle { font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--text3); letter-spacing:0.05em; }
+.sidebar-title { font-family:'Fraunces',serif; font-size:15px; line-height:1.2; }
+.sidebar-sub { font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--text3); letter-spacing:.05em; }
+.conn { display:flex; align-items:center; gap:5px; font-size:11px; font-family:'JetBrains Mono',monospace; color:var(--text3); cursor:pointer; }
+.conn-dot { width:6px; height:6px; border-radius:50%; flex-shrink:0; }
+.conn-dot.on { background:var(--green); }
+.conn-dot.off { background:var(--red); }
+.conn-dot.demo { background:var(--yellow); }
 
-.sidebar-search { padding:12px 16px 8px; flex-shrink:0; }
-.sidebar-search input { font-size:12px; padding:8px 10px 8px 30px; background:var(--surface); background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' fill='none' viewBox='0 0 24 24'%3E%3Ccircle cx='11' cy='11' r='8' stroke='%239e9891' stroke-width='2'/%3E%3Cpath stroke='%239e9891' stroke-width='2' d='m21 21-4.35-4.35'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:10px center; }
+.sidebar-search { padding:10px 12px 6px; flex-shrink:0; }
+.sidebar-search input { font-size:12px; padding:7px 10px 7px 30px; background:var(--surface);
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='13' height='13' fill='none' viewBox='0 0 24 24'%3E%3Ccircle cx='11' cy='11' r='8' stroke='%239e9891' stroke-width='2'/%3E%3Cpath stroke='%239e9891' stroke-width='2' d='m21 21-4.35-4.35'/%3E%3C/svg%3E");
+  background-repeat:no-repeat; background-position:10px center; }
 
-.sidebar-filters { display:flex; gap:4px; padding:4px 16px 12px; flex-wrap:wrap; flex-shrink:0; }
-.filter-chip { padding:4px 10px; border-radius:20px; font-size:11px; cursor:pointer; border:1px solid var(--border); background:var(--surface); color:var(--text2); transition:all 0.12s; font-weight:500; }
-.filter-chip:hover { border-color:var(--border2); }
-.filter-chip.active { background:var(--accent); border-color:var(--accent); color:#fff; }
+.sidebar-filters { display:flex; gap:4px; padding:4px 12px 10px; flex-wrap:wrap; flex-shrink:0; }
+.chip { padding:3px 9px; border-radius:20px; font-size:11px; cursor:pointer; border:1px solid var(--border); background:var(--surface); color:var(--text2); transition:all .12s; font-weight:500; white-space:nowrap; }
+.chip:hover { border-color:var(--border2); }
+.chip.active { background:var(--accent); border-color:var(--accent); color:#fff; }
+
+.webhook-banner { margin:0 12px 8px; padding:9px 12px; background:var(--blue-bg); border:1px solid #bee3f8; border-radius:var(--radius); cursor:pointer; display:flex; align-items:center; justify-content:space-between; flex-shrink:0; }
+.webhook-banner:hover { background:#dbeafe; }
+.webhook-banner-text { font-size:12px; color:var(--blue); font-weight:600; }
+.webhook-banner-sub { font-size:11px; color:#4a90c4; margin-top:1px; }
 
 .sidebar-list { flex:1; overflow-y:auto; padding:0 8px 8px; }
-.sar-item { padding:12px; border-radius:var(--radius); cursor:pointer; transition:background 0.1s; margin-bottom:2px; border-left:3px solid transparent; }
+.sar-item { padding:11px 12px; border-radius:var(--radius); cursor:pointer; transition:background .1s; margin-bottom:2px; border-left:3px solid transparent; }
 .sar-item:hover { background:var(--surface); }
 .sar-item.active { background:var(--surface); border-left-color:var(--accent); box-shadow:var(--shadow); }
-.sar-item-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:4px; }
-.sar-item-buyer { font-weight:600; font-size:13px; display:flex; align-items:center; gap:6px; }
-.sar-item-dealer { font-size:12px; color:var(--text2); margin-bottom:3px; }
-.sar-item-meta { display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text3); }
-.sar-item-time { font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--text3); }
-
+.sar-item-row1 { display:flex; align-items:center; justify-content:space-between; margin-bottom:3px; }
+.sar-item-buyer { font-weight:600; font-size:13px; display:flex; align-items:center; gap:5px; overflow:hidden; }
+.sar-item-buyer span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.sar-item-dealer { font-size:12px; color:var(--text2); margin-bottom:3px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.sar-item-meta { display:flex; align-items:center; gap:5px; font-size:11px; color:var(--text3); flex-wrap:wrap; }
+.sar-item-time { font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--text3); margin-left:auto; }
 .urgency-pip { width:7px; height:7px; border-radius:50%; flex-shrink:0; }
 .urgency-pip.urgent { background:var(--red); box-shadow:0 0 0 2px var(--red-bg); }
-.urgency-pip.normal { background:var(--text3); }
+.urgency-pip.normal { background:var(--border2); }
 
-.badge { display:inline-flex; align-items:center; padding:2px 7px; border-radius:4px; font-size:10px; font-weight:600; font-family:'JetBrains Mono',monospace; letter-spacing:0.02em; }
-.badge.draft { background:var(--blue-bg); color:var(--blue); }
-.badge.review { background:var(--yellow-bg); color:var(--yellow); }
+.sidebar-footer { padding:12px; border-top:1px solid var(--border); flex-shrink:0; }
+.sidebar-footer .btn { width:100%; justify-content:center; }
+
+/* BADGES & TAGS */
+.badge { display:inline-flex; align-items:center; padding:2px 7px; border-radius:4px; font-size:10px; font-weight:600; font-family:'JetBrains Mono',monospace; letter-spacing:.02em; white-space:nowrap; }
+.badge.new     { background:var(--blue-bg); color:var(--blue); }
+.badge.draft   { background:var(--yellow-bg); color:var(--yellow); }
+.badge.review  { background:var(--accent-bg); color:var(--accent); }
 .badge.approved { background:var(--green-bg); color:var(--green); }
-.badge.sent { background:var(--accent-bg); color:var(--accent); }
-.badge.unassigned { background:var(--bg); color:var(--text3); }
+.badge.sent    { background:var(--bg); border:1px solid var(--border); color:var(--text2); }
+.tag { display:inline-block; padding:2px 6px; border-radius:3px; font-size:10px; font-weight:600; font-family:'JetBrains Mono',monospace; white-space:nowrap; }
+.tag.en  { background:var(--blue-bg); color:var(--blue); }
+.tag.es  { background:var(--red-bg); color:var(--red); }
+.tag.ck  { background:var(--green-bg); color:var(--green); }
+.tag.resc { background:var(--yellow-bg); color:var(--yellow); }
 
-.tag { display:inline-block; padding:2px 6px; border-radius:3px; font-size:10px; font-weight:500; font-family:'JetBrains Mono',monospace; }
-.tag.en { background:var(--blue-bg); color:var(--blue); }
-.tag.es { background:var(--red-bg); color:var(--red); }
-.tag.ck { background:var(--green-bg); color:var(--green); }
-.tag.rescission { background:var(--yellow-bg); color:var(--yellow); }
-
-.sidebar-new { padding:12px 16px; border-top:1px solid var(--border); flex-shrink:0; }
-.sidebar-new .btn { width:100%; justify-content:center; }
-
-/* ── MAIN PANEL ── */
+/* MAIN PANEL */
 .main { height:100vh; overflow-y:auto; background:var(--bg); }
-.main-empty { height:100%; display:flex; align-items:center; justify-content:center; flex-direction:column; gap:16px; color:var(--text3); }
-.main-empty-icon { width:56px; height:56px; background:var(--sidebar); border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:24px; }
-.main-empty-text { font-size:14px; text-align:center; line-height:1.6; }
+.main-empty { height:100%; display:flex; align-items:center; justify-content:center; flex-direction:column; gap:14px; color:var(--text3); }
+.main-empty-icon { width:52px; height:52px; background:var(--sidebar); border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:22px; }
 
-/* ── SAR DETAIL VIEW ── */
-.sar-detail { padding:24px 28px; max-width:900px; }
-.sar-detail-header { display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:24px; padding-bottom:16px; border-bottom:1px solid var(--border); }
-.sar-detail-title { font-family:'Fraunces',serif; font-size:22px; margin-bottom:4px; }
-.sar-detail-sub { font-size:13px; color:var(--text2); display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+/* SAR DETAIL */
+.detail-wrap { padding:24px 28px; max-width:920px; }
+.detail-header { display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:20px; padding-bottom:16px; border-bottom:1px solid var(--border); gap:16px; }
+.detail-title { font-family:'Fraunces',serif; font-size:22px; margin-bottom:5px; line-height:1.2; }
+.detail-sub { font-size:13px; color:var(--text2); display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.detail-actions { display:flex; gap:8px; align-items:flex-start; flex-shrink:0; flex-wrap:wrap; justify-content:flex-end; }
 
-.detail-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:24px; }
-@media(max-width:800px) { .detail-grid { grid-template-columns:1fr; } }
+/* STATUS PIPELINE */
+.pipeline { display:flex; align-items:center; gap:0; margin-bottom:20px; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:12px 16px; box-shadow:var(--shadow); }
+.pipeline-step { display:flex; align-items:center; gap:6px; font-size:12px; color:var(--text3); flex:1; }
+.pipeline-step:last-child { flex:none; }
+.pipeline-dot { width:8px; height:8px; border-radius:50%; border:2px solid var(--border); flex-shrink:0; background:var(--sidebar); }
+.pipeline-step.done { color:var(--green); }
+.pipeline-step.done .pipeline-dot { background:var(--green); border-color:var(--green); }
+.pipeline-step.active { color:var(--accent); font-weight:600; }
+.pipeline-step.active .pipeline-dot { background:var(--accent); border-color:var(--accent); }
+.pipeline-line { flex:1; height:1px; background:var(--border); min-width:16px; }
 
-.detail-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; box-shadow:var(--shadow); }
-.detail-card-header { padding:10px 14px; border-bottom:1px solid var(--border); background:var(--bg); display:flex; align-items:center; justify-content:space-between; }
-.detail-card-title { font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:0.08em; color:var(--text2); display:flex; align-items:center; gap:6px; }
-.detail-card-body { padding:14px; }
+/* CARDS */
+.card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; box-shadow:var(--shadow); margin-bottom:16px; }
+.card-header { padding:10px 14px; border-bottom:1px solid var(--border); background:var(--bg); display:flex; align-items:center; justify-content:space-between; }
+.card-title { font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:.08em; color:var(--text2); display:flex; align-items:center; gap:6px; }
+.card-body { padding:14px; }
+.detail-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:0; }
+@media(max-width:760px) { .detail-grid { grid-template-columns:1fr; } }
 
-.field-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+/* FIELDS */
+.field-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px 12px; }
 .field { display:flex; flex-direction:column; gap:2px; }
-.field-label { font-size:10px; font-weight:600; text-transform:uppercase; letter-spacing:0.08em; color:var(--text3); }
-.field-value { font-size:13px; font-weight:500; color:var(--text); }
+.field.full { grid-column:1/-1; }
+.field-label { font-size:10px; font-weight:600; text-transform:uppercase; letter-spacing:.08em; color:var(--text3); }
+.field-value { font-size:13px; font-weight:500; }
 .field-value.mono { font-family:'JetBrains Mono',monospace; font-size:12px; }
 .field-value.missing { color:var(--red); font-style:italic; font-size:12px; }
-.field-value.editable { background:transparent; border:none; font-family:'Plus Jakarta Sans',sans-serif; font-size:13px; font-weight:500; color:var(--text); outline:none; width:100%; padding:0; }
-.field-value.editable:focus { color:var(--accent); }
-.field.full { grid-column:1/-1; }
+.field-value.editable { background:transparent; border:none; font-family:'Plus Jakarta Sans',sans-serif; font-size:13px; font-weight:500; color:var(--text); outline:none; width:100%; padding:2px 4px; margin:-2px -4px; border-radius:3px; }
+.field-value.editable:focus { background:var(--accent-bg); color:var(--accent); }
+.field-value.muted { color:var(--text3); font-size:12px; }
 
-/* ── STATUS ROW ── */
-.status-row { display:flex; align-items:center; gap:12px; padding:14px; background:var(--bg); border-radius:var(--radius); border:1px solid var(--border); margin-bottom:16px; }
-.status-step { display:flex; align-items:center; gap:6px; font-size:12px; color:var(--text3); }
-.status-step.done { color:var(--green); }
-.status-step.active { color:var(--accent); font-weight:600; }
-.status-dot { width:8px; height:8px; border-radius:50%; border:2px solid currentColor; flex-shrink:0; }
-.status-step.done .status-dot { background:var(--green); }
-.status-step.active .status-dot { background:var(--accent); }
-.status-line { flex:1; height:1px; background:var(--border); min-width:12px; }
+/* TIME ENTRIES */
+.te-row { display:flex; align-items:center; gap:10px; padding:7px 0; border-bottom:1px solid var(--bg); font-size:12px; }
+.te-row:last-child { border-bottom:none; }
+.te-user { font-weight:600; min-width:72px; }
+.te-hours { font-family:'JetBrains Mono',monospace; color:var(--accent); font-weight:500; min-width:32px; }
+.te-note { color:var(--text2); flex:1; }
+.te-date { color:var(--text3); font-family:'JetBrains Mono',monospace; font-size:11px; white-space:nowrap; }
 
-/* ── TIME ENTRIES ── */
-.time-entry-row { display:flex; align-items:center; gap:10px; padding:8px 0; border-bottom:1px solid var(--bg); font-size:12px; }
-.time-entry-row:last-child { border-bottom:none; }
-.time-user { font-weight:600; min-width:80px; }
-.time-hours { font-family:'JetBrains Mono',monospace; color:var(--accent); font-weight:500; }
-.time-note { color:var(--text2); flex:1; }
-.time-date { color:var(--text3); font-family:'JetBrains Mono',monospace; font-size:11px; }
+/* ATTACHMENT LIST */
+.attach-item { display:flex; align-items:center; gap:8px; padding:7px 0; border-bottom:1px solid var(--bg); font-size:12px; }
+.attach-item:last-child { border-bottom:none; }
+.attach-icon { font-size:14px; }
+.attach-name { flex:1; color:var(--text); font-weight:500; }
+.attach-size { color:var(--text3); font-family:'JetBrains Mono',monospace; font-size:11px; }
 
-/* ── NEW SAR FLOW ── */
-.new-sar-view { padding:24px 28px; max-width:800px; }
-.new-sar-title { font-family:'Fraunces',serif; font-size:22px; margin-bottom:16px; }
+/* AGENT PANEL */
+.agent-panel { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; box-shadow:var(--shadow); margin-bottom:16px; }
+.agent-header { padding:12px 16px; border-bottom:1px solid var(--border); background:linear-gradient(135deg,#fdf6e3,#faf9f7); display:flex; align-items:center; justify-content:space-between; }
+.agent-title { font-size:13px; font-weight:700; color:var(--accent); display:flex; align-items:center; gap:8px; }
+.agent-body { padding:16px; }
+.agent-step { display:flex; gap:12px; margin-bottom:16px; padding-bottom:16px; border-bottom:1px solid var(--bg); }
+.agent-step:last-child { margin-bottom:0; padding-bottom:0; border-bottom:none; }
+.agent-step-num { width:24px; height:24px; border-radius:50%; border:2px solid var(--border); display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; color:var(--text3); flex-shrink:0; margin-top:1px; }
+.agent-step.done .agent-step-num { border-color:var(--green); color:#fff; background:var(--green); }
+.agent-step.active .agent-step-num { border-color:var(--accent); color:var(--accent); background:var(--accent-bg); }
+.agent-step-label { font-size:12px; font-weight:600; color:var(--text2); margin-bottom:4px; }
+.agent-step.active .agent-step-label { color:var(--text); }
+.agent-step-body { flex:1; }
+.agent-step-note { font-size:12px; color:var(--text3); line-height:1.5; }
+.agent-step-note.ok { color:var(--green); }
+.agent-step-note.err { color:var(--red); }
 
-.step-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); margin-bottom:16px; box-shadow:var(--shadow); overflow:hidden; }
-.step-card.disabled { opacity:0.5; pointer-events:none; }
-.step-header { padding:12px 16px; border-bottom:1px solid var(--border); background:var(--bg); display:flex; align-items:center; gap:10px; }
-.step-num { width:24px; height:24px; border-radius:50%; border:2px solid var(--border); display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:600; color:var(--text3); flex-shrink:0; }
-.step-card.active .step-num { border-color:var(--accent); color:var(--accent); background:var(--accent-bg); }
-.step-card.done .step-num { border-color:var(--green); color:#fff; background:var(--green); }
-.step-label { font-size:13px; font-weight:600; }
-.step-body { padding:16px; }
-
-/* ── CLIO RESULTS ── */
-.clio-result { padding:10px 12px; border:1px solid var(--border); border-radius:var(--radius); cursor:pointer; transition:all 0.12s; margin-bottom:6px; display:flex; align-items:center; justify-content:space-between; }
+/* CLIO SEARCH RESULTS */
+.clio-result { padding:10px 12px; border:1px solid var(--border); border-radius:var(--radius); cursor:pointer; transition:all .12s; margin-bottom:6px; display:flex; align-items:center; justify-content:space-between; }
 .clio-result:hover { border-color:var(--accent); background:var(--accent-bg); }
 .clio-result.selected { border-color:var(--green); background:var(--green-bg); }
 .clio-result.general { border-left:3px solid var(--accent); }
 .clio-result-name { font-weight:600; font-size:13px; }
 .clio-result-meta { font-size:11px; color:var(--text2); font-family:'JetBrains Mono',monospace; margin-top:2px; }
 
-/* ── DEAL TYPE ── */
+/* NEW SAR FORM */
+.new-sar-wrap { padding:24px 28px; max-width:660px; }
+.new-sar-title { font-family:'Fraunces',serif; font-size:22px; margin-bottom:20px; }
+.form-group { margin-bottom:14px; }
+.form-label { font-size:12px; font-weight:600; color:var(--text2); margin-bottom:5px; display:block; }
 .choice-row { display:flex; gap:8px; }
-.choice-btn { flex:1; padding:10px; border:1px solid var(--border); border-radius:var(--radius); background:var(--surface); font-size:13px; cursor:pointer; text-align:center; transition:all 0.12s; font-weight:500; font-family:'Plus Jakarta Sans',sans-serif; }
+.choice-btn { flex:1; padding:10px; border:1px solid var(--border); border-radius:var(--radius); background:var(--surface); font-size:13px; cursor:pointer; text-align:center; transition:all .12s; font-weight:500; font-family:'Plus Jakarta Sans',sans-serif; }
 .choice-btn:hover { border-color:var(--border2); }
-.choice-btn.selected { border-color:var(--accent); background:var(--accent-bg); color:var(--accent); font-weight:600; }
+.choice-btn.sel { border-color:var(--accent); background:var(--accent-bg); color:var(--accent); font-weight:600; }
 
-/* ── MODAL ── */
-.modal-bg { position:fixed; inset:0; background:rgba(0,0,0,0.3); backdrop-filter:blur(4px); z-index:200; display:none; align-items:center; justify-content:center; padding:20px; }
+/* MODAL */
+.modal-bg { position:fixed; inset:0; background:rgba(0,0,0,.35); backdrop-filter:blur(4px); z-index:200; display:none; align-items:center; justify-content:center; padding:20px; }
 .modal-bg.open { display:flex; }
-.modal { background:var(--surface); border:1px solid var(--border); border-radius:12px; width:100%; max-width:480px; max-height:80vh; overflow-y:auto; box-shadow:var(--shadow2); }
+.modal { background:var(--surface); border:1px solid var(--border); border-radius:12px; width:100%; max-width:500px; max-height:85vh; overflow-y:auto; box-shadow:var(--shadow2); }
+.modal.wide { max-width:640px; }
 .modal-header { padding:16px 20px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; }
 .modal-title { font-family:'Fraunces',serif; font-size:18px; }
-.modal-close { background:none; border:none; color:var(--text3); font-size:18px; cursor:pointer; padding:4px; }
+.modal-close { background:none; border:none; color:var(--text3); font-size:20px; cursor:pointer; line-height:1; padding:2px 6px; }
 .modal-close:hover { color:var(--text); }
 .modal-body { padding:20px; }
 .modal-footer { padding:12px 20px; border-top:1px solid var(--border); display:flex; justify-content:flex-end; gap:8px; }
 
-/* ── AI OUTPUT ── */
-.ai-box { background:var(--bg); border:1px solid var(--border); border-radius:var(--radius); padding:14px; font-family:'JetBrains Mono',monospace; font-size:12px; line-height:1.7; color:var(--text); white-space:pre-wrap; word-break:break-word; }
-
-/* ── SPINNER ── */
-.spin { width:14px; height:14px; border:2px solid var(--border); border-top-color:var(--accent); border-radius:50%; animation:sp 0.6s linear infinite; display:inline-block; }
+/* MISC */
+.divider { height:1px; background:var(--border); margin:16px 0; }
+.ai-box { background:var(--bg); border:1px solid var(--border); border-radius:var(--radius); padding:12px 14px; font-family:'JetBrains Mono',monospace; font-size:12px; line-height:1.7; color:var(--text); white-space:pre-wrap; word-break:break-word; }
+.spin { width:14px; height:14px; border:2px solid var(--border); border-top-color:var(--accent); border-radius:50%; animation:sp .6s linear infinite; display:inline-block; flex-shrink:0; }
 @keyframes sp { to { transform:rotate(360deg); } }
-
-/* ── NOTIFY ── */
-.notify { position:fixed; bottom:20px; right:20px; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:12px 16px; font-size:13px; display:flex; align-items:center; gap:8px; box-shadow:var(--shadow2); z-index:999; transform:translateY(60px); opacity:0; transition:all 0.25s cubic-bezier(0.34,1.56,0.64,1); }
+.notify { position:fixed; bottom:20px; right:20px; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:11px 16px; font-size:13px; display:flex; align-items:center; gap:8px; box-shadow:var(--shadow2); z-index:999; transform:translateY(60px); opacity:0; transition:all .25s cubic-bezier(.34,1.56,.64,1); max-width:320px; }
 .notify.show { transform:translateY(0); opacity:1; }
 .notify.ok { border-left:3px solid var(--green); }
 .notify.err { border-left:3px solid var(--red); }
-
-/* ── FORM GROUPS ── */
-.form-group { margin-bottom:14px; }
-.form-label { font-size:12px; font-weight:600; color:var(--text2); margin-bottom:4px; display:block; }
-
-/* ── SCROLLBAR ── */
+.notify.info { border-left:3px solid var(--blue); }
 ::-webkit-scrollbar { width:5px; }
 ::-webkit-scrollbar-track { background:transparent; }
 ::-webkit-scrollbar-thumb { background:var(--border); border-radius:3px; }
 ::-webkit-scrollbar-thumb:hover { background:var(--text3); }
-
-/* ── CONNECTION DOT ── */
-.conn { display:flex; align-items:center; gap:5px; font-size:11px; font-family:'JetBrains Mono',monospace; color:var(--text3); }
-.conn-dot { width:6px; height:6px; border-radius:50%; }
-.conn-dot.on { background:var(--green); }
-.conn-dot.off { background:var(--red); }
+.empty-list { text-align:center; padding:40px 16px; color:var(--text3); font-size:12px; line-height:1.7; }
+.urgency-bar { display:flex; align-items:center; gap:6px; padding:8px 12px; background:var(--red-bg); border-radius:var(--radius); font-size:12px; color:var(--red); font-weight:600; margin-bottom:16px; border:1px solid #fca5a5; }
 </style>
 </head>
 <body>
 
-<!-- AUTH SCREEN -->
+<!-- AUTH -->
 <div id="auth-screen">
   <div class="auth-brand">
-    <div class="auth-brand-mark">A</div>
+    <div class="auth-mark">A</div>
     <div class="auth-brand-text">ALG SAR Agent</div>
   </div>
   <div class="auth-card">
     <div class="auth-title">Connect to Clio</div>
-    <div class="auth-sub">Paste your Clio API access token, or authorize through the Clio flow below.</div>
+    <div class="auth-sub">Paste your Clio access token to get started, or use the OAuth flow below.</div>
     <div class="form-group">
-      <input type="text" id="token-input" placeholder="Paste Clio access token here..." style="font-family:'JetBrains Mono',monospace;font-size:11px" />
+      <input type="text" id="token-input" placeholder="Paste access token…" style="font-family:'JetBrains Mono',monospace;font-size:11px" />
     </div>
-    <div class="btn-row" style="margin-bottom:16px">
+    <div class="btn-row" style="margin-bottom:18px">
       <button class="btn primary" onclick="connectWithToken()" style="flex:1;justify-content:center">Connect</button>
     </div>
     <div class="auth-steps">
       <strong>Need a token?</strong><br>
-      1. Click below to authorize with Clio<br>
-      2. Copy the <code>code</code> from the redirect URL<br>
-      3. Paste it and click Exchange
+      1. Click Authorize below → Clio sign-in page<br>
+      2. After approving, copy the <code>code</code> from the URL<br>
+      3. Paste it below and click Exchange
     </div>
     <div class="btn-row" style="margin-bottom:8px">
       <button class="btn sm" onclick="startClioAuth()" style="flex:1;justify-content:center">Authorize with Clio →</button>
     </div>
     <div style="display:flex;gap:8px;margin-bottom:12px">
-      <input type="text" id="code-input" placeholder="Auth code..." style="flex:1;font-family:'JetBrains Mono',monospace;font-size:11px" />
+      <input type="text" id="code-input" placeholder="Auth code from redirect URL…" style="flex:1;font-family:'JetBrains Mono',monospace;font-size:11px" />
       <button class="btn sm" onclick="exchangeCode()">Exchange</button>
     </div>
-    <div id="auth-status" style="font-size:12px;text-align:center;min-height:18px"></div>
-    <div style="text-align:center;margin-top:12px">
+    <div id="auth-status" style="margin-bottom:12px"></div>
+    <div style="text-align:center">
       <button class="btn ghost sm" onclick="skipAuth()">Continue in demo mode</button>
     </div>
   </div>
 </div>
 
-<!-- MAIN APP -->
+<!-- APP -->
 <div id="app">
   <div class="layout">
-    <!-- SIDEBAR -->
     <div class="sidebar">
       <div class="sidebar-header">
         <div class="sidebar-brand">
           <div class="sidebar-mark">A</div>
           <div>
             <div class="sidebar-title">SAR Agent</div>
-            <div class="sidebar-subtitle">Auto Legal Group</div>
+            <div class="sidebar-sub">Auto Legal Group</div>
           </div>
         </div>
-        <div class="conn" id="conn-status">
-          <div class="conn-dot on" id="conn-dot"></div>
-          <span id="conn-label">Clio</span>
+        <div class="conn" id="conn" onclick="disconnectClio()">
+          <div class="conn-dot" id="conn-dot"></div>
+          <span id="conn-label">—</span>
         </div>
       </div>
       <div class="sidebar-search">
-        <input type="text" id="sb-search" placeholder="Search SARs..." oninput="renderSidebar()" />
+        <input type="text" id="sb-search" placeholder="Search SARs…" oninput="renderSidebar()" />
       </div>
-      <div class="sidebar-filters" id="sb-filters">
-        <div class="filter-chip active" data-filter="" onclick="setFilter('')">All</div>
-        <div class="filter-chip" data-filter="unassigned" onclick="setFilter('unassigned')">New</div>
-        <div class="filter-chip" data-filter="draft" onclick="setFilter('draft')">Draft</div>
-        <div class="filter-chip" data-filter="review" onclick="setFilter('review')">In Review</div>
-        <div class="filter-chip" data-filter="approved" onclick="setFilter('approved')">Approved</div>
-        <div class="filter-chip" data-filter="sent" onclick="setFilter('sent')">Sent</div>
+      <div class="sidebar-filters">
+        <div class="chip active" data-f="" onclick="setFilter('')">All</div>
+        <div class="chip" data-f="new" onclick="setFilter('new')">New</div>
+        <div class="chip" data-f="draft" onclick="setFilter('draft')">Draft</div>
+        <div class="chip" data-f="review" onclick="setFilter('review')">Review</div>
+        <div class="chip" data-f="approved" onclick="setFilter('approved')">Approved</div>
+        <div class="chip" data-f="sent" onclick="setFilter('sent')">Sent</div>
+      </div>
+      <div id="webhook-banner" class="webhook-banner" style="display:none" onclick="importWebhookSARs()">
+        <div>
+          <div class="webhook-banner-text" id="webhook-count">⚡ New from Zoho</div>
+          <div class="webhook-banner-sub">Click to import</div>
+        </div>
+        <svg width="14" height="14" fill="none" viewBox="0 0 24 24"><path stroke="#4a90c4" stroke-width="2" d="M9 18l6-6-6-6"/></svg>
       </div>
       <div class="sidebar-list" id="sb-list"></div>
-      <div class="sidebar-new">
+      <div class="sidebar-footer">
         <button class="btn primary" onclick="showNewSAR()">
-          <svg width="14" height="14" fill="none" viewBox="0 0 24 24"><line stroke="currentColor" stroke-width="2" x1="12" y1="5" x2="12" y2="19"/><line stroke="currentColor" stroke-width="2" x1="5" y1="12" x2="19" y2="12"/></svg>
+          <svg width="13" height="13" fill="none" viewBox="0 0 24 24"><line stroke="currentColor" stroke-width="2.5" x1="12" y1="5" x2="12" y2="19"/><line stroke="currentColor" stroke-width="2.5" x1="5" y1="12" x2="19" y2="12"/></svg>
           New SAR Request
         </button>
       </div>
     </div>
 
-    <!-- MAIN CONTENT -->
     <div class="main" id="main-panel">
-      <div class="main-empty" id="empty-state">
+      <div class="main-empty">
         <div class="main-empty-icon">📋</div>
-        <div class="main-empty-text">Select a SAR from the sidebar<br>or create a new request</div>
+        <div style="font-size:13px;text-align:center;line-height:1.7">Select a SAR from the sidebar<br>or create a new request</div>
       </div>
     </div>
   </div>
 </div>
 
-<!-- TIME ENTRY MODAL -->
+<!-- TIME MODAL -->
 <div class="modal-bg" id="time-modal" onclick="if(event.target===this)closeTimeModal()">
   <div class="modal">
     <div class="modal-header">
@@ -333,33 +364,33 @@ textarea { font-family:'JetBrains Mono',monospace; font-size:12px; min-height:14
         <label class="form-label">Logging time for</label>
         <select id="te-user">
           <option value="">— Select person —</option>
-          <optgroup label="Case Managers" id="te-cm-options"></optgroup>
-          <optgroup label="Attorneys" id="te-atty-options"></optgroup>
+          <optgroup label="Case Managers" id="te-cm-opts"></optgroup>
+          <optgroup label="Attorneys" id="te-atty-opts"></optgroup>
         </select>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-        <div class="form-group">
+        <div class="form-group" style="margin:0">
           <label class="form-label">Hours</label>
           <input type="text" id="te-hours" placeholder="1.0" value="1.0" />
         </div>
-        <div class="form-group">
-          <label class="form-label">Activity</label>
-          <select id="te-activity">
-            <option value="draft">Drafting Settlement Agreement</option>
-            <option value="review">Reviewing & Approving Settlement Agreement</option>
-            <option value="analyze">Analyzing Documents & Deal Jacket</option>
-            <option value="revisions">Revisions to Settlement Agreement</option>
-            <option value="other">Other</option>
-          </select>
+        <div class="form-group" style="margin:0">
+          <label class="form-label">Date</label>
+          <input type="text" id="te-date" />
         </div>
       </div>
-      <div class="form-group">
-        <label class="form-label">Note</label>
-        <input type="text" id="te-note" placeholder="Optional note..." />
+      <div class="form-group" style="margin-top:14px">
+        <label class="form-label">Activity</label>
+        <select id="te-activity">
+          <option value="Drafting Settlement Agreement">Drafting Settlement Agreement</option>
+          <option value="Reviewing &amp; Approving Settlement Agreement">Reviewing &amp; Approving Settlement Agreement</option>
+          <option value="Analyzing Documents &amp; Deal Jacket">Analyzing Documents &amp; Deal Jacket</option>
+          <option value="Revisions to Settlement Agreement">Revisions to Settlement Agreement</option>
+          <option value="Other">Other</option>
+        </select>
       </div>
       <div class="form-group">
-        <label class="form-label">Date</label>
-        <input type="text" id="te-date" />
+        <label class="form-label">Note (optional)</label>
+        <input type="text" id="te-note" placeholder="Additional note…" />
       </div>
     </div>
     <div class="modal-footer">
@@ -369,160 +400,240 @@ textarea { font-family:'JetBrains Mono',monospace; font-size:12px; min-height:14
   </div>
 </div>
 
+<!-- REVIEW MODAL -->
+<div class="modal-bg" id="review-modal" onclick="if(event.target===this)closeReviewModal()">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Submit for Attorney Review</div>
+      <button class="modal-close" onclick="closeReviewModal()">×</button>
+    </div>
+    <div class="modal-body">
+      <div id="review-sar-info" style="padding:12px;background:var(--bg);border-radius:var(--radius);margin-bottom:16px;font-size:13px;line-height:1.7"></div>
+      <div class="form-group">
+        <label class="form-label">Reviewing Attorney</label>
+        <select id="review-atty"></select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Notes for attorney (optional)</label>
+        <textarea id="review-notes" placeholder="Any issues, flags, or instructions for the reviewing attorney…" style="min-height:80px"></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeReviewModal()">Cancel</button>
+      <button class="btn primary" onclick="submitForReview()">Send for Review</button>
+    </div>
+  </div>
+</div>
+
 <!-- NOTIFY -->
 <div class="notify" id="notify"><span id="notify-msg"></span></div>
 
 <script>
-// ── CONFIG ──
+// ── CONFIG ──────────────────────────────────────────────────────────────────
 const CLIO_CLIENT_ID = 'aXxkdw7wIv9G52ok0tms9qctBeSNatloEmH5zlaJ';
 const CLIO_REDIRECT  = 'https://alg-sar-agent.netlify.app/callback';
 const CLIO_AUTH_URL  = 'https://app.clio.com/oauth/authorize';
-const CLIO_TOKEN_URL = '/.netlify/functions/clio-token';
-const AI_URL         = '/.netlify/functions/ai';
-
-const SAR_TEMPLATES = {
-  en: { id: 10314507, name: '26-05-19 Private SAR ENGLISH .docx' },
-  es: { id: 9993670, name: '25-12-29 Private SAR - Spanish Template.docx' },
-  es_rescission: { id: 9993655, name: '25-12-29 PRIVATE SAR (Spanish Rescission).docx' }
+const API = {
+  clioToken: '/.netlify/functions/clio-token',
+  clioApi:   '/.netlify/functions/clio-api',
+  ai:        '/.netlify/functions/ai',
+  slack:     '/.netlify/functions/slack-notify',
+  docx:      '/.netlify/functions/generate-docx',
+  webhook:   '/.netlify/functions/zoho-webhook',
 };
+const SLACK_SAR_CHANNEL = 'C09QF0PRLJ2';
+const STORAGE_KEY = 'alg_sar_v2';
 
-// ── STATE ──
+// ── STATE ────────────────────────────────────────────────────────────────────
 let state = {
-  clioToken: null, clioUser: null, demoMode: false,
-  queue: [], cms: [
-    {name:'Pedro', slackId:'U09QP4Z4KUG'},
-    {name:'Samir', slackId:'U09PDBV7287'},
+  clioToken: null,
+  clioUser: null,
+  demoMode: false,
+  queue: [],
+  cms: [
+    {name:'Pedro',    slackId:'U09QP4Z4KUG'},
+    {name:'Samir',    slackId:'U09PDBV7287'},
     {name:'Daniel M', slackId:'U09Q7NJ7C5P'},
-    {name:'Gabriel J', slackId:'U09QP4ZKY0G'},
-    {name:'Linda', slackId:'U09PYC93DNY'},
-    {name:'Viena', slackId:'U09Q7NGHA0H'}
-  ], roundRobinIndex: 0,
-  settings: { atty_cashkeep:'Amir N', atty_rescission:'Ali R / Ali K' },
+    {name:'Gabriel J',slackId:'U09QP4ZKY0G'},
+    {name:'Linda',    slackId:'U09PYC93DNY'},
+    {name:'Viena',    slackId:'U09Q7NGHA0H'}
+  ],
+  roundRobinIndex: 0,
   attorneys: [
     {name:'Amir N', slackId:'U09PQU2F737'},
-    {name:'Ali R', slackId:'U09PUC0EBLJ'},
-    {name:'Ali K', slackId:'U09QP4X69PA'}
+    {name:'Ali R',  slackId:'U09PUC0EBLJ'},
+    {name:'Ali K',  slackId:'U09QP4X69PA'}
   ],
-  activeView: null, // 'new' or SAR id
+  diana: {name:'Diana', slackId:'U09PN032H5H'},
+  activeView: null,
   activeFilter: '',
-  // Current new SAR session
-  newSAR: { step:1, fields:null, matter:null, dealType:'cash_keep', lang:'en' }
+  pendingWebhooks: []
 };
 
-// ── INIT ──
-window.addEventListener('DOMContentLoaded', () => {
-  loadState();
-  const params = new URLSearchParams(window.location.search);
-  if (params.get('code')) {
-    document.getElementById('code-input').value = params.get('code');
-    window.history.replaceState({}, '', '/');
-  }
-  if (state.clioToken) launchApp();
-  renderSidebar();
-});
+// ── STORAGE ──────────────────────────────────────────────────────────────────
+function loadState() {
+  try {
+    const s = localStorage.getItem(STORAGE_KEY);
+    if (!s) return;
+    const saved = JSON.parse(s);
+    // Merge persisted fields; always keep fresh CMs/attorneys from source
+    Object.assign(state, {
+      clioToken: saved.clioToken ?? null,
+      clioUser: saved.clioUser ?? null,
+      demoMode: saved.demoMode ?? false,
+      queue: saved.queue ?? [],
+      roundRobinIndex: saved.roundRobinIndex ?? 0,
+    });
+  } catch(e) {}
+}
 
-function loadState() { try { const s = localStorage.getItem('alg_sar_v2'); if(s) state = {...state,...JSON.parse(s)}; } catch(e){} }
-function saveState() { try { localStorage.setItem('alg_sar_v2', JSON.stringify({clioToken:state.clioToken,clioUser:state.clioUser,demoMode:state.demoMode,queue:state.queue,cms:state.cms,settings:state.settings,roundRobinIndex:state.roundRobinIndex})); } catch(e){} }
+function saveState() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({
+      clioToken: state.clioToken,
+      clioUser: state.clioUser,
+      demoMode: state.demoMode,
+      queue: state.queue,
+      roundRobinIndex: state.roundRobinIndex,
+    }));
+  } catch(e) {}
+}
 
-// ── AUTH ──
-function startClioAuth() { window.location.href = `${CLIO_AUTH_URL}?response_type=code&client_id=${CLIO_CLIENT_ID}&redirect_uri=${encodeURIComponent(CLIO_REDIRECT)}`; }
+// ── AUTH ─────────────────────────────────────────────────────────────────────
+function startClioAuth() {
+  window.location.href = `${CLIO_AUTH_URL}?response_type=code&client_id=${CLIO_CLIENT_ID}&redirect_uri=${encodeURIComponent(CLIO_REDIRECT)}`;
+}
 
 async function connectWithToken() {
   const token = document.getElementById('token-input').value.trim();
-  if(!token) return;
-  setAuthStatus('Testing...','');
+  if (!token) return;
+  setAuthStatus('Testing…', '');
   try {
-    const r = await fetch('/.netlify/functions/clio-api?path=users/who_am_i', {headers:{'Authorization':'Bearer '+token}});
-    if(!r.ok) throw new Error('Token rejected');
+    const r = await fetch(API.clioApi + '?path=users/who_am_i', {headers:{'Authorization':'Bearer '+token}});
+    if (!r.ok) throw new Error('Token rejected ('+r.status+')');
     const d = await r.json();
-    state.clioToken = token; state.clioUser = d.data?.name||'Connected'; state.demoMode = false;
+    state.clioToken = token;
+    state.clioUser = d.data?.name || 'Connected';
+    state.demoMode = false;
     saveState();
-    setAuthStatus('✓ Connected as '+state.clioUser,'color:var(--green)');
-    setTimeout(()=>launchApp(), 600);
-  } catch(e) { setAuthStatus('Error: '+e.message,'color:var(--red)'); }
+    setAuthStatus('✓ Connected as ' + state.clioUser, 'color:var(--green)');
+    setTimeout(launchApp, 500);
+  } catch(e) {
+    setAuthStatus('Error: ' + e.message, 'color:var(--red)');
+  }
 }
 
 async function exchangeCode() {
   const code = document.getElementById('code-input').value.trim();
-  if(!code) return;
-  setAuthStatus('Exchanging...','');
+  if (!code) return;
+  setAuthStatus('Exchanging…', '');
   try {
-    const r = await fetch(CLIO_TOKEN_URL, {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code})});
+    const r = await fetch(API.clioToken, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({code})
+    });
     const raw = await r.text();
-    if(!raw) throw new Error('Empty response');
+    if (!raw) throw new Error('Empty response');
     const d = JSON.parse(raw);
-    if(d.access_token) {
+    if (d.access_token) {
       document.getElementById('token-input').value = d.access_token;
-      setAuthStatus('✓ Token received — click Connect','color:var(--green)');
-    } else throw new Error(d.error_description||d.error||JSON.stringify(d));
-  } catch(e) { setAuthStatus('Error: '+e.message,'color:var(--red)'); }
+      setAuthStatus('✓ Token received — click Connect', 'color:var(--green)');
+    } else {
+      throw new Error(d.error_description || d.error || JSON.stringify(d));
+    }
+  } catch(e) {
+    setAuthStatus('Error: ' + e.message, 'color:var(--red)');
+  }
 }
 
-function skipAuth() { state.demoMode = true; launchApp(); }
-function setAuthStatus(msg,style) { const el=document.getElementById('auth-status'); el.textContent=msg; el.style.cssText=style||''; }
+function skipAuth() {
+  state.demoMode = true;
+  launchApp();
+}
+
+function setAuthStatus(msg, style) {
+  const el = document.getElementById('auth-status');
+  el.textContent = msg;
+  el.style.cssText = style || '';
+}
+
+function disconnectClio() {
+  if (!confirm('Disconnect from Clio?')) return;
+  state.clioToken = null;
+  state.clioUser = null;
+  state.demoMode = false;
+  saveState();
+  document.getElementById('auth-screen').style.display = 'flex';
+  document.getElementById('app').style.display = 'none';
+}
 
 function launchApp() {
   document.getElementById('auth-screen').style.display = 'none';
   document.getElementById('app').style.display = 'block';
-  if(state.demoMode) {
-    document.getElementById('conn-dot').className = 'conn-dot off';
-    document.getElementById('conn-label').textContent = 'Demo';
+  const dot = document.getElementById('conn-dot');
+  const label = document.getElementById('conn-label');
+  if (state.demoMode) {
+    dot.className = 'conn-dot demo';
+    label.textContent = 'Demo';
   } else {
-    document.getElementById('conn-dot').className = 'conn-dot on';
-    document.getElementById('conn-label').textContent = state.clioUser||'Clio';
+    dot.className = 'conn-dot on';
+    label.textContent = state.clioUser || 'Clio';
   }
   renderSidebar();
+  checkWebhookInbox();
 }
 
-// ── CLIO API ──
-async function clioGet(endpoint, params={}) {
-  if(state.demoMode) return null;
-  const url = new URL('/.netlify/functions/clio-api', window.location.origin);
-  url.searchParams.set('path', endpoint);
-  Object.entries(params).forEach(([k,v])=>url.searchParams.set(k,v));
+// ── CLIO API ─────────────────────────────────────────────────────────────────
+async function clioGet(path, params = {}) {
+  if (state.demoMode) return null;
+  const url = new URL(API.clioApi, location.origin);
+  url.searchParams.set('path', path);
+  for (const [k,v] of Object.entries(params)) url.searchParams.set(k, v);
   const r = await fetch(url.toString(), {headers:{'Authorization':'Bearer '+state.clioToken}});
-  if(!r.ok) throw new Error('Clio API '+r.status);
+  if (!r.ok) throw new Error('Clio ' + r.status);
   return r.json();
 }
 
-async function clioPost(endpoint, body) {
-  if(state.demoMode) return null;
-  const r = await fetch('/.netlify/functions/clio-api?path='+encodeURIComponent(endpoint), {
-    method:'POST', headers:{'Authorization':'Bearer '+state.clioToken,'Content-Type':'application/json','X-Clio-Method':'POST'},
-    body:JSON.stringify(body)
+async function clioPost(path, body) {
+  if (state.demoMode) return null;
+  const r = await fetch(API.clioApi + '?path=' + encodeURIComponent(path), {
+    method: 'POST',
+    headers: {'Authorization':'Bearer '+state.clioToken, 'Content-Type':'application/json', 'X-Clio-Method':'POST'},
+    body: JSON.stringify(body)
   });
-  if(!r.ok) throw new Error('Clio POST '+r.status);
+  if (!r.ok) throw new Error('Clio POST ' + r.status);
   return r.json();
 }
 
-// ── SIDEBAR ──
+// ── SIDEBAR ───────────────────────────────────────────────────────────────────
 function renderSidebar() {
-  const search = (document.getElementById('sb-search')?.value||'').toLowerCase();
+  const q = (document.getElementById('sb-search')?.value || '').toLowerCase();
+  const f = state.activeFilter;
   const items = state.queue.filter(i => {
-    const matchSearch = !search || i.buyer.toLowerCase().includes(search) || i.dealer.toLowerCase().includes(search) || (i.assignee||'').toLowerCase().includes(search);
-    const matchFilter = !state.activeFilter || i.status === state.activeFilter;
+    const matchSearch = !q || i.buyer.toLowerCase().includes(q) || i.dealer.toLowerCase().includes(q) || (i.assignee||'').toLowerCase().includes(q);
+    const matchFilter = !f || i.status === f;
     return matchSearch && matchFilter;
   });
   const list = document.getElementById('sb-list');
-  if(!list) return;
-  if(items.length === 0) {
-    list.innerHTML = '<div style="text-align:center;padding:40px 16px;color:var(--text3);font-size:12px">No SARs found</div>';
+  if (!list) return;
+  if (!items.length) {
+    list.innerHTML = '<div class="empty-list">No SARs found</div>';
     return;
   }
   list.innerHTML = items.map(i => `
     <div class="sar-item${state.activeView===i.id?' active':''}" onclick="openSAR(${i.id})">
-      <div class="sar-item-header">
+      <div class="sar-item-row1">
         <div class="sar-item-buyer">
           <div class="urgency-pip ${i.urgency==='urgent'?'urgent':'normal'}"></div>
-          ${esc(i.buyer)}
+          <span>${esc(i.buyer)}</span>
         </div>
         <span class="badge ${i.status}">${statusLabel(i.status)}</span>
       </div>
       <div class="sar-item-dealer">${esc(i.dealer)}</div>
       <div class="sar-item-meta">
-        <span class="tag ${i.deal_type==='rescission'?'rescission':'ck'}">${i.deal_type==='rescission'?'Resc':'C&K'}</span>
-        <span class="tag ${i.lang==='es'?'es':'en'}">${i.lang==='es'?'ES':'EN'}</span>
-        ${i.assignee?'<span>→ '+esc(i.assignee)+'</span>':''}
+        <span class="tag ${i.dealType==='rescission'?'resc':'ck'}">${i.dealType==='rescission'?'Resc':'C&K'}</span>
+        <span class="tag ${i.language==='es'?'es':'en'}">${i.language==='es'?'ES':'EN'}</span>
+        ${i.assignee ? '<span>→ '+esc(i.assignee)+'</span>' : ''}
         <span class="sar-item-time">${fmtDate(i.created)}</span>
       </div>
     </div>
@@ -531,540 +642,992 @@ function renderSidebar() {
 
 function setFilter(f) {
   state.activeFilter = f;
-  document.querySelectorAll('.filter-chip').forEach(c => c.classList.toggle('active', c.dataset.filter === f));
+  document.querySelectorAll('.chip[data-f]').forEach(c => c.classList.toggle('active', c.dataset.f === f));
   renderSidebar();
 }
 
-// ── OPEN SAR DETAIL ──
-function openSAR(id) {
-  const item = state.queue.find(i=>i.id===id);
-  if(!item) return;
-  state.activeView = id;
+// ── WEBHOOK INBOX ─────────────────────────────────────────────────────────────
+async function checkWebhookInbox() {
+  if (state.demoMode) return;
+  try {
+    const r = await fetch(API.webhook);
+    if (!r.ok) return;
+    const pending = await r.json();
+    state.pendingWebhooks = pending || [];
+    const banner = document.getElementById('webhook-banner');
+    if (state.pendingWebhooks.length > 0) {
+      document.getElementById('webhook-count').textContent = `⚡ ${state.pendingWebhooks.length} new from Zoho`;
+      banner.style.display = 'flex';
+    } else {
+      banner.style.display = 'none';
+    }
+  } catch(e) {
+    // Silently fail — webhook inbox is optional
+  }
+}
+
+async function importWebhookSARs() {
+  if (!state.pendingWebhooks.length) return;
+  let imported = 0;
+  for (const wh of state.pendingWebhooks) {
+    const cm = getNextCM();
+    const entry = {
+      id: Date.now() + imported,
+      created: wh.created || new Date().toISOString(),
+      status: 'new',
+      source: 'webhook',
+      urgency: wh.urgency || 'normal',
+      buyer: wh.buyer || 'Unknown Buyer',
+      dealer: wh.dealer || 'Unknown Dealer',
+      phone: wh.phone || '',
+      email: wh.email || '',
+      language: wh.language || 'en',
+      dealType: wh.dealType || 'cash_keep',
+      vehicle: '',
+      vin: '',
+      amount: '',
+      attachments: wh.attachments || [],
+      zohoData: wh.zohoData || wh,
+      fields: null,
+      matter: null,
+      assignee: cm.name,
+      assigneeSlackId: cm.slackId,
+      attorney: null,
+      attorneySlackId: null,
+      draftBase64: null,
+      draftFilename: null,
+      timeEntries: [],
+      notes: wh.notes || '',
+      reviewNotes: ''
+    };
+    state.queue.unshift(entry);
+    imported++;
+    // Mark processed
+    try {
+      await fetch(API.webhook + '?id=' + wh.id, {method:'DELETE'});
+    } catch(e) {}
+    // Slack assignment
+    await sendSlackAssignment(entry, cm);
+  }
+  state.pendingWebhooks = [];
+  document.getElementById('webhook-banner').style.display = 'none';
+  saveState();
   renderSidebar();
+  notify('ok', `Imported ${imported} SAR${imported>1?'s':''} from Zoho`);
+  if (imported === 1) openSAR(state.queue[0].id);
+}
 
-  const atty = item.deal_type==='rescission' ? state.settings.atty_rescission : state.settings.atty_cashkeep;
-  const main = document.getElementById('main-panel');
-  main.innerHTML = `
-    <div class="sar-detail">
-      <div class="sar-detail-header">
-        <div>
-          <div class="sar-detail-title">${esc(item.buyer)}</div>
-          <div class="sar-detail-sub">
-            ${item.urgency==='urgent'?'<span style="color:var(--red);font-weight:600">⚡ URGENT</span>':''}
-            <span>${esc(item.dealer)}</span>
-            <span style="color:var(--text3)">·</span>
-            <span>${esc(item.vehicle)}</span>
-            <span style="color:var(--text3)">·</span>
-            <span class="tag ${item.deal_type==='rescission'?'rescission':'ck'}">${item.deal_type==='rescission'?'Rescission':'Cash & Keep'}</span>
-            <span class="tag ${item.lang==='es'?'es':'en'}">${item.lang==='es'?'Spanish':'English'}</span>
+// ── NEW SAR FORM ───────────────────────────────────────────────────────────────
+let newSAR = { dealType:'cash_keep', language:'en', urgency:'normal' };
+
+function showNewSAR() {
+  state.activeView = 'new';
+  newSAR = { dealType:'cash_keep', language:'en', urgency:'normal' };
+  renderSidebar();
+  document.getElementById('main-panel').innerHTML = `
+    <div class="new-sar-wrap">
+      <div class="new-sar-title">New SAR Request</div>
+      <div class="card">
+        <div class="card-header"><div class="card-title">📋 Case Info</div></div>
+        <div class="card-body">
+          <div class="form-group">
+            <label class="form-label">Buyer Name <span style="color:var(--red)">*</span></label>
+            <input type="text" id="ns-buyer" placeholder="FIRST LAST (ALL CAPS preferred)" />
           </div>
-        </div>
-        <div class="btn-row">
-          <button class="btn sm" onclick="openTimeModal(${id})">⏱ Log Time</button>
-          <button class="btn sm danger" onclick="deleteSAR(${id})">Delete</button>
-        </div>
-      </div>
-
-      <div class="status-row">
-        <div class="status-step ${item.status!=='unassigned'?'done':'active'}"><div class="status-dot"></div>Intake</div>
-        <div class="status-line"></div>
-        <div class="status-step ${['review','approved','sent'].includes(item.status)?'done':item.status==='draft'?'active':''}"><div class="status-dot"></div>Draft</div>
-        <div class="status-line"></div>
-        <div class="status-step ${['approved','sent'].includes(item.status)?'done':item.status==='review'?'active':''}"><div class="status-dot"></div>Review</div>
-        <div class="status-line"></div>
-        <div class="status-step ${item.status==='sent'?'done':item.status==='approved'?'active':''}"><div class="status-dot"></div>Sent</div>
-      </div>
-
-      <div class="detail-grid">
-        <div class="detail-card">
-          <div class="detail-card-header">
-            <div class="detail-card-title">📋 Case Details</div>
-          </div>
-          <div class="detail-card-body">
-            <div class="field-grid">
-              <div class="field"><div class="field-label">Buyer</div><div class="field-value">${esc(item.buyer)}</div></div>
-              <div class="field"><div class="field-label">Dealer</div><div class="field-value">${esc(item.dealer)}</div></div>
-              <div class="field"><div class="field-label">Vehicle</div><div class="field-value">${esc(item.vehicle)}</div></div>
-              <div class="field"><div class="field-label">VIN</div><div class="field-value mono">${esc(item.vin||'—')}</div></div>
-              <div class="field"><div class="field-label">Settlement</div><div class="field-value">${item.amount?'$'+item.amount:'—'}</div></div>
-              <div class="field"><div class="field-label">Down Payment</div><div class="field-value">${item.fields?.down_payment||'—'}</div></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+            <div class="form-group" style="margin:0">
+              <label class="form-label">Dealership Name <span style="color:var(--red)">*</span></label>
+              <input type="text" id="ns-dealer" placeholder="AUTO DEALER, INC." />
+            </div>
+            <div class="form-group" style="margin:0">
+              <label class="form-label">Phone</label>
+              <input type="text" id="ns-phone" placeholder="(555) 000-0000" />
             </div>
           </div>
-        </div>
-
-        <div class="detail-card">
-          <div class="detail-card-header">
-            <div class="detail-card-title">⚙️ Workflow</div>
+          <div class="form-group" style="margin-top:14px">
+            <label class="form-label">Email</label>
+            <input type="text" id="ns-email" placeholder="client@email.com" />
           </div>
-          <div class="detail-card-body">
-            <div class="field-grid">
-              <div class="field">
-                <div class="field-label">Status</div>
-                <select onchange="updateSAR(${id},'status',this.value)" style="font-size:12px;padding:6px 8px">
-                  ${['unassigned','draft','review','approved','sent'].map(s=>`<option value="${s}" ${item.status===s?'selected':''}>${statusLabel(s)}</option>`).join('')}
-                </select>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="card-title">⚙️ Deal Type &amp; Language</div></div>
+        <div class="card-body">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+            <div>
+              <label class="form-label" style="margin-bottom:8px;display:block">Deal Type</label>
+              <div class="choice-row">
+                <button class="choice-btn sel" id="dt-ck" onclick="setNewDealType('cash_keep')">💰 Cash &amp; Keep</button>
+                <button class="choice-btn" id="dt-resc" onclick="setNewDealType('rescission')">🔄 Rescission</button>
               </div>
-              <div class="field">
-                <div class="field-label">Assigned To</div>
-                <select onchange="updateSAR(${id},'assignee',this.value)" style="font-size:12px;padding:6px 8px">
-                  <option value="">Unassigned</option>
-                  ${state.cms.map(cm=>`<option value="${cm.name}" ${item.assignee===cm.name?'selected':''}>${cm.name}</option>`).join('')}
-                </select>
+            </div>
+            <div>
+              <label class="form-label" style="margin-bottom:8px;display:block">Language</label>
+              <div class="choice-row">
+                <button class="choice-btn sel" id="lang-en" onclick="setNewLang('en')">🇺🇸 English</button>
+                <button class="choice-btn" id="lang-es" onclick="setNewLang('es')">🇲🇽 Spanish</button>
               </div>
-              <div class="field"><div class="field-label">Reviewing Attorney</div><div class="field-value">${esc(atty)}</div></div>
-              <div class="field full"><div class="field-label">Clio Matter</div><div class="field-value mono">${item.matter?'<span style="color:var(--accent)">#'+item.matter.num+'</span> · '+esc(item.matter.name)+(item.matter.client?' · '+esc(item.matter.client):''):'— Not linked'}</div></div>
+            </div>
+          </div>
+          <div style="margin-top:14px">
+            <label class="form-label" style="margin-bottom:8px;display:block">Urgency</label>
+            <div class="choice-row" style="max-width:280px">
+              <button class="choice-btn sel" id="urg-norm" onclick="setNewUrgency('normal')">Normal</button>
+              <button class="choice-btn" id="urg-urgent" onclick="setNewUrgency('urgent')" style="color:var(--red)">🚨 Urgent</button>
             </div>
           </div>
         </div>
       </div>
-
-      <!-- TIME ENTRIES -->
-      <div class="detail-card" style="margin-bottom:16px">
-        <div class="detail-card-header">
-          <div class="detail-card-title">⏱ Time Entries</div>
-          <div class="btn-row">
-            <button class="btn sm" onclick="openTimeModal(${id}, '${esc(item.assignee||'')}')">+ CM Time</button>
-            <button class="btn sm" onclick="openTimeModal(${id}, '${esc(atty)}')">+ Attorney Time</button>
-          </div>
-        </div>
-        <div class="detail-card-body" id="time-entries-${id}">
-          ${renderTimeEntries(item)}
+      <div class="card">
+        <div class="card-header"><div class="card-title">📝 Notes</div></div>
+        <div class="card-body">
+          <textarea id="ns-notes" placeholder="Any flags, context, or instructions…" style="min-height:72px"></textarea>
         </div>
       </div>
-
-      ${item.notes?`
-      <div class="detail-card">
-        <div class="detail-card-header"><div class="detail-card-title">📝 Notes</div></div>
-        <div class="detail-card-body"><div style="font-size:13px;color:var(--yellow);line-height:1.5">${esc(item.notes)}</div></div>
-      </div>`:''}
+      <div class="btn-row">
+        <button class="btn primary" onclick="createNewSAR()" style="min-width:160px">Create &amp; Assign →</button>
+        <button class="btn ghost" onclick="cancelNewSAR()">Cancel</button>
+      </div>
     </div>
   `;
 }
 
-function renderTimeEntries(item) {
-  const entries = item.timeEntries || [];
-  if(entries.length === 0) return '<div style="font-size:12px;color:var(--text3);text-align:center;padding:12px">No time logged yet</div>';
-  return entries.map(e => `
-    <div class="time-entry-row">
-      <span class="time-user">${esc(e.user)}</span>
-      <span class="time-hours">${e.hours}h</span>
-      <span class="time-note">${esc(e.activity)} ${e.note?'— '+esc(e.note):''}</span>
-      <span class="time-date">${e.date}</span>
-    </div>
-  `).join('');
+function setNewDealType(t) {
+  newSAR.dealType = t;
+  document.getElementById('dt-ck').classList.toggle('sel', t==='cash_keep');
+  document.getElementById('dt-resc').classList.toggle('sel', t==='rescission');
+}
+function setNewLang(l) {
+  newSAR.language = l;
+  document.getElementById('lang-en').classList.toggle('sel', l==='en');
+  document.getElementById('lang-es').classList.toggle('sel', l==='es');
+}
+function setNewUrgency(u) {
+  newSAR.urgency = u;
+  document.getElementById('urg-norm').classList.toggle('sel', u==='normal');
+  document.getElementById('urg-urgent').classList.toggle('sel', u==='urgent');
 }
 
-function updateSAR(id, field, value) {
-  const item = state.queue.find(i=>i.id===id);
-  if(!item) return;
-  if(field === 'assignee') item.assignee = value || null;
-  else item[field] = value;
-  saveState(); renderSidebar();
+async function createNewSAR() {
+  const buyer = document.getElementById('ns-buyer').value.trim();
+  const dealer = document.getElementById('ns-dealer').value.trim();
+  if (!buyer || !dealer) { notify('err', 'Buyer and dealer name required'); return; }
+  const cm = getNextCM();
+  const atty = getDefaultAtty(newSAR.dealType);
+  const entry = {
+    id: Date.now(),
+    created: new Date().toISOString(),
+    status: 'new',
+    source: 'manual',
+    urgency: newSAR.urgency,
+    buyer,
+    dealer,
+    phone: document.getElementById('ns-phone').value.trim(),
+    email: document.getElementById('ns-email').value.trim(),
+    language: newSAR.language,
+    dealType: newSAR.dealType,
+    vehicle: '',
+    vin: '',
+    amount: '',
+    attachments: [],
+    zohoData: null,
+    fields: null,
+    matter: null,
+    assignee: cm.name,
+    assigneeSlackId: cm.slackId,
+    attorney: atty.name,
+    attorneySlackId: atty.slackId,
+    draftBase64: null,
+    draftFilename: null,
+    timeEntries: [],
+    notes: document.getElementById('ns-notes').value.trim(),
+    reviewNotes: ''
+  };
+  state.queue.unshift(entry);
+  saveState();
+  renderSidebar();
+  notify('ok', `Assigned to ${cm.name}`);
+  await sendSlackAssignment(entry, cm);
+  openSAR(entry.id);
+}
+
+function cancelNewSAR() {
+  state.activeView = null;
+  renderSidebar();
+  document.getElementById('main-panel').innerHTML = '<div class="main-empty"><div class="main-empty-icon">📋</div><div style="font-size:13px;text-align:center;line-height:1.7">Select a SAR from the sidebar<br>or create a new request</div></div>';
+}
+
+// ── SAR DETAIL ────────────────────────────────────────────────────────────────
+function openSAR(id) {
+  const item = state.queue.find(i => i.id === id);
+  if (!item) return;
+  state.activeView = id;
+  renderSidebar();
+  renderDetail(item);
+}
+
+function renderDetail(item) {
+  const main = document.getElementById('main-panel');
+  const dealLabel = item.dealType === 'rescission' ? 'Rescission' : 'Cash &amp; Keep';
+  const langLabel = item.language === 'es' ? 'Spanish' : 'English';
+
+  // Action buttons by status
+  let actions = '';
+  if (item.status === 'new') {
+    actions = `<button class="btn primary" onclick="runAgent(${item.id})">🤖 Run Agent</button>`;
+  } else if (item.status === 'draft') {
+    actions = `
+      ${item.draftBase64 ? `<button class="btn success" onclick="downloadDraft(${item.id})">⬇ Download Draft</button>` : ''}
+      <button class="btn primary" onclick="openReviewModal(${item.id})">Submit for Review →</button>`;
+  } else if (item.status === 'review') {
+    actions = `
+      ${item.draftBase64 ? `<button class="btn" onclick="downloadDraft(${item.id})">⬇ Download Draft</button>` : ''}
+      <button class="btn" onclick="uploadToClio(${item.id})">↑ Upload to Clio</button>
+      <button class="btn success" onclick="markStatus(${item.id},'approved')">✓ Mark Approved</button>`;
+  } else if (item.status === 'approved') {
+    actions = `
+      ${item.draftBase64 ? `<button class="btn" onclick="downloadDraft(${item.id})">⬇ Download</button>` : ''}
+      <button class="btn" onclick="uploadToClio(${item.id})">↑ Upload to Clio</button>
+      <button class="btn success" onclick="markStatus(${item.id},'sent')">✓ Mark Sent</button>`;
+  } else if (item.status === 'sent') {
+    actions = `${item.draftBase64 ? `<button class="btn sm" onclick="downloadDraft(${item.id})">⬇ Download</button>` : ''}`;
+  }
+  actions += `
+    <button class="btn sm" onclick="openTimeModal(${item.id})">⏱ Log Time</button>
+    <button class="btn sm danger" onclick="deleteSAR(${item.id})">Delete</button>`;
+
+  const pipeline = buildPipeline(item.status);
+
+  // Fields section (if extracted from RISC)
+  let fieldsSection = '';
+  if (item.fields) {
+    const f = item.fields;
+    fieldsSection = `
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">📄 RISC Extracted Data</div>
+          <button class="btn xs ghost" onclick="clearFields(${item.id})">Clear</button>
+        </div>
+        <div class="card-body">
+          <div class="field-grid">
+            <div class="field"><div class="field-label">Buyer</div><input class="field-value editable" value="${esc(f.buyer_name||'')}" onchange="updateField(${item.id},'buyer_name',this.value)" /></div>
+            <div class="field"><div class="field-label">Dealer</div><input class="field-value editable" value="${esc(f.dealer_name||'')}" onchange="updateField(${item.id},'dealer_name',this.value)" /></div>
+            <div class="field"><div class="field-label">Year</div><input class="field-value editable" value="${esc(f.vehicle_year||'')}" onchange="updateField(${item.id},'vehicle_year',this.value)" /></div>
+            <div class="field"><div class="field-label">Make</div><input class="field-value editable" value="${esc(f.vehicle_make||'')}" onchange="updateField(${item.id},'vehicle_make',this.value)" /></div>
+            <div class="field"><div class="field-label">Model</div><input class="field-value editable" value="${esc(f.vehicle_model||'')}" onchange="updateField(${item.id},'vehicle_model',this.value)" /></div>
+            <div class="field"><div class="field-label">VIN</div><input class="field-value editable mono" value="${esc(f.vin||'')}" onchange="updateField(${item.id},'vin',this.value)" /></div>
+            <div class="field"><div class="field-label">Purchase Date</div><input class="field-value editable" value="${esc(f.purchase_date||'')}" onchange="updateField(${item.id},'purchase_date',this.value)" /></div>
+            <div class="field"><div class="field-label">Settlement $</div><input class="field-value editable" value="${esc(f.settlement_amount||'')}" onchange="updateField(${item.id},'settlement_amount',this.value)" /></div>
+            <div class="field"><div class="field-label">Down Payment</div><input class="field-value editable" value="${esc(f.down_payment||'')}" onchange="updateField(${item.id},'down_payment',this.value)" /></div>
+            <div class="field"><div class="field-label">Miles Driven</div><input class="field-value editable" value="${esc(f.miles_driven||'')}" onchange="updateField(${item.id},'miles_driven',this.value)" /></div>
+          </div>
+          ${f.notes ? `<div style="margin-top:10px;padding:8px 10px;background:var(--yellow-bg);border-radius:var(--radius);font-size:12px;color:var(--yellow)">⚠ ${esc(f.notes)}</div>` : ''}
+          ${(f.missing_fields||[]).length ? `<div style="margin-top:8px;font-size:12px;color:var(--red)">Missing: ${f.missing_fields.join(', ')}</div>` : ''}
+        </div>
+      </div>`;
+  }
+
+  // Agent panel (for 'new' status)
+  let agentSection = '';
+  if (item.status === 'new') {
+    agentSection = buildAgentPanel(item);
+  }
+
+  // Attachments
+  let attachSection = '';
+  if (item.attachments && item.attachments.length) {
+    attachSection = `
+      <div class="card">
+        <div class="card-header"><div class="card-title">📎 Attachments from Zoho</div></div>
+        <div class="card-body" style="padding:8px 14px">
+          ${item.attachments.map(a => `
+            <div class="attach-item">
+              <div class="attach-icon">📄</div>
+              <div class="attach-name">${esc(a.name||a)}</div>
+            </div>`).join('')}
+        </div>
+      </div>`;
+  }
+
+  main.innerHTML = `
+    <div class="detail-wrap">
+      ${item.urgency==='urgent' ? '<div class="urgency-bar">🚨 URGENT — Expedite this request</div>' : ''}
+      <div class="detail-header">
+        <div>
+          <div class="detail-title">${esc(item.buyer)}</div>
+          <div class="detail-sub">
+            <span>${esc(item.dealer)}</span>
+            ${item.vehicle ? `<span style="color:var(--text3)">·</span><span>${esc(item.vehicle)}</span>` : ''}
+            <span style="color:var(--text3)">·</span>
+            <span class="tag ${item.dealType==='rescission'?'resc':'ck'}">${dealLabel}</span>
+            <span class="tag ${item.language==='es'?'es':'en'}">${langLabel}</span>
+          </div>
+        </div>
+        <div class="detail-actions">${actions}</div>
+      </div>
+      ${pipeline}
+      ${agentSection}
+      ${fieldsSection}
+      <div class="detail-grid">
+        <div class="card" style="margin-bottom:0">
+          <div class="card-header"><div class="card-title">⚙️ Workflow</div></div>
+          <div class="card-body">
+            <div class="field-grid">
+              <div class="field">
+                <div class="field-label">Status</div>
+                <select style="font-size:12px;padding:6px 28px 6px 8px;margin-top:2px" onchange="markStatus(${item.id},this.value)">
+                  ${['new','draft','review','approved','sent'].map(s=>`<option value="${s}"${item.status===s?' selected':''}>${statusLabel(s)}</option>`).join('')}
+                </select>
+              </div>
+              <div class="field">
+                <div class="field-label">Assigned CM</div>
+                <select style="font-size:12px;padding:6px 28px 6px 8px;margin-top:2px" onchange="updateAssignee(${item.id},this.value)">
+                  <option value="">Unassigned</option>
+                  ${state.cms.map(cm=>`<option value="${cm.name}"${item.assignee===cm.name?' selected':''}>${cm.name}</option>`).join('')}
+                </select>
+              </div>
+              <div class="field">
+                <div class="field-label">Reviewing Attorney</div>
+                <div class="field-value">${esc(item.attorney||'—')}</div>
+              </div>
+              <div class="field full">
+                <div class="field-label">Clio Matter</div>
+                <div class="field-value mono" style="font-size:12px">
+                  ${item.matter
+                    ? `<span style="color:var(--accent)">#${esc(item.matter.num)}</span> · ${esc(item.matter.name)}${item.matter.client?' · '+esc(item.matter.client):''}`
+                    : '<span class="muted">Not linked</span>'}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:0">
+          ${attachSection || `<div class="card" style="margin-bottom:0"><div class="card-header"><div class="card-title">📎 Attachments</div></div><div class="card-body"><div class="empty-list" style="padding:16px">No attachments</div></div></div>`}
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:16px">
+        <div class="card-header">
+          <div class="card-title">⏱ Time Entries</div>
+          <div class="btn-row">
+            <button class="btn xs" onclick="openTimeModal(${item.id},'${esc(item.assignee||'')}')">+ CM Time</button>
+            <button class="btn xs" onclick="openTimeModal(${item.id},'${esc(item.attorney||'')}')">+ Atty Time</button>
+          </div>
+        </div>
+        <div class="card-body" id="te-list-${item.id}" style="padding:8px 14px">
+          ${renderTimeEntries(item)}
+        </div>
+      </div>
+
+      ${item.notes ? `
+      <div class="card">
+        <div class="card-header"><div class="card-title">📝 Notes</div></div>
+        <div class="card-body"><div style="font-size:13px;color:var(--text2);line-height:1.6">${esc(item.notes)}</div></div>
+      </div>` : ''}
+    </div>`;
+}
+
+function buildPipeline(status) {
+  const steps = ['new','draft','review','approved','sent'];
+  const idx = steps.indexOf(status);
+  return `<div class="pipeline">
+    ${steps.map((s,i) => `
+      <div class="pipeline-step ${i<idx?'done':i===idx?'active':''}">
+        <div class="pipeline-dot"></div>${statusLabel(s)}
+      </div>
+      ${i<steps.length-1?'<div class="pipeline-line"></div>':''}
+    `).join('')}
+  </div>`;
+}
+
+function buildAgentPanel(item) {
+  return `
+    <div class="agent-panel" id="agent-panel-${item.id}">
+      <div class="agent-header">
+        <div class="agent-title">🤖 SAR Agent — Process This Request</div>
+      </div>
+      <div class="agent-body" id="agent-body-${item.id}">
+        <div class="agent-step" id="astep-1">
+          <div class="agent-step-num">1</div>
+          <div class="agent-step-body">
+            <div class="agent-step-label">Upload RISC Contract (PDF)</div>
+            <div class="agent-step-note" style="margin-bottom:8px">The RISC contains buyer info, vehicle details, VIN, purchase date, and financial terms.</div>
+            <input type="file" id="risc-file-${item.id}" accept=".pdf" style="margin-bottom:8px" />
+          </div>
+        </div>
+        <div class="agent-step" id="astep-2">
+          <div class="agent-step-num">2</div>
+          <div class="agent-step-body">
+            <div class="agent-step-label">Extract Fields via AI</div>
+            <div class="agent-step-note" id="astep-2-note">Upload RISC PDF above, then run.</div>
+          </div>
+        </div>
+        <div class="agent-step" id="astep-3">
+          <div class="agent-step-num">3</div>
+          <div class="agent-step-body">
+            <div class="agent-step-label">Link Clio Matter</div>
+            <div class="agent-step-note" id="astep-3-note">Completes after extraction.</div>
+            <div id="clio-search-area-${item.id}" style="display:none;margin-top:8px">
+              <div style="display:flex;gap:8px;margin-bottom:8px">
+                <input type="text" id="clio-q-${item.id}" placeholder="Search dealer name…" style="flex:1" />
+                <button class="btn sm" onclick="doClioSearch(${item.id})">Search</button>
+              </div>
+              <div id="clio-res-${item.id}"></div>
+            </div>
+          </div>
+        </div>
+        <div class="agent-step" id="astep-4">
+          <div class="agent-step-num">4</div>
+          <div class="agent-step-body">
+            <div class="agent-step-label">Generate Draft .docx</div>
+            <div class="agent-step-note" id="astep-4-note">Completes after Clio matter is linked.</div>
+          </div>
+        </div>
+        <div class="btn-row" style="margin-top:16px">
+          <button class="btn primary" onclick="runAgent(${item.id})" id="run-agent-btn-${item.id}">▶ Run Agent</button>
+          <button class="btn sm ghost" onclick="skipToManualDraft(${item.id})">Skip — draft manually</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+// ── RUN AGENT ─────────────────────────────────────────────────────────────────
+let agentState = {}; // per-SAR agent run state
+
+async function runAgent(id) {
+  const item = state.queue.find(i => i.id === id);
+  if (!item) return;
+
+  const btn = document.getElementById('run-agent-btn-' + id);
+  if (btn) { btn.innerHTML = '<div class="spin"></div> Running…'; btn.disabled = true; }
+
+  agentState[id] = { step: 1 };
+
+  // Step 1: Read RISC file
+  const fileInput = document.getElementById('risc-file-' + id);
+  const file = fileInput?.files?.[0];
+
+  if (!file && !state.demoMode) {
+    setAgentStepNote(2, '⚠ No PDF uploaded — please upload the RISC contract.', 'err');
+    if (btn) { btn.innerHTML = '▶ Run Agent'; btn.disabled = false; }
+    return;
+  }
+
+  markAgentStep(1, 'done', file ? `${file.name} (${(file.size/1024).toFixed(0)} KB)` : 'Skipped (demo)');
+
+  // Step 2: AI extraction
+  setAgentStepNote(2, 'Extracting fields…');
+  markAgentStepActive(2);
+  let fields = null;
+  try {
+    if (state.demoMode || !file) {
+      // Demo mode — return sample fields
+      fields = {
+        buyer_name: item.buyer || 'DAVID J SANCHEZ',
+        buyer_address: '123 Main St, San Jose CA 95101',
+        dealer_name: item.dealer || 'AUTO RACE, INC.',
+        dealer_address: '456 Auto Blvd, San Jose CA 95110',
+        vehicle_year: '2018', vehicle_make: 'Chevrolet', vehicle_model: 'Tahoe',
+        vin: '1GNSKBKC3JR287327', odometer: '12,000',
+        purchase_date: '04/26/2026', settlement_amount: '800.00',
+        settlement_amount_words: 'Eight Hundred', down_payment: '3,000.00',
+        miles_driven: '3,000', notes: '', missing_fields: []
+      };
+    } else {
+      fields = await extractRISC(file);
+    }
+    // Update item with extracted data
+    item.buyer = fields.buyer_name || item.buyer;
+    item.dealer = fields.dealer_name || item.dealer;
+    item.vehicle = [fields.vehicle_year, fields.vehicle_make, fields.vehicle_model].filter(Boolean).join(' ');
+    item.vin = fields.vin || '';
+    item.amount = fields.settlement_amount || '';
+    item.fields = fields;
+    saveState();
+    markAgentStep(2, 'done', `Extracted: ${item.vehicle || 'vehicle'}, VIN: ${fields.vin || '—'}`);
+  } catch(e) {
+    markAgentStep(2, 'err', 'Extraction failed: ' + e.message);
+    if (btn) { btn.innerHTML = '▶ Run Agent'; btn.disabled = false; }
+    return;
+  }
+
+  // Step 3: Clio search
+  markAgentStepActive(3);
+  const csa = document.getElementById('clio-search-area-' + id);
+  if (csa) {
+    csa.style.display = 'block';
+    const qi = document.getElementById('clio-q-' + id);
+    if (qi) qi.value = fields.dealer_name || item.dealer;
+    setAgentStepNote(3, 'Search for the dealer\'s Clio matter and select it.');
+  }
+  // Auto-trigger search
+  await doClioSearch(id);
+
+  if (btn) { btn.innerHTML = '▶ Re-run'; btn.disabled = false; }
+  notify('ok', 'Fields extracted — select Clio matter to continue');
+}
+
+async function extractRISC(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      try {
+        const base64 = e.target.result.split(',')[1];
+        const r = await fetch(API.ai, {
+          method: 'POST',
+          headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({
+            model: 'claude-sonnet-4-20250514',
+            max_tokens: 1500,
+            system: `You extract structured data from California RISC (Retail Installment Sales Contract) PDF documents for an auto law firm. Return ONLY valid JSON with no markdown. The RISC is form LAW 553-CA. Extract exactly these fields: {"buyer_name":"ALL CAPS full name","buyer_address":"full address","dealer_name":"ALL CAPS dealership name","dealer_address":"","vehicle_year":"","vehicle_make":"","vehicle_model":"","vehicle_new_used":"New or Used","vin":"","odometer":"","purchase_date":"MM/DD/YYYY from signature page","settlement_amount":"","settlement_amount_words":"","down_payment":"numeric string","total_sale_price":"","monthly_payment":"","apr":"","miles_driven":"odometer reading","notes":"any flags","missing_fields":["list of fields not found"]}`,
+            messages: [{
+              role: 'user',
+              content: [{
+                type: 'document',
+                source: { type: 'base64', media_type: 'application/pdf', data: base64 }
+              }, {
+                type: 'text',
+                text: 'Extract all fields from this RISC contract. Return only the JSON object.'
+              }]
+            }]
+          })
+        });
+        const d = await r.json();
+        const text = d.content?.find(b=>b.type==='text')?.text || '';
+        const cleaned = text.replace(/```json\n?/g,'').replace(/```/g,'').trim();
+        resolve(JSON.parse(cleaned));
+      } catch(e) { reject(e); }
+    };
+    reader.onerror = () => reject(new Error('File read error'));
+    reader.readAsDataURL(file);
+  });
+}
+
+function markAgentStep(num, state, note) {
+  const step = document.getElementById('astep-' + num);
+  if (!step) return;
+  step.className = 'agent-step ' + (state === 'err' ? '' : state);
+  const noteEl = document.getElementById('astep-' + num + '-note');
+  if (noteEl) { noteEl.textContent = note || ''; noteEl.className = 'agent-step-note' + (state==='done'?' ok':state==='err'?' err':''); }
+}
+function markAgentStepActive(num) { markAgentStep(num, 'active', ''); }
+function setAgentStepNote(num, text, cls) {
+  const el = document.getElementById('astep-' + num + '-note');
+  if (el) { el.textContent = text; el.className = 'agent-step-note' + (cls?' '+cls:''); }
+}
+
+// ── CLIO MATTER SEARCH ────────────────────────────────────────────────────────
+let clioResults = {};
+
+async function doClioSearch(id) {
+  const q = (document.getElementById('clio-q-' + id)?.value || '').trim();
+  if (!q) return;
+  const container = document.getElementById('clio-res-' + id);
+  if (!container) return;
+  container.innerHTML = '<div style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2)"><div class="spin"></div> Searching Clio…</div>';
+
+  if (state.demoMode) {
+    clioResults[id] = [{id:1001,display_number:'GM-001',description:q+' — General Matters',client:{name:q},status:'Open',practice_area:{name:'General Matters'}}];
+    renderClioResults(id);
+    return;
+  }
+  try {
+    const data = await clioGet('matters', {query:q, limit:12, fields:'id,display_number,description,client,status,practice_area'});
+    clioResults[id] = data?.data || [];
+    renderClioResults(id);
+  } catch(e) {
+    container.innerHTML = `<div style="color:var(--red);font-size:12px">Error: ${esc(e.message)}</div>`;
+  }
+}
+
+function renderClioResults(id) {
+  const container = document.getElementById('clio-res-' + id);
+  if (!container) return;
+  const results = clioResults[id] || [];
+  if (!results.length) { container.innerHTML = '<div style="font-size:12px;color:var(--text3)">No matters found</div>'; return; }
+  container.innerHTML = results.map((m, idx) => {
+    const isGen = (m.practice_area?.name||'').toLowerCase().includes('general');
+    const st = m.status || '';
+    const stColor = st === 'Open' ? 'var(--green)' : 'var(--text3)';
+    return `<div class="clio-result${isGen?' general':''}" onclick="selectMatter(${id},${idx})">
+      <div>
+        <div class="clio-result-name">${esc(m.description||'Unnamed')}</div>
+        <div class="clio-result-meta">
+          <span style="color:var(--accent)">#${esc(m.display_number||'')}</span>
+          · <span style="color:${stColor}">${esc(st)}</span>
+          · ${esc(m.practice_area?.name||'')}
+          ${m.client?.name ? ' · '+esc(m.client.name) : ''}
+        </div>
+      </div>
+      ${isGen ? '<span class="tag ck" style="font-size:9px">General</span>' : ''}
+    </div>`;
+  }).join('');
+}
+
+function selectMatter(sarId, idx) {
+  const m = (clioResults[sarId] || [])[idx];
+  if (!m) return;
+  const item = state.queue.find(i => i.id === sarId);
+  if (!item) return;
+  item.matter = { id: m.id, num: m.display_number||'', name: m.description||'', client: m.client?.name||'' };
+  document.querySelectorAll(`#clio-res-${sarId} .clio-result`).forEach((el,i) => el.classList.toggle('selected', i===idx));
+  markAgentStep(3, 'done', `#${item.matter.num} — ${item.matter.name}`);
+  saveState();
+  notify('ok', 'Matter #' + item.matter.num + ' selected');
+  // Enable step 4
+  enableGenerateStep(sarId);
+}
+
+function enableGenerateStep(id) {
+  const item = state.queue.find(i => i.id === id);
+  if (!item || !item.matter) return;
+  setAgentStepNote(4, '');
+  markAgentStepActive(4);
+  const note = document.getElementById('astep-4-note');
+  if (note) {
+    note.innerHTML = `
+      <div class="btn-row" style="margin-top:6px">
+        <button class="btn primary sm" onclick="generateDraft(${id})" id="gen-btn-${id}">Generate Draft</button>
+      </div>`;
+  }
+}
+
+async function generateDraft(id) {
+  const item = state.queue.find(i => i.id === id);
+  if (!item || !item.fields || !item.matter) {
+    notify('err', 'Extract RISC fields and select a Clio matter first');
+    return;
+  }
+  const btn = document.getElementById('gen-btn-' + id);
+  if (btn) { btn.innerHTML = '<div class="spin"></div> Generating…'; btn.disabled = true; }
+  try {
+    const r = await fetch(API.docx, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ fields: item.fields, dealType: item.dealType, language: item.language })
+    });
+    const d = await r.json();
+    if (!d.ok) throw new Error(d.error || 'Generation failed');
+    item.draftBase64 = d.base64;
+    item.draftFilename = d.filename;
+    item.status = 'draft';
+    saveState();
+    markAgentStep(4, 'done', `${d.filename} (${(d.size/1024).toFixed(0)} KB)`);
+    notify('ok', 'Draft generated — status → Draft');
+    setTimeout(() => openSAR(id), 800);
+  } catch(e) {
+    notify('err', 'Generation failed: ' + e.message);
+    if (btn) { btn.innerHTML = 'Generate Draft'; btn.disabled = false; }
+  }
+}
+
+function skipToManualDraft(id) {
+  markStatus(id, 'draft');
+  notify('ok', 'Status set to Draft — generate or upload the .docx manually');
+  openSAR(id);
+}
+
+// ── DRAFT DOWNLOAD ─────────────────────────────────────────────────────────────
+function downloadDraft(id) {
+  const item = state.queue.find(i => i.id === id);
+  if (!item?.draftBase64) { notify('err', 'No draft available'); return; }
+  const bytes = atob(item.draftBase64);
+  const arr = new Uint8Array(bytes.length);
+  for (let i=0;i<bytes.length;i++) arr[i] = bytes.charCodeAt(i);
+  const blob = new Blob([arr], {type:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = item.draftFilename || 'SAR_Draft.docx';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ── UPLOAD TO CLIO ────────────────────────────────────────────────────────────
+async function uploadToClio(id) {
+  const item = state.queue.find(i => i.id === id);
+  if (!item) return;
+  if (!item.draftBase64) { notify('err', 'No draft to upload'); return; }
+  if (!item.matter) { notify('err', 'No Clio matter linked'); return; }
+  if (state.demoMode) { notify('info', 'Demo mode — upload skipped'); return; }
+
+  notify('info', 'Uploading to Clio…');
+  try {
+    const filename = item.draftFilename || 'SAR_Draft.docx';
+    // Create the document entry in Clio
+    const created = await clioPost('documents', {
+      data: {
+        name: filename,
+        parent: { id: item.matter.id, type: 'Matter' }
+      }
+    });
+    const docId = created?.data?.id;
+    if (!docId) throw new Error('No document ID returned');
+    // Upload the binary content
+    const bytes = atob(item.draftBase64);
+    const arr = new Uint8Array(bytes.length);
+    for (let i=0;i<bytes.length;i++) arr[i] = bytes.charCodeAt(i);
+    const blob = new Blob([arr]);
+    const uploadR = await fetch(API.clioApi + '?path=documents/' + docId + '/put_url', {
+      headers: {'Authorization':'Bearer '+state.clioToken}
+    });
+    const uploadData = await uploadR.json();
+    const putUrl = uploadData?.data?.put_url;
+    if (putUrl) {
+      await fetch(putUrl, { method:'PUT', body: blob, headers:{'Content-Type':'application/vnd.openxmlformats-officedocument.wordprocessingml.document'} });
+    }
+    notify('ok', 'Uploaded to Clio — ' + filename);
+  } catch(e) {
+    notify('err', 'Upload failed: ' + e.message);
+  }
+}
+
+// ── SUBMIT FOR REVIEW ─────────────────────────────────────────────────────────
+let reviewSARId = null;
+
+function openReviewModal(id) {
+  const item = state.queue.find(i => i.id === id);
+  if (!item) return;
+  reviewSARId = id;
+  const atty = item.dealType === 'rescission' ? 'Ali R' : 'Amir N';
+
+  document.getElementById('review-sar-info').innerHTML = `
+    <strong>${esc(item.buyer)}</strong> vs. ${esc(item.dealer)}<br>
+    ${item.vehicle || ''} ${item.vin ? '· VIN '+esc(item.vin) : ''}<br>
+    <span class="tag ${item.dealType==='rescission'?'resc':'ck'}">${item.dealType==='rescission'?'Rescission':'Cash & Keep'}</span>
+    <span class="tag ${item.language==='es'?'es':'en'}">${item.language==='es'?'Spanish':'English'}</span>
+    ${item.amount ? ' · $'+esc(item.amount) : ''}`;
+
+  const sel = document.getElementById('review-atty');
+  sel.innerHTML = state.attorneys.map(a => `<option value="${a.name}"${a.name===atty?' selected':''}>${a.name}</option>`).join('');
+  document.getElementById('review-notes').value = '';
+  document.getElementById('review-modal').classList.add('open');
+}
+
+function closeReviewModal() {
+  document.getElementById('review-modal').classList.remove('open');
+  reviewSARId = null;
+}
+
+async function submitForReview() {
+  const item = state.queue.find(i => i.id === reviewSARId);
+  if (!item) return;
+  const attyName = document.getElementById('review-atty').value;
+  const notes = document.getElementById('review-notes').value.trim();
+  const attyObj = state.attorneys.find(a => a.name === attyName);
+
+  item.attorney = attyName;
+  item.attorneySlackId = attyObj?.slackId || '';
+  item.reviewNotes = notes;
+  item.status = 'review';
+  saveState();
+  closeReviewModal();
+  renderSidebar();
+  openSAR(item.id);
+  notify('ok', `Submitted for ${attyName}'s review`);
+  await sendSlackReview(item);
+}
+
+// ── STATUS / FIELD UPDATES ─────────────────────────────────────────────────────
+function markStatus(id, status) {
+  const item = state.queue.find(i => i.id === id);
+  if (!item) return;
+  item.status = status;
+  saveState();
+  renderSidebar();
+  openSAR(id);
+  notify('ok', 'Status → ' + statusLabel(status));
+}
+
+function updateAssignee(id, name) {
+  const item = state.queue.find(i => i.id === id);
+  if (!item) return;
+  const cm = state.cms.find(c => c.name === name);
+  item.assignee = name || null;
+  item.assigneeSlackId = cm?.slackId || null;
+  saveState();
+  renderSidebar();
+}
+
+function updateField(id, field, value) {
+  const item = state.queue.find(i => i.id === id);
+  if (!item || !item.fields) return;
+  item.fields[field] = value;
+  // Also update top-level derived fields
+  if (field === 'buyer_name') item.buyer = value;
+  if (field === 'dealer_name') item.dealer = value;
+  if (['vehicle_year','vehicle_make','vehicle_model'].includes(field)) {
+    item.vehicle = [item.fields.vehicle_year, item.fields.vehicle_make, item.fields.vehicle_model].filter(Boolean).join(' ');
+  }
+  if (field === 'vin') item.vin = value;
+  if (field === 'settlement_amount') item.amount = value;
+  saveState();
+  renderSidebar();
+}
+
+function clearFields(id) {
+  if (!confirm('Clear extracted RISC data?')) return;
+  const item = state.queue.find(i => i.id === id);
+  if (!item) return;
+  item.fields = null;
+  saveState();
+  openSAR(id);
 }
 
 function deleteSAR(id) {
-  if(!confirm('Delete this SAR?')) return;
-  state.queue = state.queue.filter(i=>i.id!==id);
+  if (!confirm('Delete this SAR permanently?')) return;
+  state.queue = state.queue.filter(i => i.id !== id);
   state.activeView = null;
-  saveState(); renderSidebar();
-  document.getElementById('main-panel').innerHTML = '<div class="main-empty" id="empty-state"><div class="main-empty-icon">📋</div><div class="main-empty-text">Select a SAR from the sidebar<br>or create a new request</div></div>';
+  saveState();
+  renderSidebar();
+  cancelNewSAR();
 }
 
-// ── TIME ENTRY MODAL ──
-let timeModalSARId = null;
+// ── TIME ENTRY MODAL ──────────────────────────────────────────────────────────
+let teId = null;
+
 function openTimeModal(id, preselect) {
-  timeModalSARId = id;
-  const item = state.queue.find(i=>i.id===id);
-  if(!item) return;
+  teId = id;
+  const item = state.queue.find(i => i.id === id);
+  if (!item) return;
   document.getElementById('te-matter').value = item.matter ? '#'+item.matter.num+' — '+item.matter.name : item.dealer;
   document.getElementById('te-date').value = new Date().toISOString().split('T')[0];
   document.getElementById('te-hours').value = '1.0';
   document.getElementById('te-note').value = '';
 
-  // Populate user dropdown
-  const cmOpts = document.getElementById('te-cm-options');
-  const attyOpts = document.getElementById('te-atty-options');
-  cmOpts.innerHTML = state.cms.map(cm => '<option value="' + esc(cm.name) + '">' + esc(cm.name) + '</option>').join('');
-  attyOpts.innerHTML = state.attorneys.map(a => '<option value="' + esc(a.name) + '">' + esc(a.name) + '</option>').join('');
-
-  // Pre-select if provided, or default to assignee
-  const sel = document.getElementById('te-user');
-  sel.value = preselect || item.assignee || '';
-
+  const cmOpts = document.getElementById('te-cm-opts');
+  const attyOpts = document.getElementById('te-atty-opts');
+  cmOpts.innerHTML = state.cms.map(cm => `<option value="${esc(cm.name)}">${esc(cm.name)}</option>`).join('');
+  attyOpts.innerHTML = state.attorneys.map(a => `<option value="${esc(a.name)}">${esc(a.name)}</option>`).join('');
+  document.getElementById('te-user').value = preselect || item.assignee || '';
   document.getElementById('time-modal').classList.add('open');
 }
-function closeTimeModal() { document.getElementById('time-modal').classList.remove('open'); }
+
+function closeTimeModal() { document.getElementById('time-modal').classList.remove('open'); teId = null; }
 
 async function submitTimeEntry() {
-  const item = state.queue.find(i=>i.id===timeModalSARId);
-  if(!item) return;
+  const item = state.queue.find(i => i.id === teId);
+  if (!item) return;
+  const user = document.getElementById('te-user').value;
+  if (!user) { notify('err', 'Select who is logging time'); return; }
   const hours = parseFloat(document.getElementById('te-hours').value) || 1.0;
-  const activity = document.getElementById('te-activity').selectedOptions[0].text;
-  const activityVal = document.getElementById('te-activity').value;
+  const activity = document.getElementById('te-activity').value;
   const note = document.getElementById('te-note').value.trim();
   const date = document.getElementById('te-date').value;
 
-  const selectedUser = document.getElementById('te-user').value;
-  if(!selectedUser) { notify('err','Select who is logging time'); return; }
-
-  // Add to local record
-  if(!item.timeEntries) item.timeEntries = [];
-  item.timeEntries.push({ user: selectedUser, hours, activity, note, date });
+  if (!item.timeEntries) item.timeEntries = [];
+  item.timeEntries.push({user, hours, activity, note, date});
   saveState();
+  const teContainer = document.getElementById('te-list-' + teId);
+  if (teContainer) teContainer.innerHTML = renderTimeEntries(item);
 
-  // Try to create in Clio if connected and matter exists
-  if(!state.demoMode && item.matter) {
+  if (!state.demoMode && item.matter) {
     try {
-      const noteText = activity + (note ? ' — ' + note : '') + ' (SAR: ' + item.buyer + ' v. ' + item.dealer + ') [Logged for: ' + selectedUser + ']';
-      await clioPost('activities', {
-        data: {
-          type: 'TimeEntry',
-          date: date,
-          quantity: hours * 3600, // Clio wants seconds
-          note: noteText,
-          matter: { id: item.matter.id }
-        }
-      });
-      notify('ok','Time entry logged in Clio');
+      const noteText = `${activity}${note?' — '+note:''} (SAR: ${item.buyer} v. ${item.dealer}) [Logged for: ${user}]`;
+      await clioPost('activities', {data:{
+        type:'TimeEntry', date, quantity: Math.round(hours*3600),
+        note: noteText, matter:{id: item.matter.id}
+      }});
+      notify('ok', 'Time logged in Clio');
     } catch(e) {
-      notify('err','Saved locally. Clio error: '+e.message);
+      notify('err', 'Saved locally. Clio error: '+e.message);
     }
   } else {
-    notify('ok','Time entry saved locally');
+    notify('ok', 'Time entry saved');
   }
-
   closeTimeModal();
-  openSAR(timeModalSARId); // Refresh detail view
 }
 
-// ── NEW SAR FLOW ──
-function showNewSAR() {
-  state.activeView = 'new';
-  state.newSAR = { step:1, fields:null, matter:null, dealType:'cash_keep', lang:'en' };
-  renderSidebar();
-  renderNewSAR();
+function renderTimeEntries(item) {
+  const entries = item.timeEntries || [];
+  if (!entries.length) return '<div class="empty-list" style="padding:14px">No time logged yet</div>';
+  return entries.map(e => `
+    <div class="te-row">
+      <span class="te-user">${esc(e.user)}</span>
+      <span class="te-hours">${e.hours}h</span>
+      <span class="te-note">${esc(e.activity)}${e.note?' — '+esc(e.note):''}</span>
+      <span class="te-date">${e.date}</span>
+    </div>`).join('');
 }
 
-function renderNewSAR() {
-  const s = state.newSAR;
-  document.getElementById('main-panel').innerHTML = `
-    <div class="new-sar-view">
-      <div class="new-sar-title">New SAR Request</div>
-
-      <!-- STEP 1: PASTE EMAIL -->
-      <div class="step-card ${s.step===1?'active':s.step>1?'done':'disabled'}">
-        <div class="step-header">
-          <div class="step-num">${s.step>1?'✓':'1'}</div>
-          <div class="step-label">Paste Zoho Form Email</div>
-        </div>
-        <div class="step-body">
-          <textarea id="email-input" placeholder="Paste the Zoho SAR notification email content here...">${s._emailText||''}</textarea>
-          <div class="btn-row" style="margin-top:10px">
-            <button class="btn primary" onclick="doExtract()" id="extract-btn">Extract with AI</button>
-            <button class="btn sm" onclick="loadSample()">Load Sample</button>
-          </div>
-        </div>
-      </div>
-
-      <!-- STEP 2: EXTRACTED FIELDS -->
-      <div class="step-card ${s.step===2?'active':s.step>2?'done':'disabled'}" id="step2-card">
-        <div class="step-header">
-          <div class="step-num">${s.step>2?'✓':'2'}</div>
-          <div class="step-label">Verify Extracted Fields</div>
-        </div>
-        <div class="step-body" id="fields-body">
-          ${s.fields ? renderFieldsHTML(s.fields) : '<div style="color:var(--text3);font-size:13px">Waiting for extraction...</div>'}
-        </div>
-      </div>
-
-      <!-- STEP 3: CLIO LOOKUP -->
-      <div class="step-card ${s.step===3?'active':s.step>3?'done':'disabled'}" id="step3-card">
-        <div class="step-header">
-          <div class="step-num">${s.step>3?'✓':'3'}</div>
-          <div class="step-label">Link to Clio Matter</div>
-        </div>
-        <div class="step-body">
-          <div style="display:flex;gap:8px;margin-bottom:10px">
-            <input type="text" id="clio-search" placeholder="Search dealer name..." value="${s.fields?.dealer_name||''}" />
-            <button class="btn primary sm" onclick="doClioSearch()">Search</button>
-          </div>
-          <div id="clio-results"></div>
-        </div>
-      </div>
-
-      <!-- STEP 4: GENERATE -->
-      <div class="step-card ${s.step===4?'active':'disabled'}" id="step4-card">
-        <div class="step-header">
-          <div class="step-num">4</div>
-          <div class="step-label">Generate Draft & Add to Queue</div>
-        </div>
-        <div class="step-body">
-          <div id="gen-output" class="ai-box" style="margin-bottom:12px;min-height:60px">${s.matter ? 'Matter: <span style="color:var(--accent)">#' + esc(s.matter.num) + '</span> — ' + esc(s.matter.name) + (s.matter.client ? ' (' + esc(s.matter.client) + ')' : '') + '\nDeal: ' + (s.dealType==='cash_keep'?'Cash & Keep':'Rescission') + ' · ' + (s.lang==='en'?'English':'Spanish') + '\n\nReady to generate draft.' : 'Select a Clio matter first.'}</div>
-          <div class="btn-row">
-            <button class="btn primary" onclick="doGenerate()" id="gen-btn">Generate Draft</button>
-            <button class="btn success" onclick="addToQueue()" id="queue-btn" disabled>Add to Queue</button>
-          </div>
-        </div>
-      </div>
-    </div>
-  `;
-}
-
-function renderFieldsHTML(f) {
-  const s = state.newSAR;
-  return `
-    <div class="field-grid" style="margin-bottom:14px">
-      <div class="field"><div class="field-label">Buyer</div><input class="field-value editable" value="${esc(f.buyer_name||'')}" onchange="state.newSAR.fields.buyer_name=this.value" /></div>
-      <div class="field"><div class="field-label">Dealer</div><input class="field-value editable" value="${esc(f.dealer_name||'')}" onchange="state.newSAR.fields.dealer_name=this.value" /></div>
-      <div class="field"><div class="field-label">Year</div><input class="field-value editable" value="${esc(f.vehicle_year||'')}" onchange="state.newSAR.fields.vehicle_year=this.value" /></div>
-      <div class="field"><div class="field-label">Make</div><input class="field-value editable" value="${esc(f.vehicle_make||'')}" onchange="state.newSAR.fields.vehicle_make=this.value" /></div>
-      <div class="field"><div class="field-label">Model</div><input class="field-value editable" value="${esc(f.vehicle_model||'')}" onchange="state.newSAR.fields.vehicle_model=this.value" /></div>
-      <div class="field"><div class="field-label">VIN</div><input class="field-value editable mono" value="${esc(f.vin||'')}" onchange="state.newSAR.fields.vin=this.value" /></div>
-      <div class="field"><div class="field-label">Purchase Date</div><input class="field-value editable" value="${esc(f.purchase_date||'')}" onchange="state.newSAR.fields.purchase_date=this.value" /></div>
-      <div class="field"><div class="field-label">Settlement $</div><input class="field-value editable" value="${esc(f.settlement_amount||'')}" onchange="state.newSAR.fields.settlement_amount=this.value" /></div>
-      <div class="field"><div class="field-label">Down Payment</div><input class="field-value editable" value="${esc(f.down_payment||'')}" onchange="state.newSAR.fields.down_payment=this.value" /></div>
-      <div class="field"><div class="field-label">Miles Driven</div><input class="field-value editable" value="${esc(f.miles_driven||'')}" onchange="state.newSAR.fields.miles_driven=this.value" /></div>
-    </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
-      <div>
-        <div class="field-label" style="margin-bottom:6px">Deal Type</div>
-        <div class="choice-row">
-          <button class="choice-btn ${s.dealType==='cash_keep'?'selected':''}" onclick="state.newSAR.dealType='cash_keep';renderNewSAR()">💰 Cash & Keep</button>
-          <button class="choice-btn ${s.dealType==='rescission'?'selected':''}" onclick="state.newSAR.dealType='rescission';renderNewSAR()">🔄 Rescission</button>
-        </div>
-      </div>
-      <div>
-        <div class="field-label" style="margin-bottom:6px">Language</div>
-        <div class="choice-row">
-          <button class="choice-btn ${s.lang==='en'?'selected':''}" onclick="state.newSAR.lang='en';renderNewSAR()">🇺🇸 English</button>
-          <button class="choice-btn ${s.lang==='es'?'selected':''}" onclick="state.newSAR.lang='es';renderNewSAR()">🇲🇽 Spanish</button>
-        </div>
-      </div>
-    </div>
-    ${f.notes?'<div style="padding:8px 10px;background:var(--yellow-bg);border-radius:var(--radius);font-size:12px;color:var(--yellow)">⚠ '+esc(f.notes)+'</div>':''}
-    <div class="btn-row" style="margin-top:10px">
-      <button class="btn primary sm" onclick="state.newSAR.step=3;renderNewSAR()">Continue to Clio Lookup →</button>
-    </div>
-  `;
-}
-
-// ── EXTRACT ──
-async function doExtract() {
-  const raw = document.getElementById('email-input').value.trim();
-  if(!raw) { notify('err','Paste email first'); return; }
-  state.newSAR._emailText = raw;
-  const btn = document.getElementById('extract-btn');
-  btn.innerHTML = '<div class="spin"></div> Extracting...'; btn.disabled = true;
-
+// ── SLACK NOTIFICATIONS ───────────────────────────────────────────────────────
+async function sendSlack(channel, text, blocks) {
   try {
-    const r = await fetch(AI_URL, {
+    await fetch(API.slack, {
       method:'POST', headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({
-        model:'claude-sonnet-4-20250514', max_tokens:1000,
-        system:`You extract structured data from Zoho settlement agreement request form emails for a California auto law firm. Return ONLY valid JSON, no markdown. Extract: {"buyer_name":"ALL CAPS","buyer_email":"","buyer_phone":"","dealer_name":"ALL CAPS","vehicle_year":"","vehicle_make":"","vehicle_model":"","vin":"","purchase_date":"MM/DD/YYYY","settlement_amount":"number string","settlement_amount_words":"written out","down_payment":"","miles_driven":"","deal_type":"cash_keep or rescission","language":"en or es","urgency":"urgent or normal","notes":"flags or missing info","missing_fields":[]}`,
-        messages:[{role:'user',content:'Extract from this SAR email:\n\n'+raw.substring(0,8000)}]
-      })
+      body: JSON.stringify({ channel, text, blocks })
     });
-    const d = await r.json();
-    const text = d.content?.find(b=>b.type==='text')?.text||'';
-    const fields = JSON.parse(text.replace(/```json|```/g,'').trim());
-    state.newSAR.fields = fields;
-    state.newSAR.step = 2;
-    if(fields.deal_type) state.newSAR.dealType = fields.deal_type;
-    if(fields.language) state.newSAR.lang = fields.language;
-    renderNewSAR();
-    notify('ok','Fields extracted');
-  } catch(e) { notify('err','Extraction failed: '+e.message); }
-
-  btn.innerHTML = 'Extract with AI'; btn.disabled = false;
-}
-
-// ── CLIO SEARCH ──
-async function doClioSearch() {
-  const q = document.getElementById('clio-search').value.trim();
-  if(!q) return;
-  const container = document.getElementById('clio-results');
-  container.innerHTML = '<div style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--text2)"><div class="spin"></div> Searching Clio...</div>';
-
-  if(state.demoMode) {
-    container.innerHTML = ['General Matter','Case #2'].map((n,i) =>
-      `<div class="clio-result general" onclick="selectMatter(${1000+i},'00${i}','${q} — ${n}','${q}')"><div><div class="clio-result-name">${q} — ${n}</div><div class="clio-result-meta">#00${i} · Open · General Matters</div></div></div>`
-    ).join('');
-    return;
-  }
-
-  try {
-    const data = await clioGet('matters', {query:q, limit:10, fields:'id,display_number,description,client,status,practice_area'});
-    if(!data?.data?.length) { container.innerHTML = '<div style="font-size:12px;color:var(--text3)">No matters found</div>'; return; }
-    // Store results so we can reference by index on click
-    window._clioResults = data.data;
-    container.innerHTML = data.data.map((m, idx) => {
-      const desc = m.description||'Unnamed';
-      const num = m.display_number||'';
-      const client = m.client?.name||'';
-      const pa = m.practice_area?.name||'';
-      const isGen = pa.toLowerCase().includes('general');
-      const st = m.status||'';
-      return '<div class="clio-result' + (isGen ? ' general' : '') + '" onclick="pickMatter(' + idx + ')">'
-        + '<div><div class="clio-result-name">' + esc(desc) + '</div>'
-        + '<div class="clio-result-meta"><span style="color:var(--accent)">#' + esc(num) + '</span> · <span style="color:' + (st==='Open'?'var(--green)':'var(--text3)') + '">' + esc(st) + '</span> · ' + esc(pa) + (client ? ' · ' + esc(client) : '') + '</div></div>'
-        + (isGen ? '<span class="tag ck">General</span>' : '')
-        + '</div>';
-    }).join('');
-  } catch(e) { container.innerHTML = '<div style="color:var(--red);font-size:12px">Error: '+esc(e.message)+'</div>'; }
-}
-
-function pickMatter(idx) {
-  const m = window._clioResults[idx];
-  if(!m) return;
-  selectMatter(m.id, m.display_number||'', m.description||'', m.client?.name||'');
-}
-
-function selectMatter(id, num, name, client) {
-  state.newSAR.matter = {id, num, name, client:client||''};
-  document.querySelectorAll('.clio-result').forEach(el=>el.classList.remove('selected'));
-  if(event && event.currentTarget) event.currentTarget.classList.add('selected');
-  state.newSAR.step = 4;
-  renderNewSAR();
-  notify('ok','Matter #'+num+' selected');
-}
-
-// ── GENERATE ──
-async function doGenerate() {
-  const f = state.newSAR.fields;
-  if(!f) { notify('err','Extract fields first'); return; }
-  const btn = document.getElementById('gen-btn');
-  btn.innerHTML = '<div class="spin"></div> Generating...'; btn.disabled = true;
-  const out = document.getElementById('gen-output');
-  out.textContent = 'Generating draft analysis...';
-
-  const atty = state.newSAR.dealType==='rescission' ? state.settings.atty_rescission : state.settings.atty_cashkeep;
-  try {
-    const r = await fetch(AI_URL, {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({
-        model:'claude-sonnet-4-20250514', max_tokens:1000,
-        system:'You are a paralegal assistant at Auto Legal Group, a California auto law firm. Generate a concise pre-fill checklist for a Settlement Agreement draft. Be direct and practical.',
-        messages:[{role:'user',content:`SAR draft pre-fill checklist:
-DEAL: ${state.newSAR.dealType==='cash_keep'?'Cash & Keep':'Rescission'} | LANG: ${state.newSAR.lang==='en'?'English':'Spanish'} | ATTY: ${atty}
-MATTER: ${state.newSAR.matter?'#'+state.newSAR.matter.num+' '+state.newSAR.matter.name:'None'}
-Buyer: ${f.buyer_name||'?'} | Dealer: ${f.dealer_name||'?'}
-Vehicle: ${f.vehicle_year} ${f.vehicle_make} ${f.vehicle_model}, VIN: ${f.vin||'?'}
-Date: ${f.purchase_date||'?'} | Amount: $${f.settlement_amount||'?'} (${f.settlement_amount_words||'?'})
-Down: ${f.down_payment||'?'} | Miles: ${f.miles_driven||'?'} | Notes: ${f.notes||'none'}
-Provide: 1) READY TO FILL fields 2) NEEDS VERIFICATION 3) RECITALS GUIDANCE 4) ROUTING`}]
-      })
-    });
-    const d = await r.json();
-    out.textContent = d.content?.find(b=>b.type==='text')?.text||'No response';
-    document.getElementById('queue-btn').disabled = false;
-    notify('ok','Draft analysis ready');
-  } catch(e) { out.textContent = 'Error: '+e.message; notify('err','Failed'); }
-  btn.innerHTML = 'Generate Draft'; btn.disabled = false;
-}
-
-// ── ADD TO QUEUE ──
-function getNextCM() {
-  const idx = state.roundRobinIndex || 0;
-  const cm = state.cms[idx % state.cms.length];
-  state.roundRobinIndex = (idx + 1) % state.cms.length;
-  saveState();
-  return cm;
+  } catch(e) { console.warn('Slack error:', e); }
 }
 
 async function sendSlackAssignment(entry, cm) {
-  // Send to #settlement-agreements channel
-  const channelId = 'C09QF0PRLJ2';
-  const dealTypeLabel = entry.deal_type === 'rescission' ? 'Rescission' : 'Cash & Keep';
-  const langLabel = entry.lang === 'es' ? 'Spanish' : 'English';
-  const urgencyEmoji = entry.urgency === 'urgent' ? '🚨 *URGENT* ' : '';
-  const matterInfo = entry.matter ? '#' + entry.matter.num + ' — ' + entry.matter.name : 'Not linked';
+  const dealLabel = entry.dealType === 'rescission' ? 'Rescission' : 'Cash & Keep';
+  const langLabel = entry.language === 'es' ? 'Spanish' : 'English';
+  const urgPrefix = entry.urgency === 'urgent' ? '🚨 *URGENT* ' : '';
+  const matterInfo = entry.matter ? `#${entry.matter.num} — ${entry.matter.name}` : 'Not linked yet';
+  const text = `${urgPrefix}*New SAR Assignment*\n\n<@${cm.slackId}> — you've been assigned a new Settlement Agreement Request.\n\n*Buyer:* ${entry.buyer}\n*Dealer:* ${entry.dealer}\n*Type:* ${dealLabel} · ${langLabel}\n${entry.amount?'*Settlement:* $'+entry.amount+'\n':''}`+
+               `*Matter:* ${matterInfo}${entry.notes?'\n*Notes:* '+entry.notes:''}\n\nOpen the SAR Agent to process this request.`;
+  await sendSlack(SLACK_SAR_CHANNEL, urgPrefix + 'New SAR — ' + entry.buyer, [
+    {type:'section', text:{type:'mrkdwn', text}}
+  ]);
+}
 
-  const message = urgencyEmoji + '*New SAR Assignment*\n\n' +
-    '<@' + cm.slackId + '> — you\'ve been assigned a new Settlement Agreement Request.\n\n' +
-    '*Buyer:* ' + entry.buyer + '\n' +
-    '*Dealer:* ' + entry.dealer + '\n' +
-    '*Vehicle:* ' + entry.vehicle + (entry.vin ? ' (VIN: ' + entry.vin + ')' : '') + '\n' +
-    '*Type:* ' + dealTypeLabel + ' · ' + langLabel + '\n' +
-    '*Settlement:* ' + (entry.amount ? '$' + entry.amount : 'TBD') + '\n' +
-    '*Attorney:* ' + (entry.attorney || 'TBD') + '\n' +
-    '*Matter:* ' + matterInfo +
-    (entry.notes ? '\n*Notes:* ' + entry.notes : '') +
-    '\n\nTemplate: *' + (langLabel === 'Spanish' ? 'Private SAR - Spanish' : 'Private SAR ENGLISH') + '*\n' +
-    'Please open the SAR Agent to review and create the draft.';
+async function sendSlackReview(entry) {
+  if (!entry.attorneySlackId) return;
+  const dealLabel = entry.dealType === 'rescission' ? 'Rescission' : 'Cash & Keep';
+  const langLabel = entry.language === 'es' ? 'Spanish' : 'English';
+  const text = `*SAR Ready for Review*\n\n<@${entry.attorneySlackId}> — a Settlement Agreement draft is ready for your review.\n\n*Buyer:* ${entry.buyer}\n*Dealer:* ${entry.dealer}\n*Vehicle:* ${entry.vehicle||'—'} ${entry.vin?'(VIN: '+entry.vin+')':''}\n*Type:* ${dealLabel} · ${langLabel}\n${entry.amount?'*Settlement:* $'+entry.amount+'\n':''}*CM:* ${entry.assignee||'—'}\n*Matter:* ${entry.matter?'#'+entry.matter.num+' — '+entry.matter.name:'Not linked'}${entry.reviewNotes?'\n*Notes from CM:* '+entry.reviewNotes:''}`;
+  await sendSlack(SLACK_SAR_CHANNEL, 'SAR Review — ' + entry.buyer, [
+    {type:'section', text:{type:'mrkdwn', text}}
+  ]);
+}
 
-  try {
-    const r = await fetch('/.netlify/functions/slack-notify', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({ channel: channelId, text: message })
-    });
-    if (r.ok) notify('ok', 'Slack notification sent to ' + cm.name);
-    else notify('err', 'Slack notify failed');
-  } catch(e) {
-    console.error('Slack notify error:', e);
+// ── HELPERS ───────────────────────────────────────────────────────────────────
+function getNextCM() {
+  const idx = state.roundRobinIndex % state.cms.length;
+  const cm = state.cms[idx];
+  state.roundRobinIndex = (idx + 1) % state.cms.length;
+  return cm;
+}
+
+function getDefaultAtty(dealType) {
+  return dealType === 'rescission'
+    ? (state.attorneys.find(a => a.name === 'Ali R') || state.attorneys[1])
+    : (state.attorneys.find(a => a.name === 'Amir N') || state.attorneys[0]);
+}
+
+function statusLabel(s) {
+  return {new:'New', draft:'Draft', review:'In Review', approved:'Approved', sent:'Sent'}[s] || s;
+}
+
+function fmtDate(iso) {
+  return new Date(iso).toLocaleDateString('en-US', {month:'short', day:'numeric'});
+}
+
+function esc(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+function notify(type, msg) {
+  const el = document.getElementById('notify');
+  document.getElementById('notify-msg').textContent = msg;
+  el.className = 'notify ' + type + ' show';
+  clearTimeout(el._t);
+  el._t = setTimeout(() => el.className = 'notify ' + type, 3500);
+}
+
+// ── INIT ──────────────────────────────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', () => {
+  loadState();
+  // Handle OAuth callback code
+  const params = new URLSearchParams(location.search);
+  if (params.get('code')) {
+    document.getElementById('code-input').value = params.get('code');
+    history.replaceState({}, '', '/');
   }
-}
-
-async function addToQueue() {
-  const f = state.newSAR.fields;
-  if(!f) return;
-  const atty = state.newSAR.dealType==='rescission' ? state.settings.atty_rescission : state.settings.atty_cashkeep;
-  const cm = getNextCM();
-  const entry = {
-    id: Date.now(), created: new Date().toISOString(),
-    buyer: f.buyer_name||'Unknown', dealer: f.dealer_name||'Unknown',
-    vehicle: `${f.vehicle_year||''} ${f.vehicle_make||''} ${f.vehicle_model||''}`.trim(),
-    vin: f.vin, amount: f.settlement_amount, deal_type: state.newSAR.dealType,
-    lang: state.newSAR.lang, urgency: f.urgency||'normal', status:'draft',
-    assignee: cm.name, attorney:atty, matter:state.newSAR.matter,
-    notes:f.notes, fields:f, timeEntries:[]
-  };
-  state.queue.unshift(entry);
-  saveState(); renderSidebar();
-  notify('ok', 'Assigned to ' + cm.name + ' and added to queue');
-
-  // Send Slack notification
-  await sendSlackAssignment(entry, cm);
-
-  setTimeout(()=>openSAR(entry.id), 600);
-}
-
-// ── SAMPLE ──
-function loadSample() {
-  document.getElementById('email-input').value = `From: newcases@autolegalgroup.com
-Subject: New Settlement Agreement Request
-
-SETTLEMENT AGREEMENT REQUEST FORM
-
-Dealer Name: Auto Race, Inc.
-Client Name: David J Sanchez
-Client Email: david.sanchez@email.com
-Client Phone: (408) 555-0192
-
-Vehicle Information:
-Year: 2018
-Make: Chevrolet
-Model: Tahoe
-VIN: 1GNSKBKC3JR287327
-Purchase Date: 04/26/2026
-
-Settlement Details:
-Settlement Type: Rescission
-Settlement Amount: $800.00
-Down Payment Paid: $3,000.00
-Miles Driven: 3,000
-Language Preference: English
-
-Notes: Vehicle was repossessed. Client failed to complete financing. Urgent - client expects response today.`;
-  notify('ok','Sample loaded');
-}
-
-// ── HELPERS ──
-function statusLabel(s) { return {unassigned:'New',draft:'Draft',review:'In Review',approved:'Approved',sent:'Sent'}[s]||s; }
-function fmtDate(iso) { return new Date(iso).toLocaleDateString('en-US',{month:'short',day:'numeric'}); }
-function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
-function notify(type,msg) { const el=document.getElementById('notify'); document.getElementById('notify-msg').textContent=msg; el.className='notify '+type+' show'; setTimeout(()=>el.className='notify '+type,3000); }
+  if (state.clioToken || state.demoMode) {
+    launchApp();
+  }
+});
 </script>
 </body>
 </html>
