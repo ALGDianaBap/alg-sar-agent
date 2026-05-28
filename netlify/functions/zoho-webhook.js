@@ -66,55 +66,44 @@ exports.handler = async (event) => {
     return '';
   }
 
-  // Buyer name.
-  // Note: the Zoho form confusingly labels the buyer's name fields as
-  // "Dealer Name (first name)" / "Dealer Last Name". These are the CLIENT's fields.
-  const buyerFirst = pick('Dealer_Name', 'Name', 'Client_Name', 'First_Name', 'Buyer_First_Name', 'Name_First');
-  const buyerLast  = pick('Dealer_Last_Name', 'Last_Name', 'Client_Last_Name', 'Buyer_Last_Name', 'Name_Last');
-  const buyer = [buyerFirst, buyerLast].filter(Boolean).join(' ')
-    || pick('Full_Name', 'Customer_Name', 'Client', 'Buyer')
-    || 'Unknown Buyer';
+  // Confirmed Zoho field names (verified from debug dump 2026-05-28).
+  // Zoho sends keys with spaces, not underscores.
+  const buyerFirst = pick('Dealer Name', 'Dealer_Name', 'Name', 'First_Name');
+  const buyerLast  = pick('Dealer Last Name', 'Dealer_Last_Name', 'Last_Name');
+  const buyer = [buyerFirst, buyerLast].filter(Boolean).join(' ') || 'Unknown Buyer';
 
-  const dealer = pick('Dealership_Name', 'Dealer_Company', 'Dealership', 'Dealer_Name_Company', 'Company')
+  const dealer = pick('Dealership Name', 'Dealership_Name', 'Dealership', 'Company')
     || 'Unknown Dealership';
 
-  const phone    = pick('Phone', 'Client_Phone', 'Phone_Number', 'Mobile');
-  const email    = pick('Email', 'Client_Email', 'Email_Address');
-  const langRaw  = pick('Language', 'Preferred_Language', 'language');
+  const phone    = pick('Phone', 'Phone_Number', 'Mobile');
+  const email    = pick('Email', 'Email_Address');
+  const langRaw  = pick('Language', 'Preferred_Language');
   const language = /spanish|español|es\b/i.test(langRaw) ? 'es' : 'en';
 
-  const workDesc     = pick('What_are_you_doing_for_the_customer', 'Work_Description', 'Work', 'Action');
-  const dealerGiving = pick('Whats_the_dealership_giving_in_return', 'What_is_the_dealership_giving', 'Dealer_Giving');
-  const refundNotes  = pick('If_refund_is_partial_or_includes_deductions', 'Refund_Details');
-  const thirdParty   = pick('Third_Party', 'Third_party');
+  const workDesc     = pick('What are you doing for the customer?', 'What_are_you_doing_for_the_customer');
+  const dealerGiving = pick("What's the dealership giving in return?", 'Whats_the_dealership_giving_in_return');
+  const refundNotes  = pick('If refund is partial or includes deductions', 'If_refund_is_partial_or_includes_deductions');
+  const thirdParty   = pick('Third Party', 'Third_Party');
+  const hasHappened  = pick('Has this already happened?', 'Has_this_already_happened');
+  const whoWork      = pick('Who is doing the work?', 'Who_is_doing_the_work');
   const isRescission = /rescission|rescind|return.*vehicle|unwind/i.test(workDesc + dealerGiving);
   const dealType     = isRescission ? 'rescission' : 'cash_keep';
 
-  // ── 2. FIND RISC PDF ATTACHMENT URL ───────────────────────────────────────
-  // Zoho can send file fields as a URL string, array, or JSON object.
-  // We look in several likely field names and extract the first valid URL.
+  // ── 2. PDF ATTACHMENT ─────────────────────────────────────────────────────
+  // Zoho sends the file field as a plain filename (not a URL), so server-side
+  // RISC extraction is not possible. The CM uploads the RISC manually in the app.
   const pdfUrl = (() => {
-    const candidates = [
-      body['Documents_to_Upload'], body['Documents'], body['Files'],
-      body['RISC'], body['Attachments'], body['Upload'], body['File'],
-    ].filter(Boolean);
-
-    for (const val of candidates) {
-      const str = Array.isArray(val) ? val[0] : String(val);
-      const extracted = typeof str === 'object' ? (str.url || str.fileUrl || '') : str;
-      if (/^https?:\/\//i.test(extracted)) return extracted;
-      // Sometimes Zoho gives multiple URLs comma-separated
-      const first = extracted.split(',')[0].trim();
-      if (/^https?:\/\//i.test(first)) return first;
-    }
-    return null;
+    const raw = pick('Documents to Upload', 'Documents_to_Upload', 'Documents', 'Files', 'RISC');
+    if (!raw) return null;
+    const first = (Array.isArray(raw) ? String(raw[0]) : String(raw)).split(',')[0].trim();
+    return /^https?:\/\//i.test(first) ? first : null; // only use if it's actually a URL
   })();
 
   const attachmentNames = (() => {
-    const raw = body['Documents_to_Upload'] || body['Documents'] || body['Files'] || '';
+    const raw = pick('Documents to Upload', 'Documents_to_Upload', 'Documents', 'Files', 'RISC');
     if (!raw) return [];
     const arr = Array.isArray(raw) ? raw : String(raw).split(',');
-    return arr.map(a => ({ name: typeof a === 'object' ? (a.name || JSON.stringify(a)) : String(a).trim() })).filter(a => a.name);
+    return arr.map(a => ({ name: (typeof a === 'object' ? a.name : String(a)).trim() })).filter(a => a.name);
   })();
 
   // ── 3. DOWNLOAD RISC PDF ──────────────────────────────────────────────────
@@ -163,10 +152,10 @@ exports.handler = async (event) => {
     workDesc,
     dealerGiving,
     refundNotes,
-    hasHappened: pick('Has_this_already_happened', 'Already_Happened', 'Has_this_happened'),
-    whoWork:     pick('Who_is_doing_the_work', 'Who_Doing_Work', 'Who_does_work'),
+    hasHappened,
+    whoWork,
     thirdParty,
-    priorRepairs: pick('Repairs_completed', 'Prior_repairs', 'Repairs_done', 'What_repairs'),
+    priorRepairs: '', // not a separate Zoho field — inferred from hasHappened + whoWork
   };
 
   let draftBase64 = null;
@@ -273,15 +262,8 @@ exports.handler = async (event) => {
     `*Matter:* ${matterStr}\n\n` +
     draftReady;
 
-  // Debug: key=value dump so we can fix Zoho field name mapping. Remove once confirmed.
-  const debugLines = Object.entries(body).slice(0, 20)
-    .map(([k, v]) => `  • \`${k}\`: ${String(v).slice(0, 80)}`)
-    .join('\n');
-  const debugText = `🔍 *Debug — raw Zoho fields (remove once mapping confirmed):*\n${debugLines}`;
-
   try {
     await postSlack(SLACK_CHANNEL, slackText);
-    await postSlack(SLACK_CHANNEL, debugText);
   } catch (e) {
     console.error('Slack error:', e.message);
   }
