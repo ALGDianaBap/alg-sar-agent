@@ -1016,11 +1016,21 @@ function renderDetail(item) {
                 <div class="field-value">${esc(item.attorney||'—')}</div>
               </div>
               <div class="field full">
-                <div class="field-label">Clio Matter</div>
-                <div class="field-value mono" style="font-size:12px">
-                  ${item.matter
-                    ? `<span style="color:var(--accent)">#${esc(item.matter.num)}</span> · ${esc(item.matter.name)}${item.matter.client?' · '+esc(item.matter.client):''}`
-                    : '<span class="muted">Not linked</span>'}
+                <div class="field-label" style="display:flex;align-items:center;justify-content:space-between">
+                  Clio Matter
+                  <button class="btn xs ghost" onclick="toggleMatterSearch('${item.id}')" style="font-size:10px;padding:2px 6px">
+                    ${item.matter ? '✎ Change' : '+ Link'}
+                  </button>
+                </div>
+                ${item.matter
+                  ? `<div class="field-value mono" style="font-size:12px;margin-top:2px"><span style="color:var(--accent)">#${esc(item.matter.num)}</span> · ${esc(item.matter.name)}${item.matter.client?' · '+esc(item.matter.client):''}</div>`
+                  : `<div class="field-value muted" style="margin-top:2px">Not linked — time entries and Clio upload require a matter</div>`}
+                <div id="ms-area-${item.id}" style="display:none;margin-top:10px">
+                  <div style="display:flex;gap:6px;margin-bottom:8px">
+                    <input type="text" id="ms-q-${item.id}" placeholder="Search dealer name…" value="${esc(item.dealer||'')}" style="flex:1;font-size:12px;padding:7px 10px" />
+                    <button class="btn sm" onclick="doMatterSearch('${item.id}')">Search</button>
+                  </div>
+                  <div id="ms-res-${item.id}"></div>
                 </div>
               </div>
             </div>
@@ -1601,6 +1611,67 @@ async function sendSlackReview(entry) {
   await sendSlack(SLACK_SAR_CHANNEL, 'SAR Review — ' + entry.buyer, [
     {type:'section', text:{type:'mrkdwn', text}}
   ]);
+}
+
+// ── MATTER SEARCH (always-available from detail view) ────────────────────────
+function toggleMatterSearch(id) {
+  const area = document.getElementById('ms-area-' + id);
+  if (!area) return;
+  const open = area.style.display === 'none';
+  area.style.display = open ? 'block' : 'none';
+  if (open) doMatterSearch(id);
+}
+
+async function doMatterSearch(id) {
+  const q = (document.getElementById('ms-q-' + id)?.value || '').trim();
+  const container = document.getElementById('ms-res-' + id);
+  if (!q || !container) return;
+
+  container.innerHTML = '<div style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2)"><div class="spin"></div> Searching…</div>';
+
+  if (state.demoMode) {
+    clioResults['ms-' + id] = [{id:1001,display_number:'GM-001',description:q+' — General Matters',client:{name:q},status:'Open',practice_area:{name:'General Matters'}}];
+    renderMatterSearchResults(id);
+    return;
+  }
+  try {
+    const data = await clioGet('matters', {query:q, limit:12, fields:'id,display_number,description,client,status,practice_area'});
+    clioResults['ms-' + id] = data?.data || [];
+    renderMatterSearchResults(id);
+  } catch(e) {
+    container.innerHTML = `<div style="color:var(--red);font-size:12px">Error: ${esc(e.message)}</div>`;
+  }
+}
+
+function renderMatterSearchResults(id) {
+  const container = document.getElementById('ms-res-' + id);
+  if (!container) return;
+  const results = clioResults['ms-' + id] || [];
+  if (!results.length) { container.innerHTML = '<div style="font-size:12px;color:var(--text3);padding:4px 0">No matters found</div>'; return; }
+  container.innerHTML = results.map((m, idx) => {
+    const isGen = (m.practice_area?.name||'').toLowerCase().includes('general');
+    const st = m.status || '';
+    return `<div class="clio-result${isGen?' general':''}" onclick="linkMatterFromDetail('${id}',${idx})">
+      <div>
+        <div class="clio-result-name">${esc(m.description||'Unnamed')}</div>
+        <div class="clio-result-meta">
+          <span style="color:var(--accent)">#${esc(m.display_number||'')}</span>
+          · <span style="color:${st==='Open'?'var(--green)':'var(--text3)'}">${esc(st)}</span>
+          · ${esc(m.practice_area?.name||'')}${m.client?.name?' · '+esc(m.client.name):''}
+        </div>
+      </div>
+      ${isGen?'<span class="tag ck" style="font-size:9px">General</span>':''}
+    </div>`;
+  }).join('');
+}
+
+function linkMatterFromDetail(sarId, idx) {
+  const m = (clioResults['ms-' + sarId] || [])[idx];
+  if (!m) return;
+  const matter = { id: m.id, num: m.display_number||'', name: m.description||'', client: m.client?.name||'' };
+  patchSAR(sarId, { matter });
+  notify('ok', 'Matter #' + matter.num + ' linked');
+  openSAR(sarId);
 }
 
 // ── HELPERS ───────────────────────────────────────────────────────────────────
