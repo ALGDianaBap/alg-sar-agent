@@ -899,11 +899,14 @@ function renderDetail(item) {
   // Action buttons by status
   let actions = '';
   if (item.status === 'new') {
-    actions = `<button class="btn primary" onclick="runAgent('${item.id}')">🤖 Run Agent</button>`;
+    actions = `
+      <button class="btn primary" onclick="runAgent('${item.id}')">🤖 Run Agent</button>
+      <button class="btn" onclick="generateDraft('${item.id}')">📝 Generate Draft</button>`;
   } else if (item.status === 'draft') {
     actions = `
       ${item.draftBase64 ? `<button class="btn success" onclick="downloadDraft('${item.id}')">⬇ Download Draft</button>` : ''}
-      <button class="btn primary" onclick="openReviewModal('${item.id}')">Submit for Review →</button>`;
+      <button class="btn primary" onclick="openReviewModal('${item.id}')">Submit for Review →</button>
+      <button class="btn sm" onclick="generateDraft('${item.id}')" title="Regenerate with current fields">↺ Regenerate</button>`;
   } else if (item.status === 'review') {
     actions = `
       ${item.draftBase64 ? `<button class="btn" onclick="downloadDraft('${item.id}')">⬇ Download Draft</button>` : ''}
@@ -923,34 +926,48 @@ function renderDetail(item) {
 
   const pipeline = buildPipeline(item.status);
 
-  // Fields section (if extracted from RISC)
-  let fieldsSection = '';
-  if (item.fields) {
-    const f = item.fields;
-    fieldsSection = `
-      <div class="card">
-        <div class="card-header">
-          <div class="card-title">📄 RISC Extracted Data</div>
-          <button class="btn xs ghost" onclick="clearFields('${item.id}')">Clear</button>
+  // Deal Details — always shown, always editable.
+  // Pre-seeded from RISC extraction when available; otherwise from form data or blank.
+  // CMs can fill/correct any field manually at any time.
+  const f = item.fields || {
+    buyer_name:              item.buyer  || '',
+    dealer_name:             item.dealer || '',
+    vehicle_year: '', vehicle_make: '', vehicle_model: '',
+    vin:          item.vin    || '',
+    purchase_date: '',
+    settlement_amount:       item.amount || '',
+    settlement_amount_words: '',
+    down_payment: '', miles_driven: '', notes: '', missing_fields: []
+  };
+  const sourceLabel = item.fields
+    ? `<span style="font-size:10px;color:var(--green);font-weight:600;background:var(--green-bg);padding:2px 6px;border-radius:3px">Auto-extracted</span>`
+    : `<span style="font-size:10px;color:var(--text3);background:var(--bg);padding:2px 6px;border-radius:3px;border:1px solid var(--border)">Manual entry</span>`;
+
+  const fieldsSection = `
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">📄 Deal Details ${sourceLabel}</div>
+        ${item.fields ? `<button class="btn xs ghost" onclick="clearFields('${item.id}')">Clear</button>` : ''}
+      </div>
+      <div class="card-body">
+        <div class="field-grid">
+          <div class="field"><div class="field-label">Buyer Full Name</div><input class="field-value editable" placeholder="FIRST LAST" value="${esc(f.buyer_name||'')}" onchange="updateField('${item.id}','buyer_name',this.value)" /></div>
+          <div class="field"><div class="field-label">Dealership Name</div><input class="field-value editable" placeholder="DEALERSHIP, INC." value="${esc(f.dealer_name||'')}" onchange="updateField('${item.id}','dealer_name',this.value)" /></div>
+          <div class="field"><div class="field-label">Year</div><input class="field-value editable" placeholder="2022" value="${esc(f.vehicle_year||'')}" onchange="updateField('${item.id}','vehicle_year',this.value)" /></div>
+          <div class="field"><div class="field-label">Make</div><input class="field-value editable" placeholder="Toyota" value="${esc(f.vehicle_make||'')}" onchange="updateField('${item.id}','vehicle_make',this.value)" /></div>
+          <div class="field"><div class="field-label">Model</div><input class="field-value editable" placeholder="Camry" value="${esc(f.vehicle_model||'')}" onchange="updateField('${item.id}','vehicle_model',this.value)" /></div>
+          <div class="field"><div class="field-label">VIN</div><input class="field-value editable mono" placeholder="17-character VIN" value="${esc(f.vin||'')}" onchange="updateField('${item.id}','vin',this.value)" /></div>
+          <div class="field"><div class="field-label">Purchase Date</div><input class="field-value editable" placeholder="MM/DD/YYYY" value="${esc(f.purchase_date||'')}" onchange="updateField('${item.id}','purchase_date',this.value)" /></div>
+          <div class="field"><div class="field-label">Settlement Amount $</div><input class="field-value editable" placeholder="1200.00" value="${esc(f.settlement_amount||'')}" onchange="updateField('${item.id}','settlement_amount',this.value)" /></div>
+          <div class="field"><div class="field-label">Amount in Words</div><input class="field-value editable" placeholder="One Thousand Two Hundred" value="${esc(f.settlement_amount_words||'')}" onchange="updateField('${item.id}','settlement_amount_words',this.value)" /></div>
+          <div class="field"><div class="field-label">Down Payment $</div><input class="field-value editable" placeholder="3000.00" value="${esc(f.down_payment||'')}" onchange="updateField('${item.id}','down_payment',this.value)" /></div>
+          <div class="field"><div class="field-label">Miles Driven</div><input class="field-value editable" placeholder="12000" value="${esc(f.miles_driven||'')}" onchange="updateField('${item.id}','miles_driven',this.value)" /></div>
+          <div class="field"><div class="field-label">APR %</div><input class="field-value editable" placeholder="24.99" value="${esc(f.apr||'')}" onchange="updateField('${item.id}','apr',this.value)" /></div>
         </div>
-        <div class="card-body">
-          <div class="field-grid">
-            <div class="field"><div class="field-label">Buyer</div><input class="field-value editable" value="${esc(f.buyer_name||'')}" onchange="updateField('${item.id}','buyer_name',this.value)" /></div>
-            <div class="field"><div class="field-label">Dealer</div><input class="field-value editable" value="${esc(f.dealer_name||'')}" onchange="updateField('${item.id}','dealer_name',this.value)" /></div>
-            <div class="field"><div class="field-label">Year</div><input class="field-value editable" value="${esc(f.vehicle_year||'')}" onchange="updateField('${item.id}','vehicle_year',this.value)" /></div>
-            <div class="field"><div class="field-label">Make</div><input class="field-value editable" value="${esc(f.vehicle_make||'')}" onchange="updateField('${item.id}','vehicle_make',this.value)" /></div>
-            <div class="field"><div class="field-label">Model</div><input class="field-value editable" value="${esc(f.vehicle_model||'')}" onchange="updateField('${item.id}','vehicle_model',this.value)" /></div>
-            <div class="field"><div class="field-label">VIN</div><input class="field-value editable mono" value="${esc(f.vin||'')}" onchange="updateField('${item.id}','vin',this.value)" /></div>
-            <div class="field"><div class="field-label">Purchase Date</div><input class="field-value editable" value="${esc(f.purchase_date||'')}" onchange="updateField('${item.id}','purchase_date',this.value)" /></div>
-            <div class="field"><div class="field-label">Settlement $</div><input class="field-value editable" value="${esc(f.settlement_amount||'')}" onchange="updateField('${item.id}','settlement_amount',this.value)" /></div>
-            <div class="field"><div class="field-label">Down Payment</div><input class="field-value editable" value="${esc(f.down_payment||'')}" onchange="updateField('${item.id}','down_payment',this.value)" /></div>
-            <div class="field"><div class="field-label">Miles Driven</div><input class="field-value editable" value="${esc(f.miles_driven||'')}" onchange="updateField('${item.id}','miles_driven',this.value)" /></div>
-          </div>
-          ${f.notes ? `<div style="margin-top:10px;padding:8px 10px;background:var(--yellow-bg);border-radius:var(--radius);font-size:12px;color:var(--yellow)">⚠ ${esc(f.notes)}</div>` : ''}
-          ${(f.missing_fields||[]).length ? `<div style="margin-top:8px;font-size:12px;color:var(--red)">Missing: ${f.missing_fields.join(', ')}</div>` : ''}
-        </div>
-      </div>`;
-  }
+        ${f.notes ? `<div style="margin-top:10px;padding:8px 10px;background:var(--yellow-bg);border-radius:var(--radius);font-size:12px;color:var(--yellow)">⚠ ${esc(f.notes)}</div>` : ''}
+        ${(f.missing_fields||[]).length ? `<div style="margin-top:8px;font-size:12px;color:var(--red)">Missing: ${f.missing_fields.join(', ')}</div>` : ''}
+      </div>
+    </div>`;
 
   // Agent panel (for 'new' status)
   let agentSection = '';
@@ -1328,9 +1345,21 @@ function enableGenerateStep(id) {
 
 async function generateDraft(id) {
   const item = findSAR(id);
-  if (!item || !item.fields || !item.matter) {
-    notify('err', 'Extract RISC fields and select a Clio matter first');
-    return;
+  if (!item) return;
+
+  // Auto-initialize fields from whatever we know if not set yet
+  if (!item.fields) {
+    item.fields = {
+      buyer_name: item.buyer || '', dealer_name: item.dealer || '',
+      vehicle_year: '', vehicle_make: '', vehicle_model: '',
+      vin: item.vin || '', purchase_date: '',
+      settlement_amount: item.amount || '', settlement_amount_words: '',
+      down_payment: '', miles_driven: '', apr: '', notes: '', missing_fields: []
+    };
+  }
+
+  if (!item.matter) {
+    notify('info', 'No Clio matter linked — draft will generate but won\'t be uploadable to Clio yet');
   }
   const btn = document.getElementById('gen-btn-' + id);
   if (btn) { btn.innerHTML = '<div class="spin"></div> Generating…'; btn.disabled = true; }
@@ -1484,7 +1513,16 @@ function updateAssignee(id, name) {
 
 function updateField(id, field, value) {
   const item = findSAR(id);
-  if (!item || !item.fields) return;
+  if (!item) return;
+  if (!item.fields) {
+    item.fields = {
+      buyer_name: item.buyer||'', dealer_name: item.dealer||'',
+      vehicle_year:'', vehicle_make:'', vehicle_model:'',
+      vin: item.vin||'', purchase_date:'', settlement_amount: item.amount||'',
+      settlement_amount_words:'', down_payment:'', miles_driven:'', apr:'',
+      notes:'', missing_fields:[]
+    };
+  }
   item.fields[field] = value;
   const derived = {};
   if (field === 'buyer_name')  { item.buyer = value;  derived.buyer = value; }
