@@ -7,20 +7,11 @@
 
 const https = require('https');
 
-// Load @netlify/blobs gracefully — failure degrades to no-storage, not a crash
-let blobsAvailable = false;
-let _getStore;
-try {
-  const { getStore } = require('@netlify/blobs');
-  _getStore = (name) => {
-    const siteID = process.env.NETLIFY_SITE_ID;
-    const token  = process.env.NETLIFY_TOKEN;
-    return (siteID && token) ? getStore({ name, siteID, token }) : getStore(name);
-  };
-  blobsAvailable = true;
-} catch (e) {
-  console.warn('form-submit: @netlify/blobs not available:', e.message);
-}
+// Use _blobs.js wrapper — same as every other function in this project.
+// Requiring @netlify/blobs directly inside try/catch causes zisi (Netlify's
+// bundler) to skip it from the bundle, causing a 502 on startup.
+const { store: getStore } = require('./_blobs');
+const blobsAvailable = true;
 
 const SLACK_CHANNEL = 'C09QF0PRLJ2';
 const CMS = [

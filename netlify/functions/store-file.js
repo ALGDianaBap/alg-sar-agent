@@ -4,17 +4,7 @@
  * POST body: { id, file: { name, type, data (base64) } }
  */
 
-let _getStore;
-try {
-  const { getStore } = require('@netlify/blobs');
-  _getStore = (name) => {
-    const siteID = process.env.NETLIFY_SITE_ID;
-    const token  = process.env.NETLIFY_TOKEN;
-    return (siteID && token) ? getStore({ name, siteID, token }) : getStore(name);
-  };
-} catch (e) {
-  _getStore = null;
-}
+const { store: _getStore } = require('./_blobs');
 
 const cors = {
   'Access-Control-Allow-Origin': '*',
@@ -29,10 +19,6 @@ exports.handler = async (event) => {
   try {
     const { id, file } = JSON.parse(event.body);
     if (!id || !file) return { statusCode: 400, headers: cors, body: JSON.stringify({ error: 'Missing id or file' }) };
-
-    if (!_getStore) {
-      return { statusCode: 200, headers: { ...cors, 'Content-Type': 'application/json' }, body: JSON.stringify({ ok: true, stored: false, reason: 'blobs unavailable' }) };
-    }
 
     const store    = _getStore('form-files');
     const existing = await store.get(id, { type: 'json' }).catch(() => []);
