@@ -1178,6 +1178,10 @@ function riscLikelihood(filename) {
 // Call Claude via the ai.js proxy to extract RISC fields from a base64 PDF.
 // Returns { not_risc: true } if the document is not a RISC, or the fields object.
 async function callAIExtract(base64Pdf) {
+  // Rough size check — base64 PDF + JSON overhead should stay under 5MB
+  if (base64Pdf && base64Pdf.length > 4_000_000) {
+    throw new Error('PDF too large for extraction (max ~3MB). Try compressing the file or uploading just the first 2 pages.');
+  }
   const r = await fetch(API.ai, {
     method: 'POST', headers: {'Content-Type':'application/json'},
     body: JSON.stringify({
@@ -1294,17 +1298,23 @@ async function runAgent(id) {
 
   // If no manual upload but SAR has stored files (native form submission), fetch them
   if (!filesToProcess.length && item.hasStoredFiles && !state.demoMode) {
-    setAgentStepNote(1, 'Fetching uploaded files…');
+    markAgentStepActive(1);
+    setAgentStepNote(1, 'Fetching files uploaded via form…');
     try {
       const r = await fetch(API.getFiles + '?id=' + item.id);
       if (r.ok) {
-        const stored = await r.json(); // [{name, type, data (base64)}]
-        // Convert to File-like objects the extraction flow can handle
-        filesToProcess = stored.map(f => ({ name: f.name, _base64: f.data, _type: f.type }));
-        markAgentStep(1, 'done', `${stored.length} file(s) from form: ${stored.map(f=>f.name).join(', ')}`);
+        const stored = await r.json();
+        if (Array.isArray(stored) && stored.length > 0) {
+          filesToProcess = stored.map(f => ({ name: f.name, _base64: f.data, _type: f.type }));
+          markAgentStep(1, 'done', `${stored.length} file(s) ready: ${stored.map(f => f.name).join(', ')}`);
+        } else {
+          setAgentStepNote(1, 'No files found in storage — please upload the RISC below.', 'err');
+        }
+      } else {
+        setAgentStepNote(1, `Could not load stored files (${r.status}) — please upload the RISC below.`, 'err');
       }
     } catch(e) {
-      setAgentStepNote(1, 'Could not fetch stored files: ' + e.message, 'err');
+      setAgentStepNote(1, 'Fetch error: ' + e.message + ' — please upload the RISC below.', 'err');
     }
   }
 

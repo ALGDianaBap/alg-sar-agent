@@ -12,6 +12,15 @@
 [functions."form-submit"]
   timeout = 26
 
+[functions."ai"]
+  timeout = 26
+
+[functions."store-file"]
+  timeout = 26
+
+[functions."get-files"]
+  timeout = 26
+
 [[redirects]]
   from = "/submit"
   to = "/submit.html"
