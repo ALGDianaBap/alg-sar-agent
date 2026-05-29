@@ -119,16 +119,10 @@ exports.handler = async (event) => {
   })();
 
   // ── 3. DOWNLOAD RISC PDF ──────────────────────────────────────────────────
-  // Strategy:
-  //   a) If Zoho included a direct URL in the webhook payload, use it.
-  //   b) Otherwise call the Zoho Forms API (entries endpoint) which returns
-  //      real download URLs for file fields — the webhook only sends filenames.
+  // Zoho webhook only sends filenames, not URLs. We check if a URL was
+  // somehow included (e.g. via a Zoho Deluge custom function that posts URLs),
+  // otherwise the CM uploads the RISC manually in the SAR Agent app.
   let riscBuffer = null;
-  const pipelineLog = []; // temporary: posted to Slack so we can debug
-
-  // (a) Direct URL in webhook payload (rarely present but check first)
-  // Log the raw attachment value so we can see if Zoho is already sending a URL
-  pipelineLog.push(`Attachment raw value: "${String(rawAttach || '').slice(0, 200)}"`);
 
   const directUrl = (() => {
     if (!rawAttach) return null;
@@ -139,42 +133,11 @@ exports.handler = async (event) => {
   if (directUrl) {
     try {
       riscBuffer = await downloadWithTimeout(directUrl, 8000);
-      pipelineLog.push(`✓ PDF via direct URL (${riscBuffer.length} bytes)`);
+      console.log('RISC PDF downloaded via direct URL:', riscBuffer.length, 'bytes');
     } catch (e) {
-      pipelineLog.push('✗ Direct URL failed: ' + e.message);
+      console.warn('Direct URL download failed:', e.message);
     }
   }
-
-  // (b) Zoho Forms API — one final diagnostic attempt then give up gracefully.
-  // All REST API paths at forms.zoho.com/api/v1/ return 404 regardless of format.
-  // The most likely fix is configuring the Zoho webhook to include file URLs directly.
-  if (!riscBuffer) {
-    const zohoToken = await getZohoToken();
-    if (zohoToken) {
-      // Check what scopes the token actually has
-      const { status: tsStatus, body: tsBody } = await httpGet(
-        'accounts.zoho.com', `/oauth/v2/tokeninfo?access_token=${encodeURIComponent(zohoToken)}`
-      );
-      pipelineLog.push(`Token info (${tsStatus}): ${tsBody.slice(0, 200)}`);
-
-      // Try the undocumented perma-link API path as a last resort
-      if (orgName && formName) {
-        const paths = [
-          `/autolegalgroupllp/form/${formName}/entries`,
-          `/autolegalgroupllp/api/v1/${formName}/entries`,
-        ];
-        for (const path of paths) {
-          const { status, body } = await zohoApiGet(zohoToken, path);
-          pipelineLog.push(`${path} → HTTP ${status}: ${body.slice(0, 100)}`);
-          if (status === 200) break;
-        }
-      }
-
-      pipelineLog.push('ℹ️  To fix: in Zoho Forms webhook settings, enable "Include File URL" for the Documents field. The webhook will then send a direct download URL and no API call is needed.');
-    }
-  }
-
-  if (!riscBuffer) pipelineLog.push('⚠ No RISC PDF — draft uses form data + placeholders');
 
   // ── 4. EXTRACT RISC FIELDS VIA CLAUDE ────────────────────────────────────
   let fields = {
@@ -301,31 +264,36 @@ exports.handler = async (event) => {
   }
 
   // ── 9. SLACK NOTIFICATION ─────────────────────────────────────────────────
-  const dealLabel  = isRescission ? 'Rescission' : 'Cash & Keep';
-  const langLabel  = language === 'es' ? 'Spanish' : 'English';
-  const draftReady = draftBase64 ? '✅ *Draft ready for review*' : '⚠️ *Draft pending* — RISC not auto-read, CM runs agent in app';
-  const vehicleStr = vehicle || '—';
-  const vinStr     = fields.vin ? ` · VIN: ${fields.vin}` : '';
-  const matterStr  = matter ? `#${matter.num} — ${matter.name}` : '_Link in SAR Agent_';
+  const dealLabel = isRescission ? 'Rescission' : 'Cash & Keep';
+  const langLabel = language === 'es' ? 'Spanish' : 'English';
+  const matterStr = matter ? `#${matter.num} — ${matter.name}` : '_Not linked yet_';
+  const filesStr  = attachmentNames.length
+    ? attachmentNames.map(a => a.name).join(', ')
+    : '_none_';
+
+  const draftLine = draftBase64
+    ? '✅ *Draft generated — open SAR Agent to review and download*'
+    : `📎 *Action needed:* Open SAR Agent → upload RISC PDF (${filesStr}) → agent extracts data + generates draft`;
+
+  const contextLines = [workDesc, dealerGiving, refundNotes, thirdParty]
+    .filter(Boolean)
+    .map(l => `> ${l.slice(0, 120)}`)
+    .join('\n');
 
   const slackText =
     `📋 *New SAR — <@${cm.slackId}> assigned*\n\n` +
     `*Buyer:* ${finalBuyer}\n` +
     `*Dealer:* ${finalDealer}\n` +
-    `*Vehicle:* ${vehicleStr}${vinStr}\n` +
     `*Type:* ${dealLabel} · ${langLabel}\n` +
+    (vehicle ? `*Vehicle:* ${vehicle}${fields.vin ? ' · VIN ' + fields.vin : ''}\n` : '') +
     (fields.settlement_amount ? `*Settlement:* $${fields.settlement_amount}\n` : '') +
     (fields.down_payment      ? `*Down payment:* $${fields.down_payment}\n`      : '') +
-    `*Matter:* ${matterStr}\n\n` +
-    draftReady;
-
-  // Pipeline log posted as a second Slack message for debugging.
-  // Remove the second postSlack call once PDF extraction is confirmed working.
-  const debugLog = `🔧 *Pipeline:*\n${pipelineLog.map(l => `  ${l}`).join('\n')}`;
+    `*Clio matter:* ${matterStr}\n` +
+    (contextLines ? `\n*From form:*\n${contextLines}\n` : '') +
+    `\n${draftLine}`;
 
   try {
     await postSlack(SLACK_CHANNEL, slackText);
-    await postSlack(SLACK_CHANNEL, debugLog);
   } catch (e) {
     console.error('Slack error:', e.message);
   }
