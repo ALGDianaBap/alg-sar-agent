@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Settlement Agreement Request — Auto Legal Group</title>
+<title>Settlement Agreement Request — Auto Legal Group, LLP</title>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,600&display=swap" rel="stylesheet">
 <style>
 :root {
@@ -14,257 +14,325 @@
   --red: #c0392b; --red-bg: #fdf0ee;
   --radius: 8px;
   --shadow: 0 1px 3px rgba(0,0,0,.04), 0 1px 2px rgba(0,0,0,.06);
-  --shadow2: 0 4px 16px rgba(0,0,0,.08), 0 1px 4px rgba(0,0,0,.06);
+  --shadow2: 0 4px 16px rgba(0,0,0,.07);
 }
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body { background: var(--bg); color: var(--text); font-family: 'Plus Jakarta Sans', sans-serif; font-size: 15px; min-height: 100vh; }
 
-/* ── PAGE LAYOUT ── */
-.page { max-width: 680px; margin: 0 auto; padding: 40px 20px 80px; }
+.page { max-width: 700px; margin: 0 auto; padding: 40px 20px 80px; }
 
 /* ── HEADER ── */
-.header { text-align: center; margin-bottom: 40px; }
-.logo { display: inline-flex; align-items: center; gap: 10px; margin-bottom: 20px; }
-.logo-mark { width: 40px; height: 40px; background: var(--accent); border-radius: 10px; display: flex; align-items: center; justify-content: center; color: #fff; font-family: 'Fraunces', serif; font-size: 20px; font-weight: 600; }
-.logo-name { font-family: 'Fraunces', serif; font-size: 18px; color: var(--text); }
-.header h1 { font-family: 'Fraunces', serif; font-size: 28px; font-weight: 400; line-height: 1.3; margin-bottom: 10px; }
-.header p { color: var(--text2); font-size: 15px; line-height: 1.7; max-width: 500px; margin: 0 auto; }
+.header { text-align: center; margin-bottom: 36px; }
+.logo { display: inline-flex; align-items: center; gap: 10px; margin-bottom: 18px; text-decoration: none; }
+.logo-mark { width: 38px; height: 38px; background: var(--accent); border-radius: 9px; display: flex; align-items: center; justify-content: center; color: #fff; font-family: 'Fraunces', serif; font-size: 18px; font-weight: 600; }
+.logo-name { font-family: 'Fraunces', serif; font-size: 17px; color: var(--text); }
+.header h1 { font-family: 'Fraunces', serif; font-size: 26px; font-weight: 400; margin-bottom: 8px; }
+.header p { color: var(--text2); font-size: 14px; line-height: 1.7; }
 
-/* ── LANGUAGE TOGGLE ── */
-.lang-toggle { display: flex; gap: 8px; justify-content: center; margin-bottom: 32px; }
-.lang-btn { padding: 7px 20px; border-radius: 20px; border: 1.5px solid var(--border); background: var(--surface); font-family: 'Plus Jakarta Sans', sans-serif; font-size: 13px; font-weight: 500; cursor: pointer; color: var(--text2); transition: all .15s; }
+/* ── LANG TOGGLE ── */
+.lang-toggle { display: flex; gap: 8px; justify-content: center; margin-bottom: 28px; }
+.lang-btn { padding: 6px 18px; border-radius: 20px; border: 1.5px solid var(--border); background: var(--surface); font-family: inherit; font-size: 13px; font-weight: 500; cursor: pointer; color: var(--text2); transition: all .15s; }
 .lang-btn.active { border-color: var(--accent); background: var(--accent-bg); color: var(--accent); font-weight: 600; }
 
-/* ── FORM SECTIONS ── */
-.section { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 28px; margin-bottom: 20px; box-shadow: var(--shadow); }
-.section-title { font-family: 'Fraunces', serif; font-size: 17px; margin-bottom: 20px; display: flex; align-items: center; gap: 8px; }
-.section-num { width: 26px; height: 26px; border-radius: 50%; background: var(--accent-bg); color: var(--accent); font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+/* ── SECTIONS ── */
+.section { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 26px; margin-bottom: 18px; box-shadow: var(--shadow); }
+.section-title { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: var(--text2); margin-bottom: 20px; display: flex; align-items: center; gap: 8px; }
+.section-title::before { content: ''; display: block; width: 3px; height: 16px; background: var(--accent); border-radius: 2px; }
 
 /* ── FIELDS ── */
-.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-@media(max-width: 520px) { .form-row { grid-template-columns: 1fr; } }
-.form-group { margin-bottom: 16px; }
-.form-group:last-child { margin-bottom: 0; }
-label { display: block; font-size: 13px; font-weight: 600; color: var(--text2); margin-bottom: 6px; }
-label .req { color: var(--accent); margin-left: 2px; }
+.row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+@media(max-width: 500px) { .row2 { grid-template-columns: 1fr; } }
+.fg { margin-bottom: 14px; }
+.fg:last-child { margin-bottom: 0; }
+label { display: block; font-size: 12px; font-weight: 700; color: var(--text2); margin-bottom: 5px; text-transform: uppercase; letter-spacing: .05em; }
+label .opt { color: var(--text3); font-weight: 400; text-transform: none; letter-spacing: 0; margin-left: 4px; }
 input[type="text"], input[type="email"], input[type="tel"], select, textarea {
-  width: 100%; padding: 11px 14px; border: 1.5px solid var(--border);
-  border-radius: var(--radius); background: var(--bg); color: var(--text);
-  font-family: 'Plus Jakarta Sans', sans-serif; font-size: 14px;
+  width: 100%; padding: 10px 13px; border: 1.5px solid var(--border); border-radius: var(--radius);
+  background: var(--bg); color: var(--text); font-family: inherit; font-size: 14px;
   outline: none; transition: border-color .15s, box-shadow .15s;
 }
-input:focus, select:focus, textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(184,134,11,.1); }
+input:focus, select:focus, textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(184,134,11,.1); background: var(--surface); }
 input::placeholder, textarea::placeholder { color: var(--text3); }
-select { appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239e9891' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; padding-right: 32px; }
-textarea { min-height: 100px; resize: vertical; line-height: 1.6; }
+select { appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='%239e9891' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; padding-right: 30px; }
+textarea { min-height: 90px; resize: vertical; line-height: 1.6; }
 
-/* ── RADIO GROUP ── */
-.radio-group { display: flex; flex-direction: column; gap: 10px; }
-.radio-option { display: flex; align-items: flex-start; gap: 10px; padding: 12px 14px; border: 1.5px solid var(--border); border-radius: var(--radius); cursor: pointer; transition: all .12s; }
-.radio-option:hover { border-color: var(--border2); }
-.radio-option.selected { border-color: var(--accent); background: var(--accent-bg); }
-.radio-option input[type="radio"] { margin-top: 2px; accent-color: var(--accent); flex-shrink: 0; }
-.radio-label { font-size: 14px; font-weight: 500; }
-.radio-sub { font-size: 12px; color: var(--text2); margin-top: 2px; line-height: 1.4; }
+/* ── RADIO / CHECKBOX ── */
+.options { display: flex; flex-direction: column; gap: 8px; }
+.opt-row { display: flex; align-items: flex-start; gap: 10px; padding: 10px 13px; border: 1.5px solid var(--border); border-radius: var(--radius); cursor: pointer; transition: all .12s; }
+.opt-row:hover { border-color: var(--border2); background: var(--bg); }
+.opt-row.sel { border-color: var(--accent); background: var(--accent-bg); }
+.opt-row input { margin-top: 2px; accent-color: var(--accent); flex-shrink: 0; }
+.opt-row-label { font-size: 14px; font-weight: 500; line-height: 1.4; }
+.opt-row-sub { font-size: 12px; color: var(--text2); margin-top: 2px; }
+
+/* ── CONDITIONAL FIELDS ── */
+.cond { display: none; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--border); }
+.cond.show { display: block; }
 
 /* ── FILE UPLOAD ── */
-.file-zone { border: 2px dashed var(--border2); border-radius: var(--radius); padding: 28px 20px; text-align: center; cursor: pointer; transition: all .15s; position: relative; }
-.file-zone:hover, .file-zone.drag { border-color: var(--accent); background: var(--accent-bg); }
-.file-zone-icon { font-size: 28px; margin-bottom: 8px; }
-.file-zone-text { font-size: 14px; font-weight: 600; color: var(--text); margin-bottom: 4px; }
-.file-zone-sub { font-size: 12px; color: var(--text2); }
-.file-zone input[type="file"] { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; }
-.file-list { margin-top: 14px; display: flex; flex-direction: column; gap: 8px; }
-.file-item { display: flex; align-items: center; gap: 10px; padding: 8px 12px; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); font-size: 13px; }
-.file-item-icon { font-size: 16px; }
-.file-item-name { flex: 1; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.file-item-size { color: var(--text3); font-size: 11px; white-space: nowrap; }
-.file-item-remove { background: none; border: none; color: var(--text3); cursor: pointer; font-size: 16px; padding: 0 2px; line-height: 1; }
-.file-item-remove:hover { color: var(--red); }
-
-/* ── HINT BOX ── */
-.hint { background: var(--accent-bg); border: 1px solid rgba(184,134,11,.2); border-radius: var(--radius); padding: 12px 14px; font-size: 13px; color: var(--text2); line-height: 1.6; margin-top: 12px; }
-.hint strong { color: var(--accent); }
+.drop-zone { border: 2px dashed var(--border2); border-radius: var(--radius); padding: 24px 16px; text-align: center; cursor: pointer; transition: all .15s; position: relative; }
+.drop-zone:hover, .drop-zone.drag { border-color: var(--accent); background: var(--accent-bg); }
+.drop-zone input[type="file"] { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
+.drop-icon { font-size: 24px; margin-bottom: 6px; }
+.drop-text { font-size: 14px; font-weight: 600; margin-bottom: 3px; }
+.drop-sub { font-size: 12px; color: var(--text2); }
+.file-list { margin-top: 12px; display: flex; flex-direction: column; gap: 6px; }
+.file-row { display: flex; align-items: center; gap: 8px; padding: 7px 11px; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); font-size: 13px; }
+.file-row-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
+.file-row-size { color: var(--text3); font-size: 11px; white-space: nowrap; }
+.file-row-rm { background: none; border: none; color: var(--text3); cursor: pointer; font-size: 15px; padding: 0 2px; line-height: 1; }
+.file-row-rm:hover { color: var(--red); }
 
 /* ── SUBMIT ── */
-.submit-btn { width: 100%; padding: 15px; background: var(--accent); border: none; border-radius: var(--radius); color: #fff; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 16px; font-weight: 700; cursor: pointer; transition: background .15s; display: flex; align-items: center; justify-content: center; gap: 8px; }
-.submit-btn:hover { background: var(--accent2); }
+.err-box { display: none; background: var(--red-bg); border: 1px solid #fca5a5; border-radius: var(--radius); padding: 11px 14px; font-size: 13px; color: var(--red); margin-bottom: 16px; }
+.submit-btn { width: 100%; padding: 14px; background: var(--accent); border: none; border-radius: var(--radius); color: #fff; font-family: inherit; font-size: 15px; font-weight: 700; cursor: pointer; transition: background .15s; }
+.submit-btn:hover:not(:disabled) { background: var(--accent2); }
 .submit-btn:disabled { opacity: .5; cursor: not-allowed; }
-.submit-note { text-align: center; font-size: 12px; color: var(--text3); margin-top: 12px; line-height: 1.6; }
+.submit-note { text-align: center; font-size: 12px; color: var(--text3); margin-top: 10px; line-height: 1.6; }
 
-/* ── STATES ── */
-#loading { display: none; text-align: center; padding: 60px 20px; }
-.spinner { width: 44px; height: 44px; border: 3px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin .8s linear infinite; margin: 0 auto 20px; }
-@keyframes spin { to { transform: rotate(360deg); } }
-#loading p { color: var(--text2); font-size: 15px; margin-top: 8px; }
-
-#success { display: none; text-align: center; padding: 60px 20px; }
-.success-icon { width: 64px; height: 64px; border-radius: 50%; background: var(--green-bg); display: flex; align-items: center; justify-content: center; margin: 0 auto 20px; font-size: 28px; }
-#success h2 { font-family: 'Fraunces', serif; font-size: 24px; margin-bottom: 10px; }
-#success p { color: var(--text2); line-height: 1.7; max-width: 420px; margin: 0 auto; }
-
-#error-msg { display: none; background: var(--red-bg); border: 1px solid #fca5a5; border-radius: var(--radius); padding: 12px 16px; font-size: 14px; color: var(--red); margin-bottom: 16px; }
+/* ── LOADING / SUCCESS ── */
+#loading, #success { display: none; text-align: center; padding: 60px 20px; }
+.spinner { width: 40px; height: 40px; border: 3px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: sp .8s linear infinite; margin: 0 auto 18px; }
+@keyframes sp { to { transform: rotate(360deg); } }
+.ok-icon { width: 60px; height: 60px; border-radius: 50%; background: var(--green-bg); display: flex; align-items: center; justify-content: center; margin: 0 auto 18px; font-size: 26px; }
+#success h2 { font-family: 'Fraunces', serif; font-size: 22px; margin-bottom: 10px; }
+#success p { color: var(--text2); line-height: 1.7; max-width: 420px; margin: 0 auto 8px; }
+.ref-tag { display: inline-block; margin-top: 12px; padding: 4px 12px; border-radius: 20px; background: var(--accent-bg); color: var(--accent); font-size: 12px; font-weight: 600; font-family: monospace; }
 </style>
 </head>
 <body>
 <div class="page">
+
   <div class="header">
-    <div class="logo">
+    <a class="logo" href="/">
       <div class="logo-mark">A</div>
       <div class="logo-name">Auto Legal Group, LLP</div>
-    </div>
-    <h1 id="page-title">Settlement Agreement Request</h1>
-    <p id="page-sub">Please fill out this form to begin your settlement agreement process. Our team will review your request and reach out shortly.</p>
+    </a>
+    <h1 id="h-title">Settlement Agreement Request</h1>
+    <p id="h-sub">Submit a settlement agreement request on behalf of your client. Our team will review the file, prepare the draft, and follow up with you directly.</p>
   </div>
 
   <div class="lang-toggle">
-    <button class="lang-btn active" onclick="setLang('en')" id="btn-en">🇺🇸 English</button>
-    <button class="lang-btn" onclick="setLang('es')" id="btn-es">🇲🇽 Español</button>
+    <button class="lang-btn active" onclick="setLang('en')" id="btn-en">English</button>
+    <button class="lang-btn" onclick="setLang('es')" id="btn-es">Español</button>
   </div>
 
   <div id="form-wrap">
-    <div id="error-msg"></div>
+    <div class="err-box" id="err"></div>
 
-    <!-- Section 1: Client Info -->
+    <!-- ── SECTION 1: Client (buyer) info ── -->
     <div class="section">
-      <div class="section-title"><div class="section-num">1</div><span id="s1-title">Your Information</span></div>
-      <div class="form-row">
-        <div class="form-group">
-          <label for="firstName" id="lbl-first"><span class="en">First Name</span><span class="es" style="display:none">Nombre</span> <span class="req">*</span></label>
-          <input type="text" id="firstName" required placeholder="John" />
+      <div class="section-title" id="s1t">Client Information</div>
+
+      <div class="row2">
+        <div class="fg">
+          <label id="lbl-fn">First Name <span style="color:var(--red)">*</span></label>
+          <input type="text" id="firstName" placeholder="John" required />
         </div>
-        <div class="form-group">
-          <label for="lastName" id="lbl-last"><span class="en">Last Name</span><span class="es" style="display:none">Apellido</span> <span class="req">*</span></label>
-          <input type="text" id="lastName" required placeholder="Smith" />
+        <div class="fg">
+          <label id="lbl-ln">Last Name <span style="color:var(--red)">*</span></label>
+          <input type="text" id="lastName" placeholder="Smith" required />
         </div>
       </div>
-      <div class="form-row">
-        <div class="form-group">
-          <label for="phone"><span class="en">Phone Number</span><span class="es" style="display:none">Teléfono</span> <span class="req">*</span></label>
-          <input type="tel" id="phone" required placeholder="(555) 000-0000" />
+
+      <div class="row2">
+        <div class="fg">
+          <label id="lbl-ph">Phone <span style="color:var(--red)">*</span></label>
+          <input type="tel" id="phone" placeholder="(555) 000-0000" required />
         </div>
-        <div class="form-group">
-          <label for="email"><span class="en">Email Address</span><span class="es" style="display:none">Correo electrónico</span></label>
-          <input type="email" id="email" placeholder="john@email.com" />
+        <div class="fg">
+          <label id="lbl-em">Email <span class="opt" id="lbl-em-opt">(optional)</span></label>
+          <input type="email" id="email" placeholder="client@email.com" />
         </div>
+      </div>
+
+      <div class="fg">
+        <label id="lbl-ds">Dealership Name <span style="color:var(--red)">*</span></label>
+        <input type="text" id="dealership" placeholder="ABC Auto Sales, Inc." required />
       </div>
     </div>
 
-    <!-- Section 2: Dealership -->
+    <!-- ── SECTION 2: What are you doing ── -->
     <div class="section">
-      <div class="section-title"><div class="section-num">2</div><span id="s2-title">Dealership</span></div>
-      <div class="form-group">
-        <label for="dealership"><span class="en">Dealership Name</span><span class="es" style="display:none">Nombre del concesionario</span> <span class="req">*</span></label>
-        <input type="text" id="dealership" required placeholder="Auto Dealer, Inc." />
-      </div>
-    </div>
+      <div class="section-title" id="s2t">Work Description</div>
 
-    <!-- Section 3: What happened -->
-    <div class="section">
-      <div class="section-title"><div class="section-num">3</div><span id="s3-title">Your Situation</span></div>
-      <div class="form-group">
-        <label for="workDesc"><span class="en">Briefly describe the issue with your vehicle purchase</span><span class="es" style="display:none">Describa brevemente el problema con su compra</span> <span class="req">*</span></label>
-        <textarea id="workDesc" required placeholder="e.g. The dealer misrepresented the vehicle condition. I purchased a 2020 Honda Civic that was advertised as certified pre-owned but had undisclosed accident damage..."></textarea>
+      <div class="fg">
+        <label id="lbl-lang">Language Preference <span style="color:var(--red)">*</span></label>
+        <select id="language" onchange="onLangPref()">
+          <option value="">— Select —</option>
+          <option value="en">English</option>
+          <option value="es">Spanish / Español</option>
+        </select>
       </div>
-      <div class="form-group">
-        <label for="dealerGiving"><span class="en">What is the dealership offering to resolve this?</span><span class="es" style="display:none">¿Qué ofrece el concesionario para resolver esto?</span></label>
-        <textarea id="dealerGiving" placeholder="e.g. The dealer has agreed to pay $1,500 as a settlement..." style="min-height:80px"></textarea>
+
+      <div class="fg">
+        <label id="lbl-work">What are you doing for the customer? <span style="color:var(--red)">*</span></label>
+        <textarea id="workDesc" placeholder="Describe what action is being taken for the client..." required></textarea>
       </div>
-      <div class="form-group" id="already-group">
-        <label><span class="en">Has any resolution already taken place?</span><span class="es" style="display:none">¿Ya se ha producido alguna resolución?</span></label>
-        <div class="radio-group">
-          <label class="radio-option" onclick="selectRadio(this,'hasHappened','yes')">
+
+      <!-- Has this already happened? -->
+      <div class="fg">
+        <label id="lbl-hap">Has this already happened?</label>
+        <div class="options" id="hap-opts">
+          <label class="opt-row" onclick="pick(this,'hasHappened','yes')">
             <input type="radio" name="hasHappened" value="yes" />
-            <div><div class="radio-label en">Yes — repairs or refunds have already been made</div><div class="radio-label es" style="display:none">Sí — ya se han realizado reparaciones o reembolsos</div></div>
+            <div><div class="opt-row-label" id="hap-yes">Yes — this has already been done (e.g., repair completed, refund issued)</div></div>
           </label>
-          <label class="radio-option" onclick="selectRadio(this,'hasHappened','no')">
+          <label class="opt-row" onclick="pick(this,'hasHappened','no')">
             <input type="radio" name="hasHappened" value="no" />
-            <div><div class="radio-label en">No — nothing has happened yet</div><div class="radio-label es" style="display:none">No — aún no ha ocurrido nada</div></div>
+            <div><div class="opt-row-label" id="hap-no">No — this has not happened yet</div></div>
           </label>
         </div>
       </div>
-      <div class="form-group">
-        <label for="refundNotes"><span class="en">If a partial refund or deductions are involved, describe them</span><span class="es" style="display:none">Si hay un reembolso parcial o deducciones, descríbalos</span></label>
-        <input type="text" id="refundNotes" placeholder="e.g. Dealer already refunded $500 of the down payment..." />
+
+      <!-- Who is doing the work? -->
+      <div class="fg">
+        <label id="lbl-who">Who is doing the work?</label>
+        <div class="options" id="who-opts">
+          <label class="opt-row" onclick="pick(this,'whoWork','inhouse')">
+            <input type="radio" name="whoWork" value="inhouse" />
+            <div><div class="opt-row-label" id="who-in">The dealership is handling it in-house</div></div>
+          </label>
+          <label class="opt-row" onclick="pick(this,'whoWork','thirdparty'); showCond('cond-tp',true)">
+            <input type="radio" name="whoWork" value="thirdparty" />
+            <div><div class="opt-row-label" id="who-3p">Repairs are being done by a third-party vendor/shop</div></div>
+          </label>
+        </div>
+
+        <!-- Conditional: Third party info -->
+        <div class="cond" id="cond-tp">
+          <label id="lbl-tp">Third Party Details</label>
+          <input type="text" id="thirdParty" placeholder="Name of the repair shop or vendor..." />
+        </div>
       </div>
     </div>
 
-    <!-- Section 4: Documents -->
+    <!-- ── SECTION 3: What is the dealership giving ── -->
     <div class="section">
-      <div class="section-title"><div class="section-num">4</div><span id="s4-title">Documents</span></div>
-      <p style="font-size:13px;color:var(--text2);margin-bottom:14px;" id="docs-sub">Upload any documents related to your vehicle purchase. The most important is the <strong>Retail Installment Sales Contract (RISC)</strong> — it's the finance contract you signed at the dealership.</p>
-      <div class="file-zone" id="dropZone">
-        <input type="file" id="fileInput" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" multiple onchange="handleFiles(this.files)">
-        <div class="file-zone-icon">📎</div>
-        <div class="file-zone-text" id="fz-text">Click to upload or drag files here</div>
-        <div class="file-zone-sub" id="fz-sub">RISC contract, buyer's guide, or any other documents</div>
+      <div class="section-title" id="s3t">Settlement Terms</div>
+
+      <div class="fg">
+        <label id="lbl-give">What is the dealership giving in return? <span style="color:var(--red)">*</span></label>
+        <div class="options" id="give-opts">
+          <label class="opt-row" onclick="toggleCheck(this,'dealerGiving','cash')">
+            <input type="checkbox" name="dealerGiving" value="Cash payment / settlement" />
+            <div><div class="opt-row-label" id="give-cash">Cash payment / settlement</div></div>
+          </label>
+          <label class="opt-row" onclick="toggleCheck(this,'dealerGiving','repairs')">
+            <input type="checkbox" name="dealerGiving" value="Repairs to the vehicle" />
+            <div><div class="opt-row-label" id="give-rep">Repairs to the vehicle</div></div>
+          </label>
+          <label class="opt-row" onclick="toggleCheck(this,'dealerGiving','rescission')">
+            <input type="checkbox" name="dealerGiving" value="Rescission — client returns vehicle and deal is unwound" />
+            <div><div class="opt-row-label" id="give-resc">Rescission — client returns vehicle and deal is unwound</div></div>
+          </label>
+          <label class="opt-row" onclick="toggleCheck(this,'dealerGiving','refund'); maybeShowRefund()">
+            <input type="checkbox" name="dealerGiving" value="Partial refund" />
+            <div><div class="opt-row-label" id="give-ref">Partial refund of down payment or other amounts</div></div>
+          </label>
+          <label class="opt-row" onclick="toggleCheck(this,'dealerGiving','other')">
+            <input type="checkbox" name="dealerGiving" value="Other" />
+            <div><div class="opt-row-label" id="give-oth">Other</div></div>
+          </label>
+        </div>
+
+        <!-- Conditional: Refund details -->
+        <div class="cond" id="cond-refund">
+          <label id="lbl-ded">If refund is partial or includes deductions, describe them</label>
+          <input type="text" id="refundNotes" placeholder="e.g. $500 already paid; $200 deducted for mileage..." />
+        </div>
+      </div>
+    </div>
+
+    <!-- ── SECTION 4: Documents ── -->
+    <div class="section">
+      <div class="section-title" id="s4t">Documents to Upload</div>
+      <p id="s4sub" style="font-size:13px;color:var(--text2);margin-bottom:14px;line-height:1.6">Upload the RISC (Retail Installment Sales Contract), buyer's guide, deal jacket, and any other relevant documents. The agent will automatically identify the RISC and extract the deal information.</p>
+      <div class="drop-zone" id="dz">
+        <input type="file" id="fileInput" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" multiple onchange="addFiles(this.files)" />
+        <div class="drop-icon">📎</div>
+        <div class="drop-text" id="dz-text">Click to upload or drag files here</div>
+        <div class="drop-sub" id="dz-sub">PDF, Word, or images · Multiple files allowed</div>
       </div>
       <div class="file-list" id="fileList"></div>
-      <div class="hint">
-        <strong id="hint-title">Where to find the RISC:</strong>
-        <span id="hint-body"> It's the multi-page finance contract you signed at the dealership — usually titled "Retail Installment Sales Contract." Check your email from the dealership or look in your glove box.</span>
-      </div>
     </div>
 
-    <!-- Submit -->
-    <button class="submit-btn" onclick="submitForm()" id="submitBtn">
-      <span id="submit-label">Submit Request →</span>
+    <!-- ── SUBMIT ── -->
+    <button class="submit-btn" id="submitBtn" onclick="submit()">
+      <span id="submit-lbl">Submit Request →</span>
     </button>
-    <p class="submit-note" id="submit-note">Your information is confidential and will only be shared with your attorney at Auto Legal Group.</p>
+    <p class="submit-note" id="submit-note">This request will be assigned to a case manager immediately. All information is confidential.</p>
   </div>
 
   <!-- Loading -->
   <div id="loading">
     <div class="spinner"></div>
-    <h2 style="font-family:'Fraunces',serif;margin-bottom:8px" id="loading-title">Processing your request…</h2>
-    <p id="loading-sub">We're reading your documents and preparing your case. This takes about 20 seconds.</p>
+    <h2 style="font-family:'Fraunces',serif;font-size:22px;margin-bottom:8px" id="load-title">Processing submission…</h2>
+    <p id="load-sub" style="color:var(--text2)">Reading documents and preparing the case. This may take up to 30 seconds.</p>
   </div>
 
   <!-- Success -->
   <div id="success">
-    <div class="success-icon">✓</div>
-    <h2 id="success-title">Request Submitted</h2>
-    <p id="success-body">Thank you. Your case has been assigned to one of our team members who will review it and reach out to you shortly. If you have any questions, please call our office directly.</p>
-    <p style="margin-top:20px;color:var(--accent);font-size:13px" id="success-ref"></p>
+    <div class="ok-icon">✓</div>
+    <h2 id="ok-title">Request Submitted</h2>
+    <p id="ok-body">Your request has been received and assigned to a case manager. The team will begin drafting the settlement agreement and will contact you with updates.</p>
+    <div class="ref-tag" id="ok-ref" style="display:none"></div>
   </div>
 </div>
 
 <script>
 let lang = 'en';
-let selectedFiles = [];
+let files = [];
 
-const STRINGS = {
+// ── TRANSLATIONS ──
+const T = {
   en: {
-    pageTitle: 'Settlement Agreement Request',
-    pageSub: 'Please fill out this form to begin your settlement agreement process. Our team will review your request and reach out shortly.',
-    s1: 'Your Information', s2: 'Dealership', s3: 'Your Situation', s4: 'Documents',
-    fzText: 'Click to upload or drag files here',
-    fzSub: "RISC contract, buyer's guide, or any other documents",
-    hintTitle: 'Where to find the RISC:',
-    hintBody: " It's the multi-page finance contract you signed at the dealership — usually titled \"Retail Installment Sales Contract.\" Check your email from the dealership or look in your glove box.",
-    submit: 'Submit Request →',
-    submitNote: 'Your information is confidential and will only be shared with your attorney at Auto Legal Group.',
-    loadingTitle: 'Processing your request…',
-    loadingSub: 'We\'re reading your documents and preparing your case. This takes about 20 seconds.',
-    successTitle: 'Request Submitted',
-    successBody: 'Thank you. Your case has been assigned to one of our team members who will review it and reach out to you shortly.',
-    docsSub: 'Upload any documents related to your vehicle purchase. The most important is the <strong>Retail Installment Sales Contract (RISC)</strong> — it\'s the finance contract you signed at the dealership.',
+    hTitle:'Settlement Agreement Request', hSub:'Submit a settlement agreement request on behalf of your client. Our team will review the file, prepare the draft, and follow up with you directly.',
+    s1:'Client Information', s2:'Work Description', s3:'Settlement Terms', s4:'Documents to Upload',
+    lblFn:'First Name', lblLn:'Last Name', lblPh:'Phone', lblEm:'Email', lblEmOpt:'(optional)',
+    lblDs:'Dealership Name', lblLang:'Language Preference', lblWork:'What are you doing for the customer?',
+    lblHap:'Has this already happened?',
+    hapYes:'Yes — this has already been done (e.g., repair completed, refund issued)',
+    hapNo:'No — this has not happened yet',
+    lblWho:'Who is doing the work?',
+    whoIn:'The dealership is handling it in-house',
+    who3p:'Repairs are being done by a third-party vendor/shop',
+    lblTp:'Third Party Details',
+    lblGive:'What is the dealership giving in return?',
+    giveCash:'Cash payment / settlement', giveRep:'Repairs to the vehicle',
+    giveResc:'Rescission — client returns vehicle and deal is unwound',
+    giveRef:'Partial refund of down payment or other amounts', giveOth:'Other',
+    lblDed:'If refund is partial or includes deductions, describe them',
+    s4sub:'Upload the RISC (Retail Installment Sales Contract), buyer\'s guide, deal jacket, and any other relevant documents. The agent will automatically identify the RISC and extract the deal information.',
+    dzText:'Click to upload or drag files here', dzSub:'PDF, Word, or images · Multiple files allowed',
+    submitLbl:'Submit Request →', submitNote:'This request will be assigned to a case manager immediately. All information is confidential.',
+    loadTitle:'Processing submission…', loadSub:'Reading documents and preparing the case. This may take up to 30 seconds.',
+    okTitle:'Request Submitted', okBody:'Your request has been received and assigned to a case manager. The team will begin drafting the settlement agreement and will contact you with updates.',
+    errReq:'Please complete all required fields.',
   },
   es: {
-    pageTitle: 'Solicitud de Acuerdo de Liquidación',
-    pageSub: 'Por favor complete este formulario para iniciar su proceso de acuerdo de liquidación. Nuestro equipo revisará su solicitud y se comunicará con usted en breve.',
-    s1: 'Su Información', s2: 'Concesionario', s3: 'Su Situación', s4: 'Documentos',
-    fzText: 'Haga clic para subir o arrastre archivos aquí',
-    fzSub: 'Contrato RISC, guía del comprador u otros documentos',
-    hintTitle: 'Dónde encontrar el RISC:',
-    hintBody: ' Es el contrato de financiamiento de varias páginas que firmó en el concesionario, generalmente titulado "Retail Installment Sales Contract." Revise su correo electrónico del concesionario o búsquelo en la guantera.',
-    submit: 'Enviar Solicitud →',
-    submitNote: 'Su información es confidencial y solo se compartirá con su abogado en Auto Legal Group.',
-    loadingTitle: 'Procesando su solicitud…',
-    loadingSub: 'Estamos leyendo sus documentos y preparando su caso. Esto toma unos 20 segundos.',
-    successTitle: 'Solicitud Enviada',
-    successBody: 'Gracias. Su caso ha sido asignado a uno de los miembros de nuestro equipo, quien lo revisará y se comunicará con usted en breve.',
-    docsSub: 'Suba cualquier documento relacionado con la compra de su vehículo. El más importante es el <strong>Contrato de Venta a Plazos (RISC)</strong> — es el contrato de financiamiento que firmó en el concesionario.',
+    hTitle:'Solicitud de Acuerdo de Liquidación', hSub:'Envíe una solicitud de acuerdo de liquidación en nombre de su cliente. Nuestro equipo revisará el archivo, preparará el borrador y se comunicará con usted directamente.',
+    s1:'Información del Cliente', s2:'Descripción del Trabajo', s3:'Términos del Acuerdo', s4:'Documentos a Subir',
+    lblFn:'Nombre', lblLn:'Apellido', lblPh:'Teléfono', lblEm:'Correo electrónico', lblEmOpt:'(opcional)',
+    lblDs:'Nombre del Concesionario', lblLang:'Idioma del Cliente', lblWork:'¿Qué está haciendo para el cliente?',
+    lblHap:'¿Ya ha ocurrido esto?',
+    hapYes:'Sí — ya se ha realizado (por ejemplo, reparación completada, reembolso emitido)',
+    hapNo:'No — aún no ha ocurrido',
+    lblWho:'¿Quién realiza el trabajo?',
+    whoIn:'El concesionario lo maneja internamente',
+    who3p:'Las reparaciones las realiza un proveedor/taller externo',
+    lblTp:'Detalles del Tercero',
+    lblGive:'¿Qué ofrece el concesionario a cambio?',
+    giveCash:'Pago en efectivo / liquidación', giveRep:'Reparaciones al vehículo',
+    giveResc:'Rescisión — el cliente devuelve el vehículo y se deshace el trato',
+    giveRef:'Reembolso parcial del pago inicial u otras cantidades', giveOth:'Otro',
+    lblDed:'Si el reembolso es parcial o incluye deducciones, descríbalos',
+    s4sub:'Suba el RISC (Contrato de Venta a Plazos), la guía del comprador, el expediente del trato y cualquier otro documento relevante.',
+    dzText:'Haga clic para subir o arrastre archivos aquí', dzSub:'PDF, Word o imágenes · Se permiten varios archivos',
+    submitLbl:'Enviar Solicitud →', submitNote:'Esta solicitud se asignará a un gestor de casos de inmediato. Toda la información es confidencial.',
+    loadTitle:'Procesando solicitud…', loadSub:'Leyendo documentos y preparando el caso. Esto puede tomar hasta 30 segundos.',
+    okTitle:'Solicitud Enviada', okBody:'Su solicitud ha sido recibida y asignada a un gestor de casos. El equipo comenzará a redactar el acuerdo de liquidación y se comunicará con usted con actualizaciones.',
+    errReq:'Por favor complete todos los campos obligatorios.',
   }
 };
 
@@ -272,106 +340,138 @@ function setLang(l) {
   lang = l;
   document.getElementById('btn-en').classList.toggle('active', l === 'en');
   document.getElementById('btn-es').classList.toggle('active', l === 'es');
-  document.querySelectorAll('.en').forEach(el => el.style.display = l === 'en' ? '' : 'none');
-  document.querySelectorAll('.es').forEach(el => el.style.display = l === 'es' ? '' : 'none');
-  const s = STRINGS[l];
-  document.getElementById('page-title').textContent = s.pageTitle;
-  document.getElementById('page-sub').textContent = s.pageSub;
-  document.getElementById('s1-title').textContent = s.s1;
-  document.getElementById('s2-title').textContent = s.s2;
-  document.getElementById('s3-title').textContent = s.s3;
-  document.getElementById('s4-title').textContent = s.s4;
-  document.getElementById('fz-text').textContent = s.fzText;
-  document.getElementById('fz-sub').textContent = s.fzSub;
-  document.getElementById('hint-title').textContent = s.hintTitle;
-  document.getElementById('hint-body').textContent = s.hintBody;
-  document.getElementById('submit-label').textContent = s.submit;
-  document.getElementById('submit-note').textContent = s.submitNote;
-  document.getElementById('docs-sub').innerHTML = s.docsSub;
-  document.getElementById('loading-title').textContent = s.loadingTitle;
-  document.getElementById('loading-sub').textContent = s.loadingSub;
-  document.getElementById('success-title').textContent = s.successTitle;
-  document.getElementById('success-body').textContent = s.successBody;
+  const t = T[l];
+  document.getElementById('h-title').textContent = t.hTitle;
+  document.getElementById('h-sub').textContent = t.hSub;
+  document.getElementById('s1t').childNodes[1].textContent = ' ' + t.s1;
+  document.getElementById('s2t').childNodes[1].textContent = ' ' + t.s2;
+  document.getElementById('s3t').childNodes[1].textContent = ' ' + t.s3;
+  document.getElementById('s4t').childNodes[1].textContent = ' ' + t.s4;
+  document.getElementById('lbl-fn').firstChild.textContent = t.lblFn + ' ';
+  document.getElementById('lbl-ln').firstChild.textContent = t.lblLn + ' ';
+  document.getElementById('lbl-ph').firstChild.textContent = t.lblPh + ' ';
+  document.getElementById('lbl-em').firstChild.textContent = t.lblEm;
+  document.getElementById('lbl-em-opt').textContent = t.lblEmOpt;
+  document.getElementById('lbl-ds').firstChild.textContent = t.lblDs + ' ';
+  document.getElementById('lbl-lang').firstChild.textContent = t.lblLang + ' ';
+  document.getElementById('lbl-work').firstChild.textContent = t.lblWork + ' ';
+  document.getElementById('lbl-hap').textContent = t.lblHap;
+  document.getElementById('hap-yes').textContent = t.hapYes;
+  document.getElementById('hap-no').textContent = t.hapNo;
+  document.getElementById('lbl-who').textContent = t.lblWho;
+  document.getElementById('who-in').textContent = t.whoIn;
+  document.getElementById('who-3p').textContent = t.who3p;
+  document.getElementById('lbl-tp').textContent = t.lblTp;
+  document.getElementById('lbl-give').firstChild.textContent = t.lblGive + ' ';
+  document.getElementById('give-cash').textContent = t.giveCash;
+  document.getElementById('give-rep').textContent = t.giveRep;
+  document.getElementById('give-resc').textContent = t.giveResc;
+  document.getElementById('give-ref').textContent = t.giveRef;
+  document.getElementById('give-oth').textContent = t.giveOth;
+  document.getElementById('lbl-ded').textContent = t.lblDed;
+  document.getElementById('s4sub').textContent = t.s4sub;
+  document.getElementById('dz-text').textContent = t.dzText;
+  document.getElementById('dz-sub').textContent = t.dzSub;
+  document.getElementById('submit-lbl').textContent = t.submitLbl;
+  document.getElementById('submit-note').textContent = t.submitNote;
+  document.getElementById('load-title').textContent = t.loadTitle;
+  document.getElementById('load-sub').textContent = t.loadSub;
+  document.getElementById('ok-title').textContent = t.okTitle;
+  document.getElementById('ok-body').textContent = t.okBody;
 }
 
-function selectRadio(el, name, val) {
-  document.querySelectorAll(`[name="${name}"]`).forEach(r => {
-    r.closest('.radio-option').classList.remove('selected');
-  });
-  el.classList.add('selected');
+// ── RADIO / CHECKBOX HELPERS ──
+function pick(el, name, val) {
+  document.querySelectorAll(`[name="${name}"]`).forEach(r => r.closest('.opt-row').classList.remove('sel'));
+  el.classList.add('sel');
   el.querySelector('input').checked = true;
+  // Hide all conditional blocks for this group
+  if (name === 'whoWork') {
+    showCond('cond-tp', val === 'thirdparty');
+  }
+}
+
+function toggleCheck(el, name, key) {
+  el.classList.toggle('sel');
+  el.querySelector('input').checked = el.classList.contains('sel');
+}
+
+function maybeShowRefund() {
+  const checked = [...document.querySelectorAll('[name="dealerGiving"]')].some(c => c.checked && c.value.includes('refund'));
+  showCond('cond-refund', checked);
+}
+
+function showCond(id, show) {
+  document.getElementById(id).classList.toggle('show', show);
+}
+
+function onLangPref() {
+  // just a select — no conditional
 }
 
 // ── FILE HANDLING ──
-function handleFiles(files) {
-  for (const f of files) {
-    if (!selectedFiles.find(s => s.name === f.name && s.size === f.size)) {
-      selectedFiles.push(f);
-    }
+function addFiles(newFiles) {
+  for (const f of newFiles) {
+    if (!files.find(x => x.name === f.name && x.size === f.size)) files.push(f);
   }
-  renderFileList();
+  renderFiles();
 }
-
-function removeFile(idx) {
-  selectedFiles.splice(idx, 1);
-  renderFileList();
-}
-
-function renderFileList() {
-  const list = document.getElementById('fileList');
-  list.innerHTML = selectedFiles.map((f, i) => `
-    <div class="file-item">
-      <span class="file-item-icon">📄</span>
-      <span class="file-item-name">${esc(f.name)}</span>
-      <span class="file-item-size">${(f.size / 1024).toFixed(0)} KB</span>
-      <button class="file-item-remove" onclick="removeFile(${i})">×</button>
+function removeFile(i) { files.splice(i, 1); renderFiles(); }
+function renderFiles() {
+  document.getElementById('fileList').innerHTML = files.map((f, i) => `
+    <div class="file-row">
+      <span>📄</span>
+      <span class="file-row-name">${esc(f.name)}</span>
+      <span class="file-row-size">${(f.size/1024).toFixed(0)} KB</span>
+      <button class="file-row-rm" onclick="removeFile(${i})">×</button>
     </div>`).join('');
 }
 
-// Drag and drop
-const dz = document.getElementById('dropZone');
+const dz = document.getElementById('dz');
 dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('drag'); });
 dz.addEventListener('dragleave', () => dz.classList.remove('drag'));
-dz.addEventListener('drop', e => { e.preventDefault(); dz.classList.remove('drag'); handleFiles(e.dataTransfer.files); });
+dz.addEventListener('drop', e => { e.preventDefault(); dz.classList.remove('drag'); addFiles(e.dataTransfer.files); });
 
 // ── SUBMIT ──
-async function submitForm() {
-  const firstName  = document.getElementById('firstName').value.trim();
-  const lastName   = document.getElementById('lastName').value.trim();
-  const phone      = document.getElementById('phone').value.trim();
-  const dealership = document.getElementById('dealership').value.trim();
-  const workDesc   = document.getElementById('workDesc').value.trim();
+async function submit() {
+  const t = T[lang];
+  const firstName  = v('firstName');
+  const lastName   = v('lastName');
+  const phone      = v('phone');
+  const dealership = v('dealership');
+  const workDesc   = v('workDesc');
 
-  const errEl = document.getElementById('error-msg');
-  errEl.style.display = 'none';
+  if (!firstName || !lastName || !phone || !dealership || !workDesc) {
+    return showErr(t.errReq);
+  }
 
-  if (!firstName || !lastName) { showErr(lang === 'es' ? 'Ingrese su nombre completo.' : 'Please enter your full name.'); return; }
-  if (!phone)      { showErr(lang === 'es' ? 'Ingrese su número de teléfono.' : 'Please enter your phone number.'); return; }
-  if (!dealership) { showErr(lang === 'es' ? 'Ingrese el nombre del concesionario.' : 'Please enter the dealership name.'); return; }
-  if (!workDesc)   { showErr(lang === 'es' ? 'Describa el problema brevemente.' : 'Please describe the issue.'); return; }
+  const dealerGiving = [...document.querySelectorAll('[name="dealerGiving"]:checked')]
+    .map(c => c.value).join(', ');
+  const hasHappened = document.querySelector('[name="hasHappened"]:checked')?.value || '';
+  const whoWork     = document.querySelector('[name="whoWork"]:checked')?.value || '';
 
-  const btn = document.getElementById('submitBtn');
-  btn.disabled = true;
+  document.getElementById('err').style.display = 'none';
+  document.getElementById('submitBtn').disabled = true;
   document.getElementById('form-wrap').style.display = 'none';
   document.getElementById('loading').style.display = 'block';
 
-  // Convert all files to base64
   const filesData = [];
-  for (const f of selectedFiles) {
-    const b64 = await toBase64(f);
-    filesData.push({ name: f.name, type: f.type || 'application/pdf', data: b64 });
+  for (const f of files) {
+    filesData.push({ name: f.name, type: f.type || 'application/octet-stream', data: await toB64(f) });
   }
 
   const payload = {
     firstName, lastName, phone,
-    email:        document.getElementById('email').value.trim(),
+    email:       v('email'),
     dealership,
     workDesc,
-    dealerGiving: document.getElementById('dealerGiving').value.trim(),
-    hasHappened:  document.querySelector('[name="hasHappened"]:checked')?.value || '',
-    refundNotes:  document.getElementById('refundNotes').value.trim(),
-    language:     lang,
-    files:        filesData,
+    dealerGiving,
+    hasHappened,
+    whoWork,
+    thirdParty:  v('thirdParty'),
+    refundNotes: v('refundNotes'),
+    language:    v('language') || lang,
+    files:       filesData,
   };
 
   try {
@@ -381,37 +481,21 @@ async function submitForm() {
       body: JSON.stringify(payload),
     });
     const d = await r.json();
-    if (d.ok) {
-      document.getElementById('loading').style.display = 'none';
-      document.getElementById('success').style.display = 'block';
-      if (d.ref) document.getElementById('success-ref').textContent = 'Case reference: ' + d.ref;
-    } else {
-      throw new Error(d.error || 'Submission failed');
-    }
+    if (!r.ok || !d.ok) throw new Error(d.error || `Server error ${r.status}`);
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('success').style.display = 'block';
+    if (d.ref) { const el = document.getElementById('ok-ref'); el.textContent = 'Case #' + d.ref; el.style.display = 'inline-block'; }
   } catch (e) {
     document.getElementById('loading').style.display = 'none';
     document.getElementById('form-wrap').style.display = 'block';
-    btn.disabled = false;
-    showErr(lang === 'es' ? 'Error al enviar. Inténtelo de nuevo.' : 'Submission failed — please try again. ' + e.message);
+    document.getElementById('submitBtn').disabled = false;
+    showErr((lang === 'es' ? 'Error al enviar. ' : 'Submission failed. ') + e.message);
   }
 }
 
-function toBase64(file) {
-  return new Promise((resolve, reject) => {
-    const r = new FileReader();
-    r.onload = e => resolve(e.target.result.split(',')[1]);
-    r.onerror = reject;
-    r.readAsDataURL(file);
-  });
-}
-
-function showErr(msg) {
-  const el = document.getElementById('error-msg');
-  el.textContent = msg;
-  el.style.display = 'block';
-  window.scrollTo({ top: 0, behavior: 'smooth' });
-}
-
+function v(id) { return document.getElementById(id)?.value?.trim() || ''; }
+function toB64(f) { return new Promise((res, rej) => { const r = new FileReader(); r.onload = e => res(e.target.result.split(',')[1]); r.onerror = rej; r.readAsDataURL(f); }); }
+function showErr(msg) { const e = document.getElementById('err'); e.textContent = msg; e.style.display = 'block'; window.scrollTo({top:0,behavior:'smooth'}); }
 function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 </script>
 </body>

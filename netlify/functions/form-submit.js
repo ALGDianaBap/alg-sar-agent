@@ -27,15 +27,25 @@ const CMS = [
   { name: 'Viena',     slackId: 'U09Q7NGHA0H' },
 ];
 
-exports.handler = async (event) => {
-  const cors = {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'Content-Type',
-    'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  };
+const cors = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'Content-Type',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+};
 
+exports.handler = async (event) => {
   if (event.httpMethod === 'OPTIONS') return { statusCode: 204, headers: cors, body: '' };
   if (event.httpMethod !== 'POST')    return { statusCode: 405, headers: cors, body: 'Method Not Allowed' };
+
+  try {
+    return await processSubmission(event);
+  } catch (e) {
+    console.error('form-submit unhandled error:', e.message, e.stack);
+    return { statusCode: 500, headers: { ...cors, 'Content-Type': 'application/json' }, body: JSON.stringify({ error: e.message || 'Internal error' }) };
+  }
+};
+
+async function processSubmission(event) {
 
   let body;
   try { body = JSON.parse(event.body); }
@@ -176,7 +186,7 @@ exports.handler = async (event) => {
     headers: { ...cors, 'Content-Type': 'application/json' },
     body: JSON.stringify({ ok: true, id, ref: id.slice(-6) }),
   };
-};
+}
 
 // ── HELPERS ────────────────────────────────────────────────────────────────────
 

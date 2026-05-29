@@ -9,6 +9,9 @@
 [functions."zoho-webhook"]
   timeout = 26
 
+[functions."form-submit"]
+  timeout = 26
+
 [[redirects]]
   from = "/submit"
   to = "/submit.html"
