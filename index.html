@@ -1116,9 +1116,14 @@ function buildAgentPanel(item) {
         <div class="agent-step" id="astep-1">
           <div class="agent-step-num">1</div>
           <div class="agent-step-body">
-            <div class="agent-step-label">Upload RISC Contract (PDF)</div>
-            <div class="agent-step-note" style="margin-bottom:8px">The RISC contains buyer info, vehicle details, VIN, purchase date, and financial terms.</div>
-            <input type="file" id="risc-file-${item.id}" accept=".pdf" style="margin-bottom:8px" />
+            <div class="agent-step-label">RISC Contract (PDF)</div>
+            ${item.hasStoredFiles
+              ? `<div class="agent-step-note ok" style="margin-bottom:8px">✓ Files uploaded via form — will be fetched automatically</div>`
+              : `<div class="agent-step-note" style="margin-bottom:8px">The RISC contains buyer info, vehicle details, VIN, purchase date, and financial terms.</div>`
+            }
+            <input type="file" id="risc-file-${item.id}" accept=".pdf" style="margin-bottom:8px"
+              placeholder="${item.hasStoredFiles ? 'Optional: override with a different file' : ''}" />
+            ${item.hasStoredFiles ? `<div style="font-size:11px;color:var(--text3)">Optional: upload a different file to override the one from the form</div>` : ''}
           </div>
         </div>
         <div class="agent-step" id="astep-2">
@@ -1316,7 +1321,7 @@ async function runAgent(id) {
   markAgentStepActive(2);
   let fields = null;
   try {
-    if (state.demoMode || !file) {
+    if (state.demoMode || !filesToProcess.length) {
       fields = {
         buyer_name: item.buyer || 'DAVID J SANCHEZ', buyer_address: '123 Main St, San Jose CA 95101',
         dealer_name: item.dealer || 'AUTO RACE, INC.', vehicle_year: '2018',
