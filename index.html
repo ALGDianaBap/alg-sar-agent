@@ -975,21 +975,33 @@ function renderDetail(item) {
     agentSection = buildAgentPanel(item);
   }
 
-  // Attachments
-  let attachSection = '';
-  if (item.attachments && item.attachments.length) {
-    attachSection = `
-      <div class="card">
-        <div class="card-header"><div class="card-title">📎 Attachments from Zoho</div></div>
-        <div class="card-body" style="padding:8px 14px">
-          ${item.attachments.map(a => `
-            <div class="attach-item">
-              <div class="attach-icon">📄</div>
-              <div class="attach-name">${esc(a.name||a)}</div>
-            </div>`).join('')}
-        </div>
-      </div>`;
-  }
+  // Attachments — always shown, supports manual PDF upload + extraction
+  const attachList = (item.attachments || []).map(a => {
+    const name = a.name || a;
+    const isRisc = riscLikelihood(name) >= 3;
+    const badge = a.extracted
+      ? `<span style="font-size:10px;color:var(--green);font-weight:600;background:var(--green-bg);padding:1px 5px;border-radius:3px">Extracted ✓</span>`
+      : (isRisc ? `<span style="font-size:10px;color:var(--accent);background:var(--accent-bg);padding:1px 5px;border-radius:3px">RISC</span>` : '');
+    return `<div class="attach-item">
+      <div class="attach-icon">📄</div>
+      <div class="attach-name">${esc(name)}</div>
+      ${badge}
+    </div>`;
+  }).join('');
+
+  const attachSection = `
+    <div class="card" style="margin-bottom:0">
+      <div class="card-header">
+        <div class="card-title">📎 Form Attachments</div>
+        <label class="btn xs" style="cursor:pointer">
+          ↑ Upload PDF
+          <input type="file" accept=".pdf" multiple style="display:none" onchange="extractFromUploads('${item.id}',this)">
+        </label>
+      </div>
+      <div class="card-body" style="padding:8px 14px" id="attach-list-${item.id}">
+        ${attachList || '<div class="empty-list" style="padding:10px">No attachments — upload a PDF to extract deal data</div>'}
+      </div>
+    </div>`;
 
   main.innerHTML = `
     <div class="detail-wrap">
@@ -1054,7 +1066,7 @@ function renderDetail(item) {
           </div>
         </div>
         <div style="display:flex;flex-direction:column;gap:0">
-          ${attachSection || `<div class="card" style="margin-bottom:0"><div class="card-header"><div class="card-title">📎 Attachments</div></div><div class="card-body"><div class="empty-list" style="padding:16px">No attachments</div></div></div>`}
+          ${attachSection}
         </div>
       </div>
 
@@ -1143,6 +1155,113 @@ function buildAgentPanel(item) {
     </div>`;
 }
 
+// ── RISC EXTRACTION (shared by Run Agent and manual upload) ───────────────────
+
+// Score a filename by how likely it is to be a RISC contract.
+// 4 = almost certainly RISC, 0 = almost certainly not, 1 = unknown (try it)
+function riscLikelihood(filename) {
+  const n = (filename || '').toLowerCase();
+  if (/risc|retail.?install|law.?553|553.ca/.test(n)) return 4;
+  if (/contract|installment|sales.?contract/.test(n)) return 3;
+  if (/agreement/.test(n)) return 2;
+  if (/buyer.?guide|sticker|insurance|gap|warranty|odometer|disclosure/.test(n)) return 0;
+  return 1;
+}
+
+// Call Claude via the ai.js proxy to extract RISC fields from a base64 PDF.
+// Returns { not_risc: true } if the document is not a RISC, or the fields object.
+async function callAIExtract(base64Pdf) {
+  const r = await fetch(API.ai, {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-20250514', max_tokens: 1500,
+      system: `You extract data from California RISC contracts (LAW 553-CA) for an auto law firm.
+FIRST: determine if this is a RISC (Retail Installment Sales Contract). If it is NOT a RISC (e.g. Buyer's Guide, insurance addendum, GAP waiver, odometer statement, sticker) return exactly: {"not_risc":true}
+If it IS a RISC, return ONLY valid JSON no markdown:
+{"buyer_name":"ALL CAPS full name","buyer_address":"full address","dealer_name":"ALL CAPS dealership name","vehicle_year":"4 digits","vehicle_make":"","vehicle_model":"","vehicle_new_used":"New or Used","vin":"17-char VIN","odometer":"numeric string","purchase_date":"MM/DD/YYYY from signature page","settlement_amount":"leave blank — not on RISC","settlement_amount_words":"","down_payment":"numeric only no $ or commas","total_sale_price":"","monthly_payment":"","apr":"","miles_driven":"same as odometer","notes":"any flags","missing_fields":["fields not found"]}`,
+      messages: [{
+        role: 'user',
+        content: [
+          { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: base64Pdf }},
+          { type: 'text', text: 'Is this a RISC? If yes extract all fields and return the JSON. If no return {"not_risc":true}.' }
+        ]
+      }]
+    })
+  });
+  const d = await r.json();
+  if (d.error) throw new Error(d.error.message || 'AI error');
+  const text = d.content?.find(b => b.type === 'text')?.text || '';
+  return JSON.parse(text.replace(/```json\n?/g,'').replace(/```/g,'').trim());
+}
+
+// Read a File object and attempt RISC extraction.
+// Returns the fields if successful, null if not a RISC.
+function extractFileAsRISC(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      try {
+        const base64 = e.target.result.split(',')[1];
+        const result = await callAIExtract(base64);
+        resolve(result.not_risc ? null : result);
+      } catch (e) { reject(e); }
+    };
+    reader.onerror = () => reject(new Error('File read error'));
+    reader.readAsDataURL(file);
+  });
+}
+
+// Manual upload handler — accepts one or more PDFs, tries each in RISC-likelihood order.
+async function extractFromUploads(sarId, fileInput) {
+  const files = Array.from(fileInput.files || []);
+  fileInput.value = '';
+  if (!files.length) return;
+
+  const sorted = [...files].sort((a, b) => riscLikelihood(b.name) - riscLikelihood(a.name));
+  const item = findSAR(sarId);
+  if (!item) return;
+
+  notify('info', `Analyzing ${sorted.length} file${sorted.length > 1 ? 's' : ''}…`);
+
+  for (const file of sorted) {
+    try {
+      const fields = await extractFileAsRISC(file);
+      if (!fields) {
+        if (sorted.length > 1) notify('info', `${file.name}: not a RISC — trying next…`);
+        continue;
+      }
+      // Apply extracted fields
+      const merged = {
+        ...(item.fields || {}),
+        ...fields,
+        buyer_name:  fields.buyer_name  || item.buyer  || '',
+        dealer_name: fields.dealer_name || item.dealer || '',
+      };
+      if (!item.attachments) item.attachments = [];
+      const existing = item.attachments.find(a => (a.name||a) === file.name);
+      if (existing) { if (typeof existing === 'object') existing.extracted = true; }
+      else item.attachments.push({ name: file.name, source: 'manual', extracted: true });
+
+      const vehicle = [fields.vehicle_year, fields.vehicle_make, fields.vehicle_model].filter(Boolean).join(' ');
+      const changes = {
+        fields: merged, attachments: item.attachments,
+        buyer: merged.buyer_name, dealer: merged.dealer_name,
+        vehicle: vehicle || item.vehicle,
+        vin: fields.vin || item.vin,
+        amount: fields.settlement_amount || item.amount,
+      };
+      Object.assign(item, changes);
+      await patchSAR(sarId, changes);
+      notify('ok', `Extracted from ${file.name}`);
+      openSAR(sarId);
+      return;
+    } catch (e) {
+      notify('err', `${file.name}: ${e.message}`);
+    }
+  }
+  notify('err', 'No RISC contract found in the uploaded file(s).');
+}
+
 // ── RUN AGENT ─────────────────────────────────────────────────────────────────
 let agentState = {}; // per-SAR agent run state
 
@@ -1167,36 +1286,40 @@ async function runAgent(id) {
 
   markAgentStep(1, 'done', file ? `${file.name} (${(file.size/1024).toFixed(0)} KB)` : 'Skipped (demo)');
 
-  // Step 2: AI extraction
+  // Step 2: AI extraction — try files in RISC-likelihood order
   setAgentStepNote(2, 'Extracting fields…');
   markAgentStepActive(2);
   let fields = null;
   try {
     if (state.demoMode || !file) {
-      // Demo mode — return sample fields
       fields = {
-        buyer_name: item.buyer || 'DAVID J SANCHEZ',
-        buyer_address: '123 Main St, San Jose CA 95101',
-        dealer_name: item.dealer || 'AUTO RACE, INC.',
-        dealer_address: '456 Auto Blvd, San Jose CA 95110',
-        vehicle_year: '2018', vehicle_make: 'Chevrolet', vehicle_model: 'Tahoe',
-        vin: '1GNSKBKC3JR287327', odometer: '12,000',
-        purchase_date: '04/26/2026', settlement_amount: '800.00',
+        buyer_name: item.buyer || 'DAVID J SANCHEZ', buyer_address: '123 Main St, San Jose CA 95101',
+        dealer_name: item.dealer || 'AUTO RACE, INC.', vehicle_year: '2018',
+        vehicle_make: 'Chevrolet', vehicle_model: 'Tahoe', vin: '1GNSKBKC3JR287327',
+        odometer: '12,000', purchase_date: '04/26/2026', settlement_amount: '800.00',
         settlement_amount_words: 'Eight Hundred', down_payment: '3,000.00',
         miles_driven: '3,000', notes: '', missing_fields: []
       };
     } else {
-      fields = await extractRISC(file);
+      // Sort all selected files by RISC likelihood, try each until one succeeds
+      const allFiles = fileInput?.files ? Array.from(fileInput.files) : [file];
+      const sorted = [...allFiles].sort((a, b) => riscLikelihood(b.name) - riscLikelihood(a.name));
+      for (const f of sorted) {
+        setAgentStepNote(2, `Checking ${f.name}…`);
+        fields = await extractFileAsRISC(f);
+        if (fields) { markAgentStep(2, 'done', `RISC found in ${f.name}`); break; }
+        setAgentStepNote(2, `${f.name}: not a RISC — trying next…`);
+      }
+      if (!fields) throw new Error('No RISC contract found among uploaded files');
     }
-    // Update item with extracted data
-    item.buyer = fields.buyer_name || item.buyer;
+    item.buyer  = fields.buyer_name  || item.buyer;
     item.dealer = fields.dealer_name || item.dealer;
     item.vehicle = [fields.vehicle_year, fields.vehicle_make, fields.vehicle_model].filter(Boolean).join(' ');
-    item.vin = fields.vin || '';
+    item.vin    = fields.vin || '';
     item.amount = fields.settlement_amount || '';
     item.fields = fields;
     saveState();
-    markAgentStep(2, 'done', `Extracted: ${item.vehicle || 'vehicle'}, VIN: ${fields.vin || '—'}`);
+    markAgentStep(2, 'done', `${item.vehicle || 'vehicle'} · VIN ${fields.vin || '—'}`);
   } catch(e) {
     markAgentStep(2, 'err', 'Extraction failed: ' + e.message);
     if (btn) { btn.innerHTML = '▶ Run Agent'; btn.disabled = false; }
@@ -1219,41 +1342,7 @@ async function runAgent(id) {
   notify('ok', 'Fields extracted — select Clio matter to continue');
 }
 
-async function extractRISC(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = async (e) => {
-      try {
-        const base64 = e.target.result.split(',')[1];
-        const r = await fetch(API.ai, {
-          method: 'POST',
-          headers: {'Content-Type':'application/json'},
-          body: JSON.stringify({
-            model: 'claude-sonnet-4-20250514',
-            max_tokens: 1500,
-            system: `You extract structured data from California RISC (Retail Installment Sales Contract) PDF documents for an auto law firm. Return ONLY valid JSON with no markdown. The RISC is form LAW 553-CA. Extract exactly these fields: {"buyer_name":"ALL CAPS full name","buyer_address":"full address","dealer_name":"ALL CAPS dealership name","dealer_address":"","vehicle_year":"","vehicle_make":"","vehicle_model":"","vehicle_new_used":"New or Used","vin":"","odometer":"","purchase_date":"MM/DD/YYYY from signature page","settlement_amount":"","settlement_amount_words":"","down_payment":"numeric string","total_sale_price":"","monthly_payment":"","apr":"","miles_driven":"odometer reading","notes":"any flags","missing_fields":["list of fields not found"]}`,
-            messages: [{
-              role: 'user',
-              content: [{
-                type: 'document',
-                source: { type: 'base64', media_type: 'application/pdf', data: base64 }
-              }, {
-                type: 'text',
-                text: 'Extract all fields from this RISC contract. Return only the JSON object.'
-              }]
-            }]
-          })
-        });
-        const d = await r.json();
-        const text = d.content?.find(b=>b.type==='text')?.text || '';
-        const cleaned = text.replace(/```json\n?/g,'').replace(/```/g,'').trim();
-        resolve(JSON.parse(cleaned));
-      } catch(e) { reject(e); }
-    };
-    reader.onerror = () => reject(new Error('File read error'));
-    reader.readAsDataURL(file);
-  });
-}
+// extractRISC replaced by extractFileAsRISC + callAIExtract above
 
 function markAgentStep(num, state, note) {
   const step = document.getElementById('astep-' + num);

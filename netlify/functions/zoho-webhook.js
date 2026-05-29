@@ -151,17 +151,30 @@ exports.handler = async (event) => {
           pipelineLog.push('✗ No usable entry returned from any URL format');
         } else {
           pipelineLog.push('✓ Entry fetched — fields: ' + Object.keys(entry).slice(0, 15).join(', '));
-          const fileUrl = findFileUrlInEntry(entry);
-          if (!fileUrl) {
-            pipelineLog.push('✗ No file URL in entry — check Zoho webhook "Include file URLs" setting');
+          const fileUrls = findFileUrlsInEntry(entry);
+          if (!fileUrls.length) {
+            pipelineLog.push('✗ No file URLs in entry — check Zoho webhook "Include file URLs" setting');
           } else {
-            pipelineLog.push('✓ File URL found');
-            try {
-              riscBuffer = await downloadWithTimeout(fileUrl, 10000, { 'Authorization': `Zoho-oauthtoken ${zohoToken}` });
-              pipelineLog.push(`✓ PDF downloaded (${riscBuffer.length} bytes)`);
-            } catch (e) {
-              pipelineLog.push('✗ PDF download failed: ' + e.message);
+            pipelineLog.push(`Found ${fileUrls.length} file URL(s): ${fileUrls.map(f => f.name).join(', ')}`);
+            // Try each file in RISC-likelihood order; stop at first successful RISC extraction
+            for (const { url, name } of fileUrls) {
+              try {
+                const buf = await downloadWithTimeout(url, 10000, { 'Authorization': `Zoho-oauthtoken ${zohoToken}` });
+                pipelineLog.push(`✓ Downloaded ${name} (${buf.length} bytes)`);
+                // Quick Claude check: is this a RISC?
+                const testResult = await extractRISCFields(buf);
+                if (testResult && !testResult.not_risc) {
+                  riscBuffer = buf;
+                  pipelineLog.push(`✓ RISC confirmed in ${name}`);
+                  break;
+                } else {
+                  pipelineLog.push(`  ${name}: not a RISC — trying next`);
+                }
+              } catch (e) {
+                pipelineLog.push(`✗ ${name}: ${e.message}`);
+              }
             }
+            if (!riscBuffer) pipelineLog.push('✗ None of the files were identified as a RISC contract');
           }
         }
       } catch (e) {
@@ -411,24 +424,44 @@ function zohoApiGet(token, path) {
   });
 }
 
-// Walk all fields in an entry object looking for a file download URL.
-function findFileUrlInEntry(entry) {
-  if (!entry || typeof entry !== 'object') return null;
-  for (const value of Object.values(entry)) {
+// Score a filename by RISC likelihood (higher = more likely to be the RISC).
+function riscScore(filename) {
+  const n = (filename || '').toLowerCase();
+  if (/risc|retail.?install|law.?553|553.ca/.test(n)) return 4;
+  if (/contract|installment|sales.?contract/.test(n)) return 3;
+  if (/agreement/.test(n)) return 2;
+  if (/buyer.?guide|sticker|insurance|gap|warranty|odometer|disclosure/.test(n)) return 0;
+  return 1;
+}
+
+// Walk all fields in an entry object and collect all file download URLs,
+// sorted by RISC likelihood based on filename.
+function findFileUrlsInEntry(entry) {
+  if (!entry || typeof entry !== 'object') return [];
+  const found = []; // [{ url, name }]
+
+  for (const [key, value] of Object.entries(entry)) {
     if (!value) continue;
-    // Direct URL string
-    if (typeof value === 'string' && /^https?:\/\//i.test(value)) return value;
-    // Object with a url property (some Zoho API formats)
-    if (typeof value === 'object' && value.url && /^https?:\/\//i.test(value.url)) return value.url;
-    // Array of file objects
-    if (Array.isArray(value)) {
+    if (typeof value === 'string' && /^https?:\/\//i.test(value)) {
+      found.push({ url: value, name: key });
+    } else if (typeof value === 'object' && !Array.isArray(value) && value.url) {
+      found.push({ url: value.url, name: value.filename || value.name || key });
+    } else if (Array.isArray(value)) {
       for (const item of value) {
-        if (typeof item === 'string' && /^https?:\/\//i.test(item)) return item;
-        if (item && item.url && /^https?:\/\//i.test(item.url)) return item.url;
+        if (typeof item === 'string' && /^https?:\/\//i.test(item)) found.push({ url: item, name: key });
+        else if (item && item.url) found.push({ url: item.url, name: item.filename || item.name || key });
       }
     }
   }
-  return null;
+
+  // Sort highest RISC score first
+  return found.sort((a, b) => riscScore(b.name) - riscScore(a.name));
+}
+
+// Legacy single-URL helper kept for callers that only need one URL
+function findFileUrlInEntry(entry) {
+  const urls = findFileUrlsInEntry(entry);
+  return urls.length ? urls[0].url : null;
 }
 
 async function extractRISCFields(pdfBuffer) {
@@ -436,7 +469,7 @@ async function extractRISCFields(pdfBuffer) {
   const requestBody = JSON.stringify({
     model: 'claude-sonnet-4-20250514',
     max_tokens: 1500,
-    system: 'You extract structured data from California RISC (Retail Installment Sales Contract) PDFs for an auto law firm. Return ONLY valid JSON, no markdown. The form is LAW 553-CA. Extract: {"buyer_name":"ALL CAPS full name","buyer_address":"full address","dealer_name":"ALL CAPS dealership name","dealer_address":"","vehicle_year":"4 digits","vehicle_make":"","vehicle_model":"","vehicle_new_used":"New or Used","vin":"17-char VIN","odometer":"numeric","purchase_date":"MM/DD/YYYY from signature page","settlement_amount":"leave blank","settlement_amount_words":"leave blank","down_payment":"numeric only no $ sign","total_sale_price":"","monthly_payment":"","apr":"","miles_driven":"same as odometer","notes":"any issues or flags","missing_fields":["list any fields not found"]}',
+    system: 'You extract data from California RISC contracts (LAW 553-CA) for an auto law firm. FIRST: check if this is a RISC (Retail Installment Sales Contract). If it is NOT a RISC (e.g. Buyer\'s Guide, insurance addendum, GAP waiver, odometer statement), return exactly: {"not_risc":true}. If it IS a RISC, return ONLY valid JSON no markdown: {"buyer_name":"ALL CAPS full name","buyer_address":"full address","dealer_name":"ALL CAPS dealership name","vehicle_year":"4 digits","vehicle_make":"","vehicle_model":"","vehicle_new_used":"New or Used","vin":"17-char VIN","odometer":"numeric","purchase_date":"MM/DD/YYYY from signature page","settlement_amount":"leave blank","settlement_amount_words":"leave blank","down_payment":"numeric only no $ sign","total_sale_price":"","monthly_payment":"","apr":"","miles_driven":"same as odometer","notes":"any flags","missing_fields":[]}',
     messages: [{
       role: 'user',
       content: [
