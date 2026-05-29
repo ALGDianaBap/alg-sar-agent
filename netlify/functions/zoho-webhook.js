@@ -127,6 +127,9 @@ exports.handler = async (event) => {
   const pipelineLog = []; // temporary: posted to Slack so we can debug
 
   // (a) Direct URL in webhook payload (rarely present but check first)
+  // Log the raw attachment value so we can see if Zoho is already sending a URL
+  pipelineLog.push(`Attachment raw value: "${String(rawAttach || '').slice(0, 200)}"`);
+
   const directUrl = (() => {
     if (!rawAttach) return null;
     const first = (Array.isArray(rawAttach) ? String(rawAttach[0]) : String(rawAttach)).split(',')[0].trim();
@@ -151,6 +154,11 @@ exports.handler = async (event) => {
       pipelineLog.push('✗ ZOHO_FORM_NAME env var not set');
     } else {
       pipelineLog.push(`Zoho token ✓  formName="${formName}"  orgName="${orgName}"  entryId="${entryId || 'not in payload'}"`);
+
+      // First: diagnostic call to discover available API paths
+      const { status: diagStatus, body: diagBody } = await zohoApiGet(zohoToken, `/api/v1/${orgName}`);
+      pipelineLog.push(`Discovery /api/v1/${orgName} → HTTP ${diagStatus}: ${diagBody.slice(0, 120)}`);
+
       try {
         const { entry, debugLines } = await fetchZohoEntry(zohoToken, formName, entryId, orgName);
         // Always show API call results so we can diagnose failures
@@ -385,17 +393,26 @@ async function fetchZohoEntry(token, formName, entryId, orgName) {
   // Build URL candidates in order of most-likely-correct.
   // Zoho Forms API requires: /api/v1/{org}/form/{formName}/...
   const org = orgName || '';
+  // Try every plausible Zoho Forms API URL format.
+  // The correct one appears to be /api/v1/{org}/{form}/entries (no /form/ segment).
   const candidates = entryId ? [
+    org  && `/api/v1/${org}/${formName}/entry/${encodeURIComponent(entryId)}`,
     org  && `/api/v1/${org}/form/${formName}/entry/${encodeURIComponent(entryId)}`,
-    org  && `/api/v1/${org}/form/${formName}/entries/${encodeURIComponent(entryId)}`,
            `/api/v1/${formName}/entry/${encodeURIComponent(entryId)}`,
            `/api/v1/form/${formName}/entry/${encodeURIComponent(entryId)}`,
   ].filter(Boolean) : [
+    // Without /form/ segment — most likely correct per Zoho Forms API docs
+    org  && `/api/v1/${org}/${formName}/entries?page=1&per_page=1`,
+    org  && `/api/v1/${org}/${formName}/report/All_Entries`,
+    // With /form/ segment
     org  && `/api/v1/${org}/form/${formName}/entries?page=1&per_page=1`,
-    org  && `/api/v1/${org}/form/${formName}/report/All_Entries?per_page=1`,
+    org  && `/api/v1/${org}/form/${formName}/report/All_Entries`,
+    // Without org prefix
            `/api/v1/${formName}/entries?page=1&per_page=1`,
-           `/api/v1/${formName}/report/All_Entries?per_page=1`,
+           `/api/v1/${formName}/report/All_Entries`,
            `/api/v1/form/${formName}/entries?page=1&per_page=1`,
+    // Lowercase form name variant (Zoho can be case-sensitive)
+    org  && `/api/v1/${org}/${formName.toLowerCase()}/entries?page=1&per_page=1`,
   ].filter(Boolean);
 
   for (const path of candidates) {
