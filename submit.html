@@ -378,6 +378,18 @@ async function go(){
   document.getElementById('fw').style.display='none';
   document.getElementById('loading').style.display='block';
 
+  // Check total file size — Netlify hard limit is 6MB for request body
+  const totalBytes = files.reduce((s,f)=>s+f.size,0);
+  if(totalBytes > 4*1024*1024){
+    document.getElementById('loading').style.display='none';
+    document.getElementById('fw').style.display='block';
+    document.getElementById('sb').disabled=false;
+    showErr(lang==='es'
+      ? 'Los archivos superan 4MB en total. Por favor suba archivos más pequeños o uno a la vez.'
+      : 'Total file size exceeds 4MB. Please upload smaller files or upload them one at a time.');
+    return;
+  }
+
   const fd=[];
   for(const f of files) fd.push({name:f.name,type:f.type||'application/octet-stream',data:await b64(f)});
 
