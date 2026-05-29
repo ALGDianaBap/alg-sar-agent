@@ -441,6 +441,7 @@ const API = {
   slack:     '/.netlify/functions/slack-notify',
   docx:      '/.netlify/functions/generate-docx',
   sars:      '/.netlify/functions/sars',
+  getFiles:  '/.netlify/functions/get-files',
 };
 const SLACK_SAR_CHANNEL = 'C09QF0PRLJ2';
 const STORAGE_KEY = 'alg_sar_v2';
@@ -1280,17 +1281,34 @@ async function runAgent(id) {
 
   agentState[id] = { step: 1 };
 
-  // Step 1: Read RISC file
+  // Step 1: Get RISC file — from manual upload, stored files (native form), or demo
   const fileInput = document.getElementById('risc-file-' + id);
-  const file = fileInput?.files?.[0];
+  const manualFile = fileInput?.files?.[0];
+  let filesToProcess = manualFile ? [manualFile] : [];
 
-  if (!file && !state.demoMode) {
+  // If no manual upload but SAR has stored files (native form submission), fetch them
+  if (!filesToProcess.length && item.hasStoredFiles && !state.demoMode) {
+    setAgentStepNote(1, 'Fetching uploaded files…');
+    try {
+      const r = await fetch(API.getFiles + '?id=' + item.id);
+      if (r.ok) {
+        const stored = await r.json(); // [{name, type, data (base64)}]
+        // Convert to File-like objects the extraction flow can handle
+        filesToProcess = stored.map(f => ({ name: f.name, _base64: f.data, _type: f.type }));
+        markAgentStep(1, 'done', `${stored.length} file(s) from form: ${stored.map(f=>f.name).join(', ')}`);
+      }
+    } catch(e) {
+      setAgentStepNote(1, 'Could not fetch stored files: ' + e.message, 'err');
+    }
+  }
+
+  if (!filesToProcess.length && !state.demoMode) {
     setAgentStepNote(2, '⚠ No PDF uploaded — please upload the RISC contract.', 'err');
     if (btn) { btn.innerHTML = '▶ Run Agent'; btn.disabled = false; }
     return;
   }
 
-  markAgentStep(1, 'done', file ? `${file.name} (${(file.size/1024).toFixed(0)} KB)` : 'Skipped (demo)');
+  markAgentStep(1, 'done', filesToProcess.length ? `${filesToProcess.length} file(s) ready` : 'Skipped (demo)');
 
   // Step 2: AI extraction — try files in RISC-likelihood order
   setAgentStepNote(2, 'Extracting fields…');
@@ -1307,12 +1325,15 @@ async function runAgent(id) {
         miles_driven: '3,000', notes: '', missing_fields: []
       };
     } else {
-      // Sort all selected files by RISC likelihood, try each until one succeeds
-      const allFiles = fileInput?.files ? Array.from(fileInput.files) : [file];
+      // Sort all files by RISC likelihood, try each until one succeeds
+      const allFiles = filesToProcess.length ? filesToProcess
+        : fileInput?.files ? Array.from(fileInput.files) : [];
       const sorted = [...allFiles].sort((a, b) => riscLikelihood(b.name) - riscLikelihood(a.name));
       for (const f of sorted) {
         setAgentStepNote(2, `Checking ${f.name}…`);
-        fields = await extractFileAsRISC(f);
+        // Handle both real File objects and stored {_base64} objects
+        fields = f._base64 ? await callAIExtract(f._base64).then(r => r.not_risc ? null : r).catch(() => null)
+                           : await extractFileAsRISC(f);
         if (fields) { markAgentStep(2, 'done', `RISC found in ${f.name}`); break; }
         setAgentStepNote(2, `${f.name}: not a RISC — trying next…`);
       }
