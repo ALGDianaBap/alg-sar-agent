@@ -1175,10 +1175,13 @@ async function callAIExtract(base64Pdf) {
     method: 'POST', headers: {'Content-Type':'application/json'},
     body: JSON.stringify({
       model: 'claude-sonnet-4-20250514', max_tokens: 1500,
-      system: `You extract data from California RISC contracts (LAW 553-CA) for an auto law firm.
-FIRST: determine if this is a RISC (Retail Installment Sales Contract). If it is NOT a RISC (e.g. Buyer's Guide, insurance addendum, GAP waiver, odometer statement, sticker) return exactly: {"not_risc":true}
-If it IS a RISC, return ONLY valid JSON no markdown:
-{"buyer_name":"ALL CAPS full name","buyer_address":"full address","dealer_name":"ALL CAPS dealership name","vehicle_year":"4 digits","vehicle_make":"","vehicle_model":"","vehicle_new_used":"New or Used","vin":"17-char VIN","odometer":"numeric string","purchase_date":"MM/DD/YYYY from signature page","settlement_amount":"leave blank — not on RISC","settlement_amount_words":"","down_payment":"numeric only no $ or commas","total_sale_price":"","monthly_payment":"","apr":"","miles_driven":"same as odometer","notes":"any flags","missing_fields":["fields not found"]}`,
+      system: `You extract data from vehicle purchase contracts for a California auto law firm.
+Identify the document by its CONTENT and STRUCTURE, not its filename or label.
+A California Retail Installment Sales Contract (RISC / LAW 553-CA) has ALL of these: a buyer name+address section, a dealer/seller-creditor section, a vehicle description with VIN and odometer, a price breakdown (cash price, down payment, amount financed), an APR disclosure, and signature blocks.
+If this document contains those elements — even if unlabeled, scanned poorly, or has a generic filename — treat it as a RISC and extract the fields.
+Only return {"not_risc":true} if the document clearly cannot contain these fields (e.g. it is only a Buyer's Guide, insurance certificate, GAP addendum with no purchase price, or DMV form with no buyer purchase info).
+If it IS a RISC or auto purchase contract, return ONLY valid JSON no markdown:
+{"buyer_name":"ALL CAPS full name","buyer_address":"full address","dealer_name":"ALL CAPS dealership name","vehicle_year":"4 digits","vehicle_make":"","vehicle_model":"","vehicle_new_used":"New or Used","vin":"17-char VIN","odometer":"numeric","purchase_date":"MM/DD/YYYY from signature page","settlement_amount":"leave blank","settlement_amount_words":"","down_payment":"numeric only no $ or commas","total_sale_price":"","monthly_payment":"","apr":"","miles_driven":"same as odometer","notes":"any flags","missing_fields":[]}`,
       messages: [{
         role: 'user',
         content: [
@@ -1217,6 +1220,8 @@ async function extractFromUploads(sarId, fileInput) {
   fileInput.value = '';
   if (!files.length) return;
 
+  // Sort by RISC likelihood (filename hint) but always try every file —
+  // documents often have generic names like scan001.pdf.
   const sorted = [...files].sort((a, b) => riscLikelihood(b.name) - riscLikelihood(a.name));
   const item = findSAR(sarId);
   if (!item) return;
@@ -1227,7 +1232,8 @@ async function extractFromUploads(sarId, fileInput) {
     try {
       const fields = await extractFileAsRISC(file);
       if (!fields) {
-        if (sorted.length > 1) notify('info', `${file.name}: not a RISC — trying next…`);
+        // Claude said not a RISC — try next file if available
+        if (sorted.length > 1) notify('info', `${file.name}: no contract found — trying next…`);
         continue;
       }
       // Apply extracted fields

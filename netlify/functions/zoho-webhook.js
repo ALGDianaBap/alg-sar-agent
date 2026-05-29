@@ -98,15 +98,24 @@ exports.handler = async (event) => {
   // Zoho sends entry ID alongside form fields — try every known key variant.
   const entryId  = pick('Entry_Id', 'entry_id', 'entryId', 'Entry Id', 'Submission_Id', 'Record_Id', 'ID');
 
-  // Form name: extract just the slug from whatever was stored in ZOHO_FORM_NAME.
-  // Users sometimes paste the full URL — pull the part after /form/.
+  // Parse form name AND org name from ZOHO_FORM_NAME (full URL or slug).
+  // The Zoho API requires the org name prefix: /api/v1/{org}/form/{formName}/entries
   const rawFormName = process.env.ZOHO_FORM_NAME
     || pick('Form_Name', 'form_name', 'formName', 'Form Name');
-  const formName = (() => {
-    if (!rawFormName) return '';
-    if (rawFormName.includes('/form/')) return rawFormName.split('/form/')[1].split('/')[0];
-    if (rawFormName.includes('/')) return rawFormName.split('/').filter(Boolean).pop();
-    return rawFormName;
+  const { formName, orgName } = (() => {
+    if (!rawFormName) return { formName: '', orgName: '' };
+    // Full URL: https://forms.zoho.com/autolegalgroupllp/form/SettlementAgreementRequestForm
+    if (rawFormName.includes('/form/')) {
+      const afterHost = rawFormName.replace(/^https?:\/\/[^/]+\//, ''); // autolegalgroupllp/form/Name
+      const parts = afterHost.split('/form/');
+      return { orgName: parts[0], formName: parts[1].split('/')[0] };
+    }
+    // Slash-separated without /form/: org/formName
+    if (rawFormName.includes('/')) {
+      const segs = rawFormName.split('/').filter(Boolean);
+      return { orgName: segs.length > 1 ? segs[0] : '', formName: segs[segs.length - 1] };
+    }
+    return { formName: rawFormName, orgName: '' };
   })();
 
   // ── 3. DOWNLOAD RISC PDF ──────────────────────────────────────────────────
@@ -141,9 +150,9 @@ exports.handler = async (event) => {
     } else if (!formName) {
       pipelineLog.push('✗ ZOHO_FORM_NAME env var not set');
     } else {
-      pipelineLog.push(`Zoho token ✓  formName="${formName}"  entryId="${entryId || 'not in payload'}"`);
+      pipelineLog.push(`Zoho token ✓  formName="${formName}"  orgName="${orgName}"  entryId="${entryId || 'not in payload'}"`);
       try {
-        const { entry, debugLines } = await fetchZohoEntry(zohoToken, formName, entryId);
+        const { entry, debugLines } = await fetchZohoEntry(zohoToken, formName, entryId, orgName);
         // Always show API call results so we can diagnose failures
         debugLines.forEach(l => pipelineLog.push('  ' + l));
 
@@ -370,19 +379,24 @@ function downloadWithTimeout(url, timeoutMs, extraHeaders = {}) {
 // Fetch a Zoho Forms entry, trying multiple URL formats.
 // Returns { entry, debugLines } — debugLines go into the pipeline Slack log
 // so we can see exactly what the API returns on every attempt.
-async function fetchZohoEntry(token, formName, entryId) {
+async function fetchZohoEntry(token, formName, entryId, orgName) {
   const debugLines = [];
 
-  // Build list of URL candidates — Zoho's API docs are inconsistent about
-  // whether the org prefix or /form/ segment is required.
+  // Build URL candidates in order of most-likely-correct.
+  // Zoho Forms API requires: /api/v1/{org}/form/{formName}/...
+  const org = orgName || '';
   const candidates = entryId ? [
-    `/api/v1/${formName}/entry/${encodeURIComponent(entryId)}`,
-    `/api/v1/${formName}/entries/${encodeURIComponent(entryId)}`,
-  ] : [
-    `/api/v1/${formName}/entries?page=1&per_page=1`,
-    `/api/v1/${formName}/report/All_Entries?per_page=1`,
-    `/api/v1/form/${formName}/entries?page=1&per_page=1`,
-  ];
+    org  && `/api/v1/${org}/form/${formName}/entry/${encodeURIComponent(entryId)}`,
+    org  && `/api/v1/${org}/form/${formName}/entries/${encodeURIComponent(entryId)}`,
+           `/api/v1/${formName}/entry/${encodeURIComponent(entryId)}`,
+           `/api/v1/form/${formName}/entry/${encodeURIComponent(entryId)}`,
+  ].filter(Boolean) : [
+    org  && `/api/v1/${org}/form/${formName}/entries?page=1&per_page=1`,
+    org  && `/api/v1/${org}/form/${formName}/report/All_Entries?per_page=1`,
+           `/api/v1/${formName}/entries?page=1&per_page=1`,
+           `/api/v1/${formName}/report/All_Entries?per_page=1`,
+           `/api/v1/form/${formName}/entries?page=1&per_page=1`,
+  ].filter(Boolean);
 
   for (const path of candidates) {
     const { status, body } = await zohoApiGet(token, path);
@@ -469,7 +483,12 @@ async function extractRISCFields(pdfBuffer) {
   const requestBody = JSON.stringify({
     model: 'claude-sonnet-4-20250514',
     max_tokens: 1500,
-    system: 'You extract data from California RISC contracts (LAW 553-CA) for an auto law firm. FIRST: check if this is a RISC (Retail Installment Sales Contract). If it is NOT a RISC (e.g. Buyer\'s Guide, insurance addendum, GAP waiver, odometer statement), return exactly: {"not_risc":true}. If it IS a RISC, return ONLY valid JSON no markdown: {"buyer_name":"ALL CAPS full name","buyer_address":"full address","dealer_name":"ALL CAPS dealership name","vehicle_year":"4 digits","vehicle_make":"","vehicle_model":"","vehicle_new_used":"New or Used","vin":"17-char VIN","odometer":"numeric","purchase_date":"MM/DD/YYYY from signature page","settlement_amount":"leave blank","settlement_amount_words":"leave blank","down_payment":"numeric only no $ sign","total_sale_price":"","monthly_payment":"","apr":"","miles_driven":"same as odometer","notes":"any flags","missing_fields":[]}',
+    system: `You extract data from vehicle purchase contracts for a California auto law firm.
+Identify the document by its CONTENT and STRUCTURE, not its filename or label.
+A California Retail Installment Sales Contract (RISC / LAW 553-CA) has ALL of these: a buyer name+address section, a dealer/seller-creditor section, a vehicle description with VIN and odometer, a price breakdown (cash price, down payment, amount financed), an APR disclosure, and signature blocks.
+If this document contains those elements — even if it is unlabeled, scanned poorly, or has a generic filename — treat it as a RISC and extract the fields.
+Only return {"not_risc":true} if the document clearly cannot contain these fields (e.g. it is only a Buyer's Guide, an insurance certificate, a GAP addendum with no purchase price, or a DMV form).
+If it IS a RISC or auto purchase contract, return ONLY valid JSON no markdown: {"buyer_name":"ALL CAPS full name","buyer_address":"full address","dealer_name":"ALL CAPS dealership name","vehicle_year":"4 digits","vehicle_make":"","vehicle_model":"","vehicle_new_used":"New or Used","vin":"17-char VIN","odometer":"numeric","purchase_date":"MM/DD/YYYY from signature page","settlement_amount":"leave blank","settlement_amount_words":"leave blank","down_payment":"numeric only no $ sign","total_sale_price":"","monthly_payment":"","apr":"","miles_driven":"same as odometer","notes":"any flags","missing_fields":[]}`,
     messages: [{
       role: 'user',
       content: [
