@@ -1,17 +1,11 @@
 /**
- * Native SAR intake — fast intake only (< 2s, no RISC extraction).
- * Only requires built-in Node 'https'. All optional dependencies loaded
- * inline with try/catch so a missing module never prevents the handler
- * from returning a proper JSON response.
+ * Native SAR intake — fast intake only.
+ * Every async op has an explicit timeout so the function always responds
+ * before Netlify's 10s limit, regardless of Blobs/Slack latency.
  */
 
 const https = require('https');
-
-// Use _blobs.js wrapper — same as every other function in this project.
-// Requiring @netlify/blobs directly inside try/catch causes zisi (Netlify's
-// bundler) to skip it from the bundle, causing a 502 on startup.
 const { store: getStore } = require('./_blobs');
-const blobsAvailable = true;
 
 const SLACK_CHANNEL = 'C09QF0PRLJ2';
 const CMS = [
@@ -23,6 +17,10 @@ const CMS = [
   { name: 'Viena',     slackId: 'U09Q7NGHA0H' },
 ];
 
+// Hard cap on any single async op — prevents silent hangs from causing 502
+const cap = (promise, ms = 4000) =>
+  Promise.race([promise, new Promise((_, r) => setTimeout(() => r(new Error(`timeout ${ms}ms`)), ms))]);
+
 exports.handler = async (event) => {
   const cors = {
     'Access-Control-Allow-Origin': '*',
@@ -31,58 +29,48 @@ exports.handler = async (event) => {
   };
 
   if (event.httpMethod === 'OPTIONS') return { statusCode: 204, headers: cors, body: '' };
-  if (event.httpMethod !== 'POST') return { statusCode: 405, headers: cors, body: 'Method Not Allowed' };
+  if (event.httpMethod !== 'POST')    return { statusCode: 405, headers: cors, body: 'Method Not Allowed' };
 
-  // Everything inside one big try/catch — guaranteed JSON response
   try {
     let body;
-    try {
-      body = JSON.parse(event.body);
-    } catch (e) {
-      return { statusCode: 400, headers: { ...cors, 'Content-Type': 'application/json' }, body: JSON.stringify({ error: 'Invalid JSON body' }) };
-    }
+    try { body = JSON.parse(event.body); }
+    catch (e) { return { statusCode: 400, headers: { ...cors, 'Content-Type': 'application/json' }, body: JSON.stringify({ error: 'Invalid JSON' }) }; }
 
     const {
       dealerNameFirst = '', dealerNameLast = '', dealershipName = '',
       phone = '', email = '', workDesc = '', language = 'en',
       hasHappened = '', whoWork = '', thirdParty = '',
-      dealerGiving = '', refundNotes = '',
-      fileNames = [], // just filenames, no binary data — files uploaded separately
+      dealerGiving = '', refundNotes = '', fileNames = [],
     } = body;
 
     if (!dealerNameFirst || !dealerNameLast || !dealershipName || !workDesc) {
       return { statusCode: 400, headers: { ...cors, 'Content-Type': 'application/json' }, body: JSON.stringify({ error: 'Missing required fields' }) };
     }
 
-    const buyer   = `${dealerNameFirst} ${dealerNameLast}`.toUpperCase();
-    const dealer  = dealershipName.toUpperCase();
-    const isResc  = /rescission|rescind|return.*vehicle|unwind/i.test(workDesc + dealerGiving);
-    const id      = Date.now().toString();
+    const buyer  = `${dealerNameFirst} ${dealerNameLast}`.toUpperCase();
+    const dealer = dealershipName.toUpperCase();
+    const isResc = /rescission|rescind|return.*vehicle|unwind/i.test(workDesc + dealerGiving);
+    const id     = Date.now().toString();
 
-    // ── Assign CM ─────────────────────────────────────────────────────────
+    // ── CM round-robin (with timeout) ─────────────────────────────────────
     let cm = CMS[0];
-    if (blobsAvailable) {
-      try {
-        const s   = _getStore('sar-meta');
-        const rr  = await s.get('rr-index', { type: 'json' }).catch(() => null);
-        const idx = ((rr?.idx) ?? 0) % CMS.length;
-        cm = CMS[idx];
-        await s.set('rr-index', JSON.stringify({ idx: (idx + 1) % CMS.length }));
-      } catch (e) { console.warn('RR index error:', e.message); }
-    }
+    try {
+      const s   = getStore('sar-meta');
+      const rr  = await cap(s.get('rr-index', { type: 'json' }), 3000).catch(() => null);
+      const idx = ((rr?.idx) ?? 0) % CMS.length;
+      cm = CMS[idx];
+      await cap(s.set('rr-index', JSON.stringify({ idx: (idx + 1) % CMS.length })), 3000).catch(() => {});
+    } catch (e) { console.warn('RR:', e.message); }
 
-    // Files are uploaded separately after this request (one per request via store-file.js)
-    const attachments = (fileNames || []).map(n => ({ name: n, source: 'native-form', extracted: false }));
-    const hasStoredFiles = fileNames.length > 0; // files will be stored by subsequent store-file calls
-
-    // ── Build SAR record ──────────────────────────────────────────────────
+    // ── SAR record (with timeout) ──────────────────────────────────────────
     const sarData = {
       id, created: new Date().toISOString(),
       status: 'new', source: 'native-form', urgency: 'normal',
       buyer, dealer, phone, email, language,
       dealType: isResc ? 'rescission' : 'cash_keep',
       vehicle: '', vin: '', amount: '',
-      attachments, hasStoredFiles,
+      attachments: fileNames.map(n => ({ name: n, source: 'native-form', extracted: false })),
+      hasStoredFiles: fileNames.length > 0,
       fields: null, matter: null,
       assignee: cm.name, assigneeSlackId: cm.slackId,
       attorney: null, attorneySlackId: null,
@@ -92,26 +80,23 @@ exports.handler = async (event) => {
       reviewNotes: '', timeEntries: [],
     };
 
-    if (blobsAvailable) {
-      try {
-        await _getStore('sar-records').set(id, JSON.stringify(sarData));
-      } catch (e) { console.warn('SAR record storage failed:', e.message); }
-    }
+    await cap(getStore('sar-records').set(id, JSON.stringify(sarData)), 4000)
+      .catch(e => console.warn('SAR store failed:', e.message));
 
-    // ── Slack ─────────────────────────────────────────────────────────────
+    // ── Slack (with timeout) ───────────────────────────────────────────────
     const dealLabel = isResc ? 'Rescission' : 'Cash & Keep';
     const langLabel = language === 'es' ? 'Spanish' : 'English';
-    const fileNames = attachments.map(a => a.name).join(', ') || '—';
-    const ctxLines  = [workDesc, dealerGiving].filter(Boolean).map(l => `> ${l.slice(0, 100)}`).join('\n');
-
+    const ctx = [workDesc, dealerGiving].filter(Boolean).map(l => `> ${l.slice(0, 100)}`).join('\n');
     const slackText =
       `📋 *New SAR — <@${cm.slackId}> assigned*\n\n` +
       `*Dealer Name:* ${buyer}\n*Dealership:* ${dealer}\n` +
       `*Type:* ${dealLabel} · ${langLabel}\n*Phone:* ${phone || '—'}\n` +
-      (ctxLines ? `\n*From form:*\n${ctxLines}\n` : '') +
-      `\n📎 ${fileNames}\n▶️ Open SAR Agent → Run Agent to extract and generate draft`;
+      (ctx ? `\n*From form:*\n${ctx}\n` : '') +
+      (fileNames.length ? `\n📎 ${fileNames.join(', ')}\n` : '') +
+      `▶️ Open SAR Agent → Run Agent to extract and generate draft`;
 
-    await postSlack(SLACK_CHANNEL, slackText).catch(e => console.warn('Slack:', e.message));
+    await cap(postSlack(SLACK_CHANNEL, slackText), 4000)
+      .catch(e => console.warn('Slack failed:', e.message));
 
     return {
       statusCode: 200,
@@ -120,28 +105,17 @@ exports.handler = async (event) => {
     };
 
   } catch (e) {
-    console.error('form-submit caught:', e.message, e.stack);
-    return {
-      statusCode: 500,
-      headers: { 'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json' },
-      body: JSON.stringify({ error: e.message || 'Server error' }),
-    };
+    console.error('form-submit error:', e.message);
+    return { statusCode: 500, headers: { 'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json' }, body: JSON.stringify({ error: e.message }) };
   }
 };
 
 function postSlack(channel, text) {
   const token = process.env.SLACK_BOT_TOKEN;
   if (!token) return Promise.resolve();
-  const body = JSON.stringify({
-    channel, text: text.replace(/[*_`>]/g, '').slice(0, 80),
-    blocks: [{ type: 'section', text: { type: 'mrkdwn', text } }],
-  });
+  const body = JSON.stringify({ channel, text: text.slice(0, 80), blocks: [{ type: 'section', text: { type: 'mrkdwn', text } }] });
   return new Promise((resolve) => {
-    const opts = {
-      hostname: 'slack.com', path: '/api/chat.postMessage', method: 'POST',
-      headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json', 'Content-Length': String(Buffer.byteLength(body)) },
-    };
-    const req = https.request(opts, res => { res.resume(); res.on('end', resolve); });
+    const req = https.request({ hostname: 'slack.com', path: '/api/chat.postMessage', method: 'POST', headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json', 'Content-Length': String(Buffer.byteLength(body)) } }, res => { res.resume(); res.on('end', resolve); });
     req.on('error', resolve);
     req.write(body); req.end();
   });
