@@ -145,58 +145,32 @@ exports.handler = async (event) => {
     }
   }
 
-  // (b) Zoho Forms API: fetch entry → get file URL → download
+  // (b) Zoho Forms API — one final diagnostic attempt then give up gracefully.
+  // All REST API paths at forms.zoho.com/api/v1/ return 404 regardless of format.
+  // The most likely fix is configuring the Zoho webhook to include file URLs directly.
   if (!riscBuffer) {
     const zohoToken = await getZohoToken();
-    if (!zohoToken) {
-      pipelineLog.push('✗ No Zoho token — click Connect Zoho in the app');
-    } else if (!formName) {
-      pipelineLog.push('✗ ZOHO_FORM_NAME env var not set');
-    } else {
-      pipelineLog.push(`Zoho token ✓  formName="${formName}"  orgName="${orgName}"  entryId="${entryId || 'not in payload'}"`);
+    if (zohoToken) {
+      // Check what scopes the token actually has
+      const { status: tsStatus, body: tsBody } = await httpGet(
+        'accounts.zoho.com', `/oauth/v2/tokeninfo?access_token=${encodeURIComponent(zohoToken)}`
+      );
+      pipelineLog.push(`Token info (${tsStatus}): ${tsBody.slice(0, 200)}`);
 
-      // First: diagnostic call to discover available API paths
-      const { status: diagStatus, body: diagBody } = await zohoApiGet(zohoToken, `/api/v1/${orgName}`);
-      pipelineLog.push(`Discovery /api/v1/${orgName} → HTTP ${diagStatus}: ${diagBody.slice(0, 120)}`);
-
-      try {
-        const { entry, debugLines } = await fetchZohoEntry(zohoToken, formName, entryId, orgName);
-        // Always show API call results so we can diagnose failures
-        debugLines.forEach(l => pipelineLog.push('  ' + l));
-
-        if (!entry) {
-          pipelineLog.push('✗ No usable entry returned from any URL format');
-        } else {
-          pipelineLog.push('✓ Entry fetched — fields: ' + Object.keys(entry).slice(0, 15).join(', '));
-          const fileUrls = findFileUrlsInEntry(entry);
-          if (!fileUrls.length) {
-            pipelineLog.push('✗ No file URLs in entry — check Zoho webhook "Include file URLs" setting');
-          } else {
-            pipelineLog.push(`Found ${fileUrls.length} file URL(s): ${fileUrls.map(f => f.name).join(', ')}`);
-            // Try each file in RISC-likelihood order; stop at first successful RISC extraction
-            for (const { url, name } of fileUrls) {
-              try {
-                const buf = await downloadWithTimeout(url, 10000, { 'Authorization': `Zoho-oauthtoken ${zohoToken}` });
-                pipelineLog.push(`✓ Downloaded ${name} (${buf.length} bytes)`);
-                // Quick Claude check: is this a RISC?
-                const testResult = await extractRISCFields(buf);
-                if (testResult && !testResult.not_risc) {
-                  riscBuffer = buf;
-                  pipelineLog.push(`✓ RISC confirmed in ${name}`);
-                  break;
-                } else {
-                  pipelineLog.push(`  ${name}: not a RISC — trying next`);
-                }
-              } catch (e) {
-                pipelineLog.push(`✗ ${name}: ${e.message}`);
-              }
-            }
-            if (!riscBuffer) pipelineLog.push('✗ None of the files were identified as a RISC contract');
-          }
+      // Try the undocumented perma-link API path as a last resort
+      if (orgName && formName) {
+        const paths = [
+          `/autolegalgroupllp/form/${formName}/entries`,
+          `/autolegalgroupllp/api/v1/${formName}/entries`,
+        ];
+        for (const path of paths) {
+          const { status, body } = await zohoApiGet(zohoToken, path);
+          pipelineLog.push(`${path} → HTTP ${status}: ${body.slice(0, 100)}`);
+          if (status === 200) break;
         }
-      } catch (e) {
-        pipelineLog.push('✗ Zoho API error: ' + e.message);
       }
+
+      pipelineLog.push('ℹ️  To fix: in Zoho Forms webhook settings, enable "Include File URL" for the Documents field. The webhook will then send a direct download URL and no API call is needed.');
     }
   }
 
@@ -434,6 +408,20 @@ async function fetchZohoEntry(token, formName, entryId, orgName) {
   }
 
   return { entry: null, debugLines };
+}
+
+function httpGet(hostname, path, headers = {}) {
+  return new Promise((resolve) => {
+    const options = { hostname, path, method: 'GET', headers: { 'Accept': 'application/json', ...headers } };
+    const req = https.request(options, (res) => {
+      let body = '';
+      res.on('data', c => { body += c; });
+      res.on('end', () => resolve({ status: res.statusCode, body }));
+    });
+    req.on('error', e => resolve({ status: 0, body: e.message }));
+    req.setTimeout(8000, () => { req.destroy(); resolve({ status: 0, body: 'timeout' }); });
+    req.end();
+  });
 }
 
 function zohoApiGet(token, path) {
