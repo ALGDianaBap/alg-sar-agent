@@ -10,6 +10,11 @@
   timeout = 26
 
 [[redirects]]
+  from = "/submit"
+  to = "/submit.html"
+  status = 200
+
+[[redirects]]
   from = "/callback"
   to = "/index.html"
   status = 200
