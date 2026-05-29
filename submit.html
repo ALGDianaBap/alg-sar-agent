@@ -378,43 +378,49 @@ async function go(){
   document.getElementById('fw').style.display='none';
   document.getElementById('loading').style.display='block';
 
-  // Check total file size — Netlify hard limit is 6MB for request body
-  const totalBytes = files.reduce((s,f)=>s+f.size,0);
-  if(totalBytes > 4*1024*1024){
-    document.getElementById('loading').style.display='none';
-    document.getElementById('fw').style.display='block';
-    document.getElementById('sb').disabled=false;
-    showErr(lang==='es'
-      ? 'Los archivos superan 4MB en total. Por favor suba archivos más pequeños o uno a la vez.'
-      : 'Total file size exceeds 4MB. Please upload smaller files or upload them one at a time.');
-    return;
-  }
-
-  const fd=[];
-  for(const f of files) fd.push({name:f.name,type:f.type||'application/octet-stream',data:await b64(f)});
-
+  // Step 1: submit text data only (no files — avoids 6MB body limit)
   const payload={
     dealerNameFirst:fn, dealerNameLast:ln, phone:ph,
     email:v('email'), dealershipName:ds, workDesc:wd, language:lang2,
     hasHappened:document.querySelector('[name="hasHappened"]:checked')?.value||'',
     whoWork:document.querySelector('[name="whoWork"]:checked')?.value||'',
     thirdParty:v('thirdParty'), dealerGiving:dg, refundNotes:v('refundNotes'),
-    files:fd,
+    fileNames: files.map(f=>f.name), // names only, binary uploaded separately
   };
 
+  let sarId;
   try{
     const r=await fetch('/.netlify/functions/form-submit',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
     const d=await r.json();
     if(!r.ok||!d.ok) throw new Error(d.error||`Error ${r.status}`);
-    document.getElementById('loading').style.display='none';
-    document.getElementById('success').style.display='block';
+    sarId=d.id;
     if(d.ref){const el=document.getElementById('okr');el.textContent='Case #'+d.ref;el.style.display='inline-block';}
   }catch(e){
     document.getElementById('loading').style.display='none';
     document.getElementById('fw').style.display='block';
     document.getElementById('sb').disabled=false;
     showErr((lang==='es'?'Error al enviar: ':'Submission failed: ')+e.message);
+    return;
   }
+
+  // Step 2: upload each file individually (each request is one file = stays under 6MB)
+  if(files.length>0 && sarId){
+    const ls=document.getElementById('ls');
+    for(let i=0;i<files.length;i++){
+      const f=files[i];
+      ls.textContent=`Uploading file ${i+1} of ${files.length}: ${f.name}…`;
+      try{
+        const data=await b64(f);
+        await fetch('/.netlify/functions/store-file',{
+          method:'POST',headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({id:sarId,file:{name:f.name,type:f.type||'application/octet-stream',data}})
+        });
+      }catch(e){ console.warn('File upload failed for',f.name,':',e.message); }
+    }
+  }
+
+  document.getElementById('loading').style.display='none';
+  document.getElementById('success').style.display='block';
 }
 
 function v(id){return(document.getElementById(id)?.value||'').trim();}

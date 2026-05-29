@@ -55,7 +55,8 @@ exports.handler = async (event) => {
       dealerNameFirst = '', dealerNameLast = '', dealershipName = '',
       phone = '', email = '', workDesc = '', language = 'en',
       hasHappened = '', whoWork = '', thirdParty = '',
-      dealerGiving = '', refundNotes = '', files = [],
+      dealerGiving = '', refundNotes = '',
+      fileNames = [], // just filenames, no binary data — files uploaded separately
     } = body;
 
     if (!dealerNameFirst || !dealerNameLast || !dealershipName || !workDesc) {
@@ -79,16 +80,9 @@ exports.handler = async (event) => {
       } catch (e) { console.warn('RR index error:', e.message); }
     }
 
-    const attachments = (files || []).map(f => ({ name: f.name, source: 'native-form', extracted: false }));
-
-    // ── Store uploaded files ───────────────────────────────────────────────
-    let hasStoredFiles = false;
-    if (blobsAvailable && files.length > 0) {
-      try {
-        await _getStore('form-files').set(id, JSON.stringify(files));
-        hasStoredFiles = true;
-      } catch (e) { console.warn('File storage failed:', e.message); }
-    }
+    // Files are uploaded separately after this request (one per request via store-file.js)
+    const attachments = (fileNames || []).map(n => ({ name: n, source: 'native-form', extracted: false }));
+    const hasStoredFiles = fileNames.length > 0; // files will be stored by subsequent store-file calls
 
     // ── Build SAR record ──────────────────────────────────────────────────
     const sarData = {
