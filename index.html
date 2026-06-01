@@ -578,8 +578,9 @@ async function loadSARsFromServer() {
         createSAROnServer(item).catch(() => {});
       }
     }
-    // Re-open active view if still present
-    if (state.activeView && state.activeView !== 'new') {
+    // Re-open active view if still present — but NOT if the user has staged a
+    // file for it (re-rendering would rebuild the file input and disrupt the run).
+    if (state.activeView && state.activeView !== 'new' && !agentState[state.activeView]?.riscFile) {
       const item = state.queue.find(i => String(i.id) === String(state.activeView));
       if (item) renderDetail(item);
     }
@@ -1169,8 +1170,8 @@ function buildAgentPanel(item) {
               : `<div class="agent-step-note" style="margin-bottom:8px">The RISC contains buyer info, vehicle details, VIN, purchase date, and financial terms.</div>`
             }
             <input type="file" id="risc-file-${item.id}" accept=".pdf" style="margin-bottom:8px"
-              placeholder="${item.hasStoredFiles ? 'Optional: override with a different file' : ''}" />
-            ${item.hasStoredFiles ? `<div style="font-size:11px;color:var(--text3)">Optional: upload a different file to override the one from the form</div>` : ''}
+              onchange="stageRiscFile('${item.id}', this)" />
+            ${agentState[item.id]?.riscFile ? `<div style="font-size:11px;color:var(--green)">Staged: ${esc(agentState[item.id].riscFile.name)} — click Run Agent</div>` : (item.hasStoredFiles ? `<div style="font-size:11px;color:var(--text3)">A file was uploaded via the form. If the agent can't find it, choose it here to override.</div>` : '')}
           </div>
         </div>
         <div class="agent-step" id="astep-2">
@@ -1225,8 +1226,8 @@ function riscLikelihood(filename) {
 // Call Claude via the ai.js proxy to extract RISC fields from a base64 PDF.
 // Returns { not_risc: true } if the document is not a RISC, or the fields object.
 async function callAIExtract(base64Pdf) {
-  if (base64Pdf && base64Pdf.length > 4_000_000) {
-    throw new Error('PDF too large (max ~3MB). Try compressing or uploading just the first 2 pages.');
+  if (base64Pdf && base64Pdf.length > 4_800_000) {
+    throw new Error('PDF too large (max ~3.5MB). Try compressing the PDF or uploading just the contract pages.');
   }
   const r = await fetch(API.ai, {
     method: 'POST', headers: {'Content-Type':'application/json'},
@@ -1344,6 +1345,19 @@ async function extractFromUploads(sarId, fileInput) {
 // ── RUN AGENT ─────────────────────────────────────────────────────────────────
 let agentState = {}; // per-SAR agent run state
 
+// Capture the selected file into memory immediately. The 30s background poll
+// re-renders the detail panel and rebuilds the file input — which would wipe a
+// pending selection. Holding the File object in agentState survives that.
+function stageRiscFile(id, input) {
+  const f = input?.files?.[0];
+  if (!agentState[id]) agentState[id] = {};
+  agentState[id].riscFile = f || null;
+  if (f) {
+    setAgentStepNote(1, `Ready: ${f.name} (${(f.size/1024).toFixed(0)} KB)`, 'ok');
+    setAgentStepNote(2, 'Click Run Agent to extract fields.');
+  }
+}
+
 async function runAgent(id) {
   const item = findSAR(id);
   if (!item) return;
@@ -1353,10 +1367,12 @@ async function runAgent(id) {
 
   agentState[id] = { step: 1 };
 
-  // Step 1: Get RISC file — from manual upload, stored files (native form), or demo
+  // Step 1: Get RISC file.
+  // Priority: (1) file staged in memory via stageRiscFile (survives poll re-renders),
+  // (2) whatever is currently in the file input, (3) files stored server-side from the form.
   const fileInput = document.getElementById('risc-file-' + id);
-  const manualFile = fileInput?.files?.[0];
-  let filesToProcess = manualFile ? [manualFile] : [];
+  const stagedFile = agentState[id]?.riscFile || fileInput?.files?.[0];
+  let filesToProcess = stagedFile ? [stagedFile] : [];
 
   // If no manual upload but SAR has stored files (native form submission), fetch them
   if (!filesToProcess.length && item.hasStoredFiles && !state.demoMode) {
@@ -1370,18 +1386,24 @@ async function runAgent(id) {
           filesToProcess = stored.map(f => ({ name: f.name, _base64: f.data, _type: f.type }));
           markAgentStep(1, 'done', `${stored.length} file(s) ready: ${stored.map(f => f.name).join(', ')}`);
         } else {
-          setAgentStepNote(1, 'No files found in storage — please upload the RISC below.', 'err');
+          setAgentStepNote(1, 'The file from the form was not saved (likely too large to auto-store). Please upload the RISC PDF below.', 'err');
         }
+      } else if (r.status === 404) {
+        setAgentStepNote(1, 'The file uploaded through the form did not save (likely too large). Please upload the RISC PDF below.', 'err');
       } else {
-        setAgentStepNote(1, `Could not load stored files (${r.status}) — please upload the RISC below.`, 'err');
+        setAgentStepNote(1, `Could not load the stored file (HTTP ${r.status}). Please upload the RISC PDF below.`, 'err');
       }
     } catch(e) {
-      setAgentStepNote(1, 'Fetch error: ' + e.message + ' — please upload the RISC below.', 'err');
+      setAgentStepNote(1, 'Could not retrieve the stored file: ' + e.message + '. Please upload the RISC PDF below.', 'err');
     }
   }
 
   if (!filesToProcess.length && !state.demoMode) {
-    setAgentStepNote(2, '⚠ No PDF uploaded — please upload the RISC contract.', 'err');
+    const why = item.hasStoredFiles
+      ? '⚠ The form upload didn\'t save — please choose the RISC PDF in Step 1 above, then click Run Agent.'
+      : '⚠ No PDF selected — please choose the RISC PDF in Step 1 above, then click Run Agent.';
+    setAgentStepNote(1, why, 'err');
+    setAgentStepNote(2, 'Waiting for a PDF.', 'err');
     if (btn) { btn.innerHTML = '▶ Run Agent'; btn.disabled = false; }
     return;
   }

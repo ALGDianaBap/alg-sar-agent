@@ -403,24 +403,62 @@ async function go(){
     return;
   }
 
-  // Step 2: upload each file individually (each request is one file = stays under 6MB)
+  // Step 2: upload each file individually (each request is one file = stays under 6MB).
+  // Netlify caps the function request body at ~6MB; base64 inflates a file by ~37%,
+  // so files larger than ~4.3MB can't be auto-stored and must be uploaded in-app.
+  const MAX_STORE_BYTES = 4_300_000;
+  let okCount = 0;
+  const failed = [];
   if(files.length>0 && sarId){
     const ls=document.getElementById('ls');
     for(let i=0;i<files.length;i++){
       const f=files[i];
       ls.textContent=`Uploading file ${i+1} of ${files.length}: ${f.name}…`;
+      if(f.size > MAX_STORE_BYTES){
+        failed.push(f.name+' (too large)');
+        continue;
+      }
       try{
         const data=await b64(f);
-        await fetch('/.netlify/functions/store-file',{
+        const r=await fetch('/.netlify/functions/store-file',{
           method:'POST',headers:{'Content-Type':'application/json'},
           body:JSON.stringify({id:sarId,file:{name:f.name,type:f.type||'application/octet-stream',data}})
         });
-      }catch(e){ console.warn('File upload failed for',f.name,':',e.message); }
+        const d=await r.json().catch(()=>({}));
+        if(r.ok && d.ok){ okCount++; }
+        else { failed.push(f.name); console.warn('store-file rejected',f.name,r.status,d.error||''); }
+      }catch(e){ failed.push(f.name); console.warn('File upload failed for',f.name,':',e.message); }
     }
+  }
+
+  // Correct hasStoredFiles so the SAR Agent knows whether a file is really available.
+  if(sarId){
+    try{
+      await fetch('/.netlify/functions/sars?id='+sarId,{
+        method:'PATCH',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({hasStoredFiles: okCount>0})
+      });
+    }catch(e){ /* non-fatal */ }
   }
 
   document.getElementById('loading').style.display='none';
   document.getElementById('success').style.display='block';
+
+  // Tell the submitter clearly if any documents could not be saved.
+  if(failed.length){
+    const okt=document.getElementById('okt');
+    const okb=document.getElementById('okb');
+    if(okt) okt.textContent = lang==='es' ? 'Solicitud enviada — atención con archivos' : 'Request submitted — file notice';
+    if(okb){
+      okb.innerHTML = (lang==='es'
+        ? 'Su solicitud fue recibida y asignada a un gestor de casos. Sin embargo, los siguientes documentos no pudieron guardarse automáticamente (probablemente por tamaño): '
+        : 'Your request was received and assigned to a case manager. However, these documents could not be saved automatically (likely due to size): ')
+        + '<br><strong>'+failed.map(esc).join(', ')+'</strong><br><br>'
+        + (lang==='es'
+          ? 'El gestor de casos los subirá directamente en la aplicación. Si es posible, comprima el PDF a menos de 4MB.'
+          : 'The case manager will upload them directly in the app. If possible, compress the PDF to under 4MB.');
+    }
+  }
 }
 
 function v(id){return(document.getElementById(id)?.value||'').trim();}
