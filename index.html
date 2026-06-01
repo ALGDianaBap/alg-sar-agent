@@ -1166,8 +1166,8 @@ function buildAgentPanel(item) {
           <div class="agent-step-body">
             <div class="agent-step-label">RISC Contract (PDF)</div>
             ${item.hasStoredFiles
-              ? `<div class="agent-step-note ok" style="margin-bottom:8px">✓ Files uploaded via form — will be fetched automatically</div>`
-              : `<div class="agent-step-note" style="margin-bottom:8px">The RISC contains buyer info, vehicle details, VIN, purchase date, and financial terms.</div>`
+              ? `<div class="agent-step-note" style="margin-bottom:8px">A file was submitted with the form. The agent will try to fetch it automatically — but large scans don't always save, so if it can't be found, choose the RISC PDF below.</div>`
+              : `<div class="agent-step-note" style="margin-bottom:8px">Choose the RISC PDF below — it contains buyer info, vehicle details, VIN, purchase date, and financial terms.</div>`
             }
             <input type="file" id="risc-file-${item.id}" accept=".pdf" style="margin-bottom:8px"
               onchange="stageRiscFile('${item.id}', this)" />
@@ -1365,7 +1365,8 @@ async function runAgent(id) {
   const btn = document.getElementById('run-agent-btn-' + id);
   if (btn) { btn.innerHTML = '<div class="spin"></div> Running…'; btn.disabled = true; }
 
-  agentState[id] = { step: 1 };
+  // Preserve any file staged via stageRiscFile — do NOT clobber it on reset.
+  agentState[id] = { ...(agentState[id] || {}), step: 1 };
 
   // Step 1: Get RISC file.
   // Priority: (1) file staged in memory via stageRiscFile (survives poll re-renders),
@@ -1386,24 +1387,25 @@ async function runAgent(id) {
           filesToProcess = stored.map(f => ({ name: f.name, _base64: f.data, _type: f.type }));
           markAgentStep(1, 'done', `${stored.length} file(s) ready: ${stored.map(f => f.name).join(', ')}`);
         } else {
-          setAgentStepNote(1, 'The file from the form was not saved (likely too large to auto-store). Please upload the RISC PDF below.', 'err');
+          item.hasStoredFiles = false;
+          patchSAR(item.id, { hasStoredFiles: false });
+          setAgentStepNote(1, 'The file from the form was not saved (likely too large to auto-store). Please choose the RISC PDF below.', 'err');
         }
       } else if (r.status === 404) {
-        setAgentStepNote(1, 'The file uploaded through the form did not save (likely too large). Please upload the RISC PDF below.', 'err');
+        item.hasStoredFiles = false;
+        patchSAR(item.id, { hasStoredFiles: false });
+        setAgentStepNote(1, 'The file submitted with the form did not save (likely too large). Please choose the RISC PDF below.', 'err');
       } else {
-        setAgentStepNote(1, `Could not load the stored file (HTTP ${r.status}). Please upload the RISC PDF below.`, 'err');
+        setAgentStepNote(1, `Could not load the stored file (HTTP ${r.status}). Please choose the RISC PDF below.`, 'err');
       }
     } catch(e) {
-      setAgentStepNote(1, 'Could not retrieve the stored file: ' + e.message + '. Please upload the RISC PDF below.', 'err');
+      setAgentStepNote(1, 'Could not retrieve the stored file: ' + e.message + '. Please choose the RISC PDF below.', 'err');
     }
   }
 
   if (!filesToProcess.length && !state.demoMode) {
-    const why = item.hasStoredFiles
-      ? '⚠ The form upload didn\'t save — please choose the RISC PDF in Step 1 above, then click Run Agent.'
-      : '⚠ No PDF selected — please choose the RISC PDF in Step 1 above, then click Run Agent.';
-    setAgentStepNote(1, why, 'err');
-    setAgentStepNote(2, 'Waiting for a PDF.', 'err');
+    setAgentStepNote(1, '⚠ No PDF available yet — click "Choose File" in Step 1 and pick the RISC PDF, then click Run Agent again.', 'err');
+    setAgentStepNote(2, 'Needs a PDF from Step 1.', 'err');
     if (btn) { btn.innerHTML = '▶ Run Agent'; btn.disabled = false; }
     return;
   }
