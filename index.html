@@ -1001,18 +1001,18 @@ function renderDetail(item) {
       </div>
       <div class="card-body">
         <div class="field-grid">
-          <div class="field"><div class="field-label">Buyer Full Name</div><input class="field-value editable" placeholder="FIRST LAST" value="${esc(f.buyer_name||'')}" onchange="updateField('${item.id}','buyer_name',this.value)" /></div>
-          <div class="field"><div class="field-label">Dealership Name</div><input class="field-value editable" placeholder="DEALERSHIP, INC." value="${esc(f.dealer_name||'')}" onchange="updateField('${item.id}','dealer_name',this.value)" /></div>
-          <div class="field"><div class="field-label">Year</div><input class="field-value editable" placeholder="2022" value="${esc(f.vehicle_year||'')}" onchange="updateField('${item.id}','vehicle_year',this.value)" /></div>
-          <div class="field"><div class="field-label">Make</div><input class="field-value editable" placeholder="Toyota" value="${esc(f.vehicle_make||'')}" onchange="updateField('${item.id}','vehicle_make',this.value)" /></div>
-          <div class="field"><div class="field-label">Model</div><input class="field-value editable" placeholder="Camry" value="${esc(f.vehicle_model||'')}" onchange="updateField('${item.id}','vehicle_model',this.value)" /></div>
-          <div class="field"><div class="field-label">VIN</div><input class="field-value editable mono" placeholder="17-character VIN" value="${esc(f.vin||'')}" onchange="updateField('${item.id}','vin',this.value)" /></div>
-          <div class="field"><div class="field-label">Purchase Date</div><input class="field-value editable" placeholder="MM/DD/YYYY" value="${esc(f.purchase_date||'')}" onchange="updateField('${item.id}','purchase_date',this.value)" /></div>
-          <div class="field"><div class="field-label">Settlement Amount $</div><input class="field-value editable" placeholder="1200.00" value="${esc(f.settlement_amount||'')}" onchange="updateField('${item.id}','settlement_amount',this.value)" /></div>
-          <div class="field"><div class="field-label">Amount in Words</div><input class="field-value editable" placeholder="One Thousand Two Hundred" value="${esc(f.settlement_amount_words||'')}" onchange="updateField('${item.id}','settlement_amount_words',this.value)" /></div>
-          <div class="field"><div class="field-label">Down Payment $</div><input class="field-value editable" placeholder="3000.00" value="${esc(f.down_payment||'')}" onchange="updateField('${item.id}','down_payment',this.value)" /></div>
-          <div class="field"><div class="field-label">Miles Driven</div><input class="field-value editable" placeholder="12000" value="${esc(f.miles_driven||'')}" onchange="updateField('${item.id}','miles_driven',this.value)" /></div>
-          <div class="field"><div class="field-label">APR %</div><input class="field-value editable" placeholder="24.99" value="${esc(f.apr||'')}" onchange="updateField('${item.id}','apr',this.value)" /></div>
+          <div class="field"><div class="field-label">Buyer Full Name</div><input id="dd-${item.id}-buyer_name" class="field-value editable" placeholder="FIRST LAST" value="${esc(f.buyer_name||'')}" onchange="updateField('${item.id}','buyer_name',this.value)" /></div>
+          <div class="field"><div class="field-label">Dealership Name</div><input id="dd-${item.id}-dealer_name" class="field-value editable" placeholder="DEALERSHIP, INC." value="${esc(f.dealer_name||'')}" onchange="updateField('${item.id}','dealer_name',this.value)" /></div>
+          <div class="field"><div class="field-label">Year</div><input id="dd-${item.id}-vehicle_year" class="field-value editable" placeholder="2022" value="${esc(f.vehicle_year||'')}" onchange="updateField('${item.id}','vehicle_year',this.value)" /></div>
+          <div class="field"><div class="field-label">Make</div><input id="dd-${item.id}-vehicle_make" class="field-value editable" placeholder="Toyota" value="${esc(f.vehicle_make||'')}" onchange="updateField('${item.id}','vehicle_make',this.value)" /></div>
+          <div class="field"><div class="field-label">Model</div><input id="dd-${item.id}-vehicle_model" class="field-value editable" placeholder="Camry" value="${esc(f.vehicle_model||'')}" onchange="updateField('${item.id}','vehicle_model',this.value)" /></div>
+          <div class="field"><div class="field-label">VIN</div><input id="dd-${item.id}-vin" class="field-value editable mono" placeholder="17-character VIN" value="${esc(f.vin||'')}" onchange="updateField('${item.id}','vin',this.value)" /></div>
+          <div class="field"><div class="field-label">Purchase Date</div><input id="dd-${item.id}-purchase_date" class="field-value editable" placeholder="MM/DD/YYYY" value="${esc(f.purchase_date||'')}" onchange="updateField('${item.id}','purchase_date',this.value)" /></div>
+          <div class="field"><div class="field-label">Settlement Amount $</div><input id="dd-${item.id}-settlement_amount" class="field-value editable" placeholder="1200.00" value="${esc(f.settlement_amount||'')}" onchange="updateField('${item.id}','settlement_amount',this.value)" /></div>
+          <div class="field"><div class="field-label">Amount in Words</div><input id="dd-${item.id}-settlement_amount_words" class="field-value editable" placeholder="One Thousand Two Hundred" value="${esc(f.settlement_amount_words||'')}" onchange="updateField('${item.id}','settlement_amount_words',this.value)" /></div>
+          <div class="field"><div class="field-label">Down Payment $</div><input id="dd-${item.id}-down_payment" class="field-value editable" placeholder="3000.00" value="${esc(f.down_payment||'')}" onchange="updateField('${item.id}','down_payment',this.value)" /></div>
+          <div class="field"><div class="field-label">Miles Driven</div><input id="dd-${item.id}-miles_driven" class="field-value editable" placeholder="12000" value="${esc(f.miles_driven||'')}" onchange="updateField('${item.id}','miles_driven',this.value)" /></div>
+          <div class="field"><div class="field-label">APR %</div><input id="dd-${item.id}-apr" class="field-value editable" placeholder="24.99" value="${esc(f.apr||'')}" onchange="updateField('${item.id}','apr',this.value)" /></div>
         </div>
         ${f.notes ? `<div style="margin-top:10px;padding:8px 10px;background:var(--yellow-bg);border-radius:var(--radius);font-size:12px;color:var(--yellow)">⚠ ${esc(f.notes)}</div>` : ''}
         ${(f.missing_fields||[]).length ? `<div style="margin-top:8px;font-size:12px;color:var(--red)">Missing: ${f.missing_fields.join(', ')}</div>` : ''}
@@ -1238,8 +1238,16 @@ Identify the document by its CONTENT and STRUCTURE, not its filename or label.
 A California Retail Installment Sales Contract (RISC / LAW 553-CA) has ALL of these: a buyer name+address section, a dealer/seller-creditor section, a vehicle description with VIN and odometer, a price breakdown (cash price, down payment, amount financed), an APR disclosure, and signature blocks.
 If this document contains those elements — even if unlabeled, scanned poorly, or has a generic filename — treat it as a RISC and extract the fields.
 Only return {"not_risc":true} if the document clearly cannot contain these fields (e.g. it is only a Buyer's Guide, insurance certificate, GAP addendum with no purchase price, or DMV form with no buyer purchase info).
-If it IS a RISC or auto purchase contract, return ONLY valid JSON no markdown:
-{"buyer_name":"ALL CAPS full name","buyer_address":"full address","dealer_name":"ALL CAPS dealership name","vehicle_year":"4 digits","vehicle_make":"","vehicle_model":"","vehicle_new_used":"New or Used","vin":"17-char VIN","odometer":"numeric","purchase_date":"MM/DD/YYYY from signature page","settlement_amount":"leave blank","settlement_amount_words":"","down_payment":"numeric only no $ or commas","total_sale_price":"","monthly_payment":"","apr":"","miles_driven":"same as odometer","notes":"any flags","missing_fields":[]}`,
+
+CRITICAL — DO NOT CONFUSE BUYER AND SELLER:
+- buyer_name = the individual CONSUMER/CUSTOMER. On a RISC this is the person labeled "Buyer" (and "Co-Buyer" if present), usually at the TOP of the form. This is a PERSON'S name, almost never a company. This is our client.
+- dealer_name = the BUSINESS labeled "Seller", "Seller-Creditor", "Creditor", or "Dealer". This is a company name (often ends with INC, LLC, MOTORS, AUTO, AUTO SALES, etc.).
+- NEVER put the dealership/seller/creditor business name in buyer_name. NEVER put the consumer's name in dealer_name.
+- buyer_address = the Buyer's home address (NOT the dealership address).
+- If a name looks like a business (INC/LLC/MOTORS/AUTO SALES), it is the dealer, not the buyer.
+
+Return ONLY valid JSON no markdown:
+{"buyer_name":"ALL CAPS full name of the consumer/Buyer","buyer_address":"buyer's full home address","dealer_name":"ALL CAPS seller/creditor business name","vehicle_year":"4 digits","vehicle_make":"","vehicle_model":"","vehicle_new_used":"New or Used","vin":"17-char VIN","odometer":"numeric","purchase_date":"MM/DD/YYYY from signature page","settlement_amount":"leave blank","settlement_amount_words":"","down_payment":"numeric only no $ or commas","total_sale_price":"","monthly_payment":"","apr":"","miles_driven":"same as odometer","notes":"any flags","missing_fields":[]}`,
       messages: [{
         role: 'user',
         content: [
@@ -1358,6 +1366,19 @@ function stageRiscFile(id, input) {
   }
 }
 
+// Repaint the editable Deal Details inputs from item.fields after extraction,
+// without a full re-render (which would reset the agent panel / staged file).
+function refreshDealDetails(id) {
+  const item = findSAR(id);
+  if (!item || !item.fields) return;
+  const f = item.fields;
+  const keys = ['buyer_name','dealer_name','vehicle_year','vehicle_make','vehicle_model','vin','purchase_date','settlement_amount','settlement_amount_words','down_payment','miles_driven','apr'];
+  for (const k of keys) {
+    const el = document.getElementById(`dd-${id}-${k}`);
+    if (el) el.value = f[k] || '';
+  }
+}
+
 async function runAgent(id) {
   const item = findSAR(id);
   if (!item) return;
@@ -1448,7 +1469,15 @@ async function runAgent(id) {
     item.amount = fields.settlement_amount || '';
     item.fields = fields;
     saveState();
-    markAgentStep(2, 'done', `${item.vehicle || 'vehicle'} · VIN ${fields.vin || '—'}`);
+    // Persist to the server AND repaint the Deal Details inputs so the CM
+    // immediately sees the extracted data populate the form.
+    patchSAR(item.id, {
+      fields, buyer: item.buyer, dealer: item.dealer,
+      vehicle: item.vehicle, vin: item.vin, amount: item.amount,
+    });
+    refreshDealDetails(id);
+    markAgentStep(2, 'done', `${item.buyer || 'buyer'} · ${item.vehicle || 'vehicle'} · VIN ${fields.vin || '—'}`);
+    notify('ok', 'Fields extracted — review the Deal Details below');
   } catch(e) {
     markAgentStep(2, 'err', 'Extraction failed: ' + e.message);
     if (btn) { btn.innerHTML = '▶ Run Agent'; btn.disabled = false; }
@@ -1601,7 +1630,11 @@ async function generateDraft(id) {
       matter: item.matter
     });
     markAgentStep(4, 'done', `${d.filename} (${(d.size/1024).toFixed(0)} KB)${d.usedTemplate ? ' · from template' : ''}`);
-    notify('ok', `Draft generated${d.usedTemplate ? ' from template' : ''} — status → Draft`);
+    if (d.usedTemplate && d.templateNoTags) {
+      notify('err', 'Draft used your template, but it has no {placeholder} tags — nothing was filled in. Add tags in the template (see Template Library) and regenerate.');
+    } else {
+      notify('ok', `Draft generated${d.usedTemplate ? ' from template' : ' (auto-built)'} — status → Draft`);
+    }
     setTimeout(() => openSAR(id), 800);
   } catch(e) {
     notify('err', 'Generation failed: ' + e.message);

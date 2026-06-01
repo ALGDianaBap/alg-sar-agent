@@ -34,6 +34,7 @@ exports.handler = async (event) => {
 
     let base64;
     let usedTemplate = false;
+    let templateNoTags = false;
 
     // ── Try template-based generation ─────────────────────────────────────────
     if (PizZip && Docxtemplater) {
@@ -75,6 +76,10 @@ exports.handler = async (event) => {
             linebreaks: true,
             nullGetter: () => '',
           });
+          // Detect whether the template actually contains {placeholder} tags.
+          // getFullText() merges split runs, so it sees tags even when Word
+          // fragments them across XML nodes.
+          try { templateNoTags = !/\{[^}]+\}/.test(doc.getFullText()); } catch (e) { templateNoTags = false; }
           doc.setData(data);
           doc.render();
           const buf = doc.getZip().generate({ type: 'nodebuffer', compression: 'DEFLATE' });
@@ -95,7 +100,7 @@ exports.handler = async (event) => {
     return {
       statusCode: 200,
       headers: { ...cors, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ok: true, base64, filename, size: Math.round(base64.length * 0.75), usedTemplate })
+      body: JSON.stringify({ ok: true, base64, filename, size: Math.round(base64.length * 0.75), usedTemplate, templateNoTags })
     };
   } catch (e) {
     return { statusCode: 500, headers: cors, body: JSON.stringify({ error: e.message }) };

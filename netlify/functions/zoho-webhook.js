@@ -461,7 +461,13 @@ Identify the document by its CONTENT and STRUCTURE, not its filename or label.
 A California Retail Installment Sales Contract (RISC / LAW 553-CA) has ALL of these: a buyer name+address section, a dealer/seller-creditor section, a vehicle description with VIN and odometer, a price breakdown (cash price, down payment, amount financed), an APR disclosure, and signature blocks.
 If this document contains those elements — even if it is unlabeled, scanned poorly, or has a generic filename — treat it as a RISC and extract the fields.
 Only return {"not_risc":true} if the document clearly cannot contain these fields (e.g. it is only a Buyer's Guide, an insurance certificate, a GAP addendum with no purchase price, or a DMV form).
-If it IS a RISC or auto purchase contract, return ONLY valid JSON no markdown: {"buyer_name":"ALL CAPS full name","buyer_address":"full address","dealer_name":"ALL CAPS dealership name","vehicle_year":"4 digits","vehicle_make":"","vehicle_model":"","vehicle_new_used":"New or Used","vin":"17-char VIN","odometer":"numeric","purchase_date":"MM/DD/YYYY from signature page","settlement_amount":"leave blank","settlement_amount_words":"leave blank","down_payment":"numeric only no $ sign","total_sale_price":"","monthly_payment":"","apr":"","miles_driven":"same as odometer","notes":"any flags","missing_fields":[]}`,
+
+CRITICAL — DO NOT CONFUSE BUYER AND SELLER:
+- buyer_name = the individual CONSUMER/CUSTOMER labeled "Buyer" (and "Co-Buyer" if present), usually at the TOP. This is a PERSON'S name, almost never a company. This is our client.
+- dealer_name = the BUSINESS labeled "Seller", "Seller-Creditor", "Creditor", or "Dealer" (often ends with INC, LLC, MOTORS, AUTO, AUTO SALES).
+- NEVER put the dealership/seller business name in buyer_name. NEVER put the consumer's name in dealer_name. buyer_address is the buyer's home address, not the dealership's.
+
+If it IS a RISC or auto purchase contract, return ONLY valid JSON no markdown: {"buyer_name":"ALL CAPS full name of the consumer/Buyer","buyer_address":"buyer's full home address","dealer_name":"ALL CAPS seller/creditor business name","vehicle_year":"4 digits","vehicle_make":"","vehicle_model":"","vehicle_new_used":"New or Used","vin":"17-char VIN","odometer":"numeric","purchase_date":"MM/DD/YYYY from signature page","settlement_amount":"leave blank","settlement_amount_words":"leave blank","down_payment":"numeric only no $ sign","total_sale_price":"","monthly_payment":"","apr":"","miles_driven":"same as odometer","notes":"any flags","missing_fields":[]}`,
     messages: [{
       role: 'user',
       content: [
