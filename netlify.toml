@@ -21,6 +21,9 @@
 [functions."get-files"]
   timeout = 26
 
+[functions."templates"]
+  timeout = 26
+
 [[redirects]]
   from = "/submit"
   to = "/submit.html"

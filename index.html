@@ -337,6 +337,9 @@ select { appearance:none; background-image:url("data:image/svg+xml,%3Csvg xmlns=
           <div id="zoho-dot" class="conn-dot off" style="width:7px;height:7px"></div>
           <span id="zoho-label">Connect Zoho (admin)</span>
         </button>
+        <button class="btn sm ghost" onclick="openTemplatesModal()" style="justify-content:center;font-size:11px">
+          📄 Template Library
+        </button>
       </div>
     </div>
 
@@ -426,6 +429,49 @@ select { appearance:none; background-image:url("data:image/svg+xml,%3Csvg xmlns=
   </div>
 </div>
 
+<!-- TEMPLATES MODAL -->
+<div class="modal-bg" id="templates-modal" onclick="if(event.target===this)closeTemplatesModal()">
+  <div class="modal wide">
+    <div class="modal-header">
+      <div class="modal-title">SAR Template Library</div>
+      <button class="modal-close" onclick="closeTemplatesModal()">×</button>
+    </div>
+    <div class="modal-body">
+      <div style="font-size:12px;color:var(--text2);line-height:1.7;margin-bottom:16px;padding:10px 12px;background:var(--bg);border-radius:var(--radius);border:1px solid var(--border)">
+        Upload your .docx templates. Add <code style="background:var(--surface);padding:1px 4px;border-radius:3px;border:1px solid var(--border)">{placeholder}</code> tags in Word where data should appear.<br>
+        <strong>Available tags:</strong>
+        <span style="font-family:monospace;font-size:11px">
+          {buyer_name} {dealer_name} {vehicle} {vehicle_year} {vehicle_make} {vehicle_model}
+          {vin} {purchase_date} {today_date} {settlement_amount} {settlement_amount_words}
+          {down_payment} {down_payment_words} {miles_driven} {apr}
+          {work_desc} {dealer_giving} {refund_notes} {third_party}
+        </span>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px" id="templates-grid">
+        <div class="card" style="margin:0">
+          <div class="card-header"><div class="card-title">🇺🇸 English — Cash &amp; Keep</div></div>
+          <div class="card-body" style="font-size:12px" id="tmpl-body-en_cash_keep"><div class="spin" style="margin:4px 0"></div></div>
+        </div>
+        <div class="card" style="margin:0">
+          <div class="card-header"><div class="card-title">🇺🇸 English — Rescission</div></div>
+          <div class="card-body" style="font-size:12px" id="tmpl-body-en_rescission"><div class="spin" style="margin:4px 0"></div></div>
+        </div>
+        <div class="card" style="margin:0">
+          <div class="card-header"><div class="card-title">🇲🇽 Spanish — Cash &amp; Keep</div></div>
+          <div class="card-body" style="font-size:12px" id="tmpl-body-es_cash_keep"><div class="spin" style="margin:4px 0"></div></div>
+        </div>
+        <div class="card" style="margin:0">
+          <div class="card-header"><div class="card-title">🇲🇽 Spanish — Rescission</div></div>
+          <div class="card-body" style="font-size:12px" id="tmpl-body-es_rescission"><div class="spin" style="margin:4px 0"></div></div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeTemplatesModal()">Close</button>
+    </div>
+  </div>
+</div>
+
 <!-- NOTIFY -->
 <div class="notify" id="notify"><span id="notify-msg"></span></div>
 
@@ -443,6 +489,7 @@ const API = {
   sars:      '/.netlify/functions/sars',
   getFiles:  '/.netlify/functions/get-files',
   storeFile: '/.netlify/functions/store-file',
+  templates: '/.netlify/functions/templates',
 };
 const SLACK_SAR_CHANNEL = 'C09QF0PRLJ2';
 const STORAGE_KEY = 'alg_sar_v2';
@@ -1178,14 +1225,13 @@ function riscLikelihood(filename) {
 // Call Claude via the ai.js proxy to extract RISC fields from a base64 PDF.
 // Returns { not_risc: true } if the document is not a RISC, or the fields object.
 async function callAIExtract(base64Pdf) {
-  // Rough size check — base64 PDF + JSON overhead should stay under 5MB
   if (base64Pdf && base64Pdf.length > 4_000_000) {
-    throw new Error('PDF too large for extraction (max ~3MB). Try compressing the file or uploading just the first 2 pages.');
+    throw new Error('PDF too large (max ~3MB). Try compressing or uploading just the first 2 pages.');
   }
   const r = await fetch(API.ai, {
     method: 'POST', headers: {'Content-Type':'application/json'},
     body: JSON.stringify({
-      model: 'claude-sonnet-4-20250514', max_tokens: 1500,
+      model: 'claude-sonnet-4-6', max_tokens: 1500,
       system: `You extract data from vehicle purchase contracts for a California auto law firm.
 Identify the document by its CONTENT and STRUCTURE, not its filename or label.
 A California Retail Installment Sales Contract (RISC / LAW 553-CA) has ALL of these: a buyer name+address section, a dealer/seller-creditor section, a vehicle description with VIN and odometer, a price breakdown (cash price, down payment, amount financed), an APR disclosure, and signature blocks.
@@ -1202,10 +1248,26 @@ If it IS a RISC or auto purchase contract, return ONLY valid JSON no markdown:
       }]
     })
   });
+
+  if (!r.ok) {
+    const txt = await r.text().catch(() => '');
+    throw new Error(`AI service error (HTTP ${r.status})${txt ? ': ' + txt.slice(0, 200) : ''}`);
+  }
+
   const d = await r.json();
-  if (d.error) throw new Error(d.error.message || 'AI error');
-  const text = d.content?.find(b => b.type === 'text')?.text || '';
-  return JSON.parse(text.replace(/```json\n?/g,'').replace(/```/g,'').trim());
+  if (d.type === 'error' || d.error) {
+    const errObj = d.error || {};
+    throw new Error(typeof errObj === 'string' ? errObj : (errObj.message || 'AI extraction failed — check API key'));
+  }
+
+  const text = (d.content || []).find(b => b.type === 'text')?.text || '';
+  if (!text) throw new Error('No response from AI — the PDF may be image-only or unreadable');
+
+  const cleaned = text.replace(/```json\n?/g, '').replace(/```/g, '').trim();
+  const jsonStart = cleaned.indexOf('{');
+  const jsonEnd   = cleaned.lastIndexOf('}');
+  if (jsonStart === -1) throw new Error('AI did not return JSON. Response: ' + cleaned.slice(0, 150));
+  return JSON.parse(cleaned.slice(jsonStart, jsonEnd + 1));
 }
 
 // Read a File object and attempt RISC extraction.
@@ -1514,8 +1576,8 @@ async function generateDraft(id) {
       amount: item.amount,
       matter: item.matter
     });
-    markAgentStep(4, 'done', `${d.filename} (${(d.size/1024).toFixed(0)} KB)`);
-    notify('ok', 'Draft generated — status → Draft');
+    markAgentStep(4, 'done', `${d.filename} (${(d.size/1024).toFixed(0)} KB)${d.usedTemplate ? ' · from template' : ''}`);
+    notify('ok', `Draft generated${d.usedTemplate ? ' from template' : ''} — status → Draft`);
     setTimeout(() => openSAR(id), 800);
   } catch(e) {
     notify('err', 'Generation failed: ' + e.message);
@@ -1876,6 +1938,104 @@ function notify(type, msg) {
   el.className = 'notify ' + type + ' show';
   clearTimeout(el._t);
   el._t = setTimeout(() => el.className = 'notify ' + type, 3500);
+}
+
+// ── TEMPLATE LIBRARY ─────────────────────────────────────────────────────────
+const TEMPLATE_SLOTS = [
+  { key: 'en_cash_keep', lang: 'en', type: 'cash_keep' },
+  { key: 'en_rescission', lang: 'en', type: 'rescission' },
+  { key: 'es_cash_keep', lang: 'es', type: 'cash_keep' },
+  { key: 'es_rescission', lang: 'es', type: 'rescission' },
+];
+
+async function openTemplatesModal() {
+  document.getElementById('templates-modal').classList.add('open');
+  await loadTemplates();
+}
+
+function closeTemplatesModal() {
+  document.getElementById('templates-modal').classList.remove('open');
+}
+
+async function loadTemplates() {
+  let stored = [];
+  try {
+    const r = await fetch(API.templates);
+    if (r.ok) stored = await r.json();
+  } catch(e) {
+    notify('err', 'Could not load templates: ' + e.message);
+  }
+  const byKey = {};
+  for (const t of stored) byKey[`${t.lang}_${t.type}`] = t;
+
+  for (const { key, lang, type } of TEMPLATE_SLOTS) {
+    const t = byKey[key];
+    const body = document.getElementById(`tmpl-body-${key}`);
+    if (!body) continue;
+    if (t) {
+      const date = new Date(t.uploaded).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+      const size = t.size ? Math.round(t.size / 1024) + ' KB' : '';
+      body.innerHTML = `
+        <div style="color:var(--green);font-weight:600;margin-bottom:4px">✓ ${esc(t.filename || key + '.docx')}</div>
+        <div style="color:var(--text3);font-size:11px;margin-bottom:10px">${date}${size ? ' · ' + size : ''}</div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          <label class="btn xs" style="cursor:pointer;display:inline-flex;align-items:center;gap:4px">
+            ↑ Replace
+            <input type="file" accept=".docx" style="display:none" onchange="uploadTemplate('${lang}','${type}',this)">
+          </label>
+          <button class="btn xs danger" onclick="deleteTemplate('${lang}','${type}')">Delete</button>
+        </div>`;
+    } else {
+      body.innerHTML = `
+        <div style="color:var(--text3);margin-bottom:10px;font-size:12px">No template — auto-generated document will be used</div>
+        <label class="btn xs primary" style="cursor:pointer;display:inline-flex;align-items:center;gap:4px">
+          ↑ Upload .docx
+          <input type="file" accept=".docx" style="display:none" onchange="uploadTemplate('${lang}','${type}',this)">
+        </label>`;
+    }
+  }
+}
+
+async function uploadTemplate(lang, type, fileInput) {
+  const file = fileInput.files[0];
+  if (!file) return;
+  const key = `${lang}_${type}`;
+  const body = document.getElementById(`tmpl-body-${key}`);
+  if (body) body.innerHTML = '<div style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text2)"><div class="spin"></div> Uploading…</div>';
+
+  try {
+    const base64 = await new Promise((res, rej) => {
+      const reader = new FileReader();
+      reader.onload = e => res(e.target.result.split(',')[1]);
+      reader.onerror = rej;
+      reader.readAsDataURL(file);
+    });
+    const r = await fetch(API.templates, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ lang, type, base64, filename: file.name })
+    });
+    const d = await r.json();
+    if (!d.ok) throw new Error(d.error || 'Upload failed');
+    notify('ok', `${lang.toUpperCase()} ${type.replace('_', ' ')} template saved`);
+    await loadTemplates();
+  } catch(e) {
+    notify('err', 'Upload failed: ' + e.message);
+    await loadTemplates();
+  }
+}
+
+async function deleteTemplate(lang, type) {
+  if (!confirm(`Delete the ${lang.toUpperCase()} ${type.replace('_', ' ')} template?`)) return;
+  try {
+    const r = await fetch(`${API.templates}?lang=${lang}&type=${type}`, { method: 'DELETE' });
+    const d = await r.json();
+    if (!d.ok) throw new Error(d.error || 'Delete failed');
+    notify('ok', 'Template deleted');
+    await loadTemplates();
+  } catch(e) {
+    notify('err', 'Delete failed: ' + e.message);
+  }
 }
 
 // ── ZOHO CONNECT ──────────────────────────────────────────────────────────────

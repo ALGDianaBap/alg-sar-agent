@@ -454,7 +454,7 @@ function findFileUrlInEntry(entry) {
 async function extractRISCFields(pdfBuffer) {
   const base64Pdf = pdfBuffer.toString('base64');
   const requestBody = JSON.stringify({
-    model: 'claude-sonnet-4-20250514',
+    model: 'claude-sonnet-4-6',
     max_tokens: 1500,
     system: `You extract data from vehicle purchase contracts for a California auto law firm.
 Identify the document by its CONTENT and STRUCTURE, not its filename or label.
