@@ -484,6 +484,7 @@ const API = {
   clioToken: '/.netlify/functions/clio-token',
   clioApi:   '/.netlify/functions/clio-api',
   ai:        '/.netlify/functions/ai',
+  extractRisc: '/.netlify/functions/extract-risc',
   slack:     '/.netlify/functions/slack-notify',
   docx:      '/.netlify/functions/generate-docx',
   sars:      '/.netlify/functions/sars',
@@ -1242,58 +1243,56 @@ function riscLikelihood(filename) {
 
 // Call Claude via the ai.js proxy to extract RISC fields from a base64 PDF.
 // Returns { not_risc: true } if the document is not a RISC, or the fields object.
-async function callAIExtract(base64Pdf) {
-  if (base64Pdf && base64Pdf.length > 4_800_000) {
-    throw new Error('PDF too large (max ~3.5MB). Try compressing the PDF or uploading just the contract pages.');
+// Files at or under this size go inline in one request (fast path — no extra
+// round trips). Above it, we chunk-upload to storage and extract server-side
+// instead, since real scanned RISC contracts routinely run 5-8MB and a single
+// inline request that size gets reset by Netlify's ~6MB function request limit.
+const INLINE_EXTRACT_MAX_BYTES = 3_000_000;
+const CHUNK_UPLOAD_BYTES = 2_500_000; // raw bytes per chunk, well under the 6MB request limit once base64-encoded + JSON overhead
+
+function uint8ToBase64(bytes) {
+  let binary = '';
+  const chunkSize = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunkSize));
   }
-  const r = await fetch(API.ai, {
+  return btoa(binary);
+}
+
+// Splits a File into pieces and uploads each as its own small request, so
+// files of any size can be stored without hitting the single-request limit.
+async function chunkUploadFile(sarId, file) {
+  const buf = await file.arrayBuffer();
+  const bytes = new Uint8Array(buf);
+  const total = Math.max(1, Math.ceil(bytes.length / CHUNK_UPLOAD_BYTES));
+  for (let i = 0; i < total; i++) {
+    const slice = bytes.subarray(i * CHUNK_UPLOAD_BYTES, (i + 1) * CHUNK_UPLOAD_BYTES);
+    const data = uint8ToBase64(slice);
+    const r = await fetch(API.storeFile, {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ id: sarId, chunk: { name: file.name, type: file.type || 'application/pdf', index: i, total, data } })
+    });
+    if (!r.ok) throw new Error(`Upload failed on chunk ${i+1}/${total} (HTTP ${r.status})`);
+  }
+}
+
+// Extraction now runs server-side (see netlify/functions/extract-risc.js,
+// the single source of truth for the prompt) — either with the base64 sent
+// inline, or by {id, fileName} reference to a file already in storage, so
+// large files never need to cross the client↔function boundary as one blob.
+async function callExtractRisc(body) {
+  const r = await fetch(API.extractRisc, {
     method: 'POST', headers: {'Content-Type':'application/json'},
-    body: JSON.stringify({
-      model: 'claude-sonnet-4-6', max_tokens: 1500,
-      system: `You extract data from vehicle purchase contracts for a California auto law firm.
-Identify the document by its CONTENT and STRUCTURE, not its filename or label.
-A California Retail Installment Sales Contract (RISC / LAW 553-CA) has ALL of these: a buyer name+address section, a dealer/seller-creditor section, a vehicle description with VIN and odometer, a price breakdown (cash price, down payment, amount financed), an APR disclosure, and signature blocks.
-If this document contains those elements — even if unlabeled, scanned poorly, or has a generic filename — treat it as a RISC and extract the fields.
-Only return {"not_risc":true} if the document clearly cannot contain these fields (e.g. it is only a Buyer's Guide, insurance certificate, GAP addendum with no purchase price, or DMV form with no buyer purchase info).
-
-CRITICAL — DO NOT CONFUSE BUYER AND SELLER:
-- buyer_name = the individual CONSUMER/CUSTOMER. On a RISC this is the person labeled "Buyer" (and "Co-Buyer" if present), usually at the TOP of the form. This is a PERSON'S name, almost never a company. This is our client.
-- dealer_name = the BUSINESS labeled "Seller", "Seller-Creditor", "Creditor", or "Dealer". This is a company name (often ends with INC, LLC, MOTORS, AUTO, AUTO SALES, etc.).
-- NEVER put the dealership/seller/creditor business name in buyer_name. NEVER put the consumer's name in dealer_name.
-- buyer_address = the Buyer's home address (NOT the dealership address).
-- If a name looks like a business (INC/LLC/MOTORS/AUTO SALES), it is the dealer, not the buyer.
-
-Return ONLY valid JSON no markdown:
-{"buyer_name":"ALL CAPS full name of the consumer/Buyer","buyer_address":"buyer's full home address","dealer_name":"ALL CAPS seller/creditor business name","vehicle_year":"4 digits","vehicle_make":"","vehicle_model":"","vehicle_new_used":"New or Used","vin":"17-char VIN","odometer":"numeric","purchase_date":"MM/DD/YYYY from signature page","settlement_amount":"leave blank","settlement_amount_words":"","down_payment":"numeric only no $ or commas","total_sale_price":"","monthly_payment":"","apr":"","miles_driven":"same as odometer","notes":"any flags","missing_fields":[]}`,
-      messages: [{
-        role: 'user',
-        content: [
-          { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: base64Pdf }},
-          { type: 'text', text: 'Is this a RISC? If yes extract all fields and return the JSON. If no return {"not_risc":true}.' }
-        ]
-      }]
-    })
+    body: JSON.stringify(body)
   });
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(d.error || `AI service error (HTTP ${r.status})`);
+  if (d.error) throw new Error(d.error);
+  return d;
+}
 
-  if (!r.ok) {
-    const txt = await r.text().catch(() => '');
-    throw new Error(`AI service error (HTTP ${r.status})${txt ? ': ' + txt.slice(0, 200) : ''}`);
-  }
-
-  const d = await r.json();
-  if (d.type === 'error' || d.error) {
-    const errObj = d.error || {};
-    throw new Error(typeof errObj === 'string' ? errObj : (errObj.message || 'AI extraction failed — check API key'));
-  }
-
-  const text = (d.content || []).find(b => b.type === 'text')?.text || '';
-  if (!text) throw new Error('No response from AI — the PDF may be image-only or unreadable');
-
-  const cleaned = text.replace(/```json\n?/g, '').replace(/```/g, '').trim();
-  const jsonStart = cleaned.indexOf('{');
-  const jsonEnd   = cleaned.lastIndexOf('}');
-  if (jsonStart === -1) throw new Error('AI did not return JSON. Response: ' + cleaned.slice(0, 150));
-  return JSON.parse(cleaned.slice(jsonStart, jsonEnd + 1));
+async function callAIExtract(base64Pdf) {
+  return callExtractRisc({ base64: base64Pdf });
 }
 
 // Draft the two case-specific paragraphs of the Settlement Agreement (the
@@ -1370,20 +1369,25 @@ Return ONLY valid JSON, no markdown: {"dispute_recital":"...", "section_b_paragr
 }
 
 // Read a File object and attempt RISC extraction.
-// Returns the fields if successful, null if not a RISC.
-function extractFileAsRISC(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = async (e) => {
-      try {
-        const base64 = e.target.result.split(',')[1];
-        const result = await callAIExtract(base64);
-        resolve(result.not_risc ? null : result);
-      } catch (e) { reject(e); }
-    };
-    reader.onerror = () => reject(new Error('File read error'));
-    reader.readAsDataURL(file);
-  });
+// Returns the fields if successful, null if not a RISC. Files over
+// INLINE_EXTRACT_MAX_BYTES are chunk-uploaded and extracted server-side
+// (needs a sarId to attach the upload to); smaller files go inline.
+async function extractFileAsRISC(file, sarId) {
+  let result;
+  if (file.size > INLINE_EXTRACT_MAX_BYTES) {
+    if (!sarId) throw new Error('File too large to send inline (' + (file.size/1024/1024).toFixed(1) + 'MB) and no SAR to attach it to');
+    await chunkUploadFile(sarId, file);
+    result = await callExtractRisc({ id: sarId, fileName: file.name });
+  } else {
+    const base64 = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => resolve(e.target.result.split(',')[1]);
+      reader.onerror = () => reject(new Error('File read error'));
+      reader.readAsDataURL(file);
+    });
+    result = await callAIExtract(base64);
+  }
+  return result.not_risc ? null : result;
 }
 
 // Manual upload handler — accepts one or more PDFs, tries each in RISC-likelihood order.
@@ -1398,11 +1402,11 @@ async function extractFromUploads(sarId, fileInput) {
   const item = findSAR(sarId);
   if (!item) return;
 
-  notify('info', `Analyzing ${sorted.length} file${sorted.length > 1 ? 's' : ''}…`);
+  notify('info', `Analyzing ${sorted.length} file${sorted.length > 1 ? 's' : ''}${sorted.some(f=>f.size>INLINE_EXTRACT_MAX_BYTES) ? ' (large file detected — uploading first, this may take a moment)' : ''}…`);
 
   for (const file of sorted) {
     try {
-      const fields = await extractFileAsRISC(file);
+      const fields = await extractFileAsRISC(file, sarId);
       if (!fields) {
         // Claude said not a RISC — try next file if available
         if (sorted.length > 1) notify('info', `${file.name}: no contract found — trying next…`);
@@ -1495,7 +1499,10 @@ async function runAgent(id) {
       if (r.ok) {
         const stored = await r.json();
         if (Array.isArray(stored) && stored.length > 0) {
-          filesToProcess = stored.map(f => ({ name: f.name, _base64: f.data, _type: f.type }));
+          // Metadata only (name/type/size) — extraction reads the actual bytes
+          // server-side by {id, fileName} reference, so a large stored file
+          // never needs to be downloaded to the browser at all.
+          filesToProcess = stored.map(f => ({ name: f.name, _stored: true, _type: f.type }));
           markAgentStep(1, 'done', `${stored.length} file(s) ready: ${stored.map(f => f.name).join(', ')}`);
         } else {
           item.hasStoredFiles = false;
@@ -1544,9 +1551,12 @@ async function runAgent(id) {
       const sorted = [...allFiles].sort((a, b) => riscLikelihood(b.name) - riscLikelihood(a.name));
       for (const f of sorted) {
         setAgentStepNote(2, `Checking ${f.name}…`);
-        // Handle both real File objects and stored {_base64} objects
-        fields = f._base64 ? await callAIExtract(f._base64).then(r => r.not_risc ? null : r).catch(() => null)
-                           : await extractFileAsRISC(f);
+        // Stored files are extracted server-side by {id, fileName} reference
+        // (no bytes downloaded to the browser); freshly-picked File objects
+        // go through extractFileAsRISC, which itself chunk-uploads large ones.
+        fields = f._stored
+          ? await callExtractRisc({ id: item.id, fileName: f.name }).then(r => r.not_risc ? null : r).catch(() => null)
+          : await extractFileAsRISC(f, item.id);
         if (fields) { markAgentStep(2, 'done', `RISC found in ${f.name}`); break; }
         setAgentStepNote(2, `${f.name}: not a RISC — trying next…`);
       }

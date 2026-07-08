@@ -1,5 +1,11 @@
-// Returns base64 files stored during native form submission.
+// Returns metadata for files stored during native form submission.
 // GET /.netlify/functions/get-files?id={sarId}
+//
+// Deliberately does NOT include the base64 `data` — a large scanned RISC
+// (routinely 5-8MB) would blow past Netlify's ~6MB function response limit
+// the same way it blows past the request limit on the way in. Extraction
+// reads the bytes directly server-side via extract-risc.js instead, so the
+// client never needs the raw bytes at all.
 
 const { store: getStore } = require('./_blobs');
 
@@ -18,7 +24,8 @@ exports.handler = async (event) => {
   try {
     const files = await getStore('form-files').get(id, { type: 'json' });
     if (!files) return { statusCode: 404, headers: cors, body: JSON.stringify({ error: 'Not found' }) };
-    return { statusCode: 200, headers: { ...cors, 'Content-Type': 'application/json' }, body: JSON.stringify(files) };
+    const meta = files.map(f => ({ name: f.name, type: f.type, size: Math.round((f.data || '').length * 0.75) }));
+    return { statusCode: 200, headers: { ...cors, 'Content-Type': 'application/json' }, body: JSON.stringify(meta) };
   } catch (e) {
     return { statusCode: 500, headers: cors, body: JSON.stringify({ error: e.message }) };
   }

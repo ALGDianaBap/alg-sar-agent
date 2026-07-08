@@ -111,16 +111,16 @@ textarea{min-height:90px;resize:vertical;line-height:1.6;}
   <div id="fw">
     <div class="eb" id="eb"></div>
 
-    <!-- ── Dealer Name (buyer's name — matches Zoho field labels exactly) ── -->
+    <!-- ── Buyer Name (the consumer/client — element ids kept as dealerNameFirst/Last for backend compatibility) ── -->
     <div class="card">
-      <div class="ct" id="s1">Dealer Name</div>
+      <div class="ct" id="s1">Buyer Name</div>
       <div class="r2">
         <div class="fg">
-          <label id="lfn">Dealer Name <span style="color:var(--red)">*</span></label>
+          <label id="lfn">Buyer First Name <span style="color:var(--red)">*</span></label>
           <input type="text" id="dealerNameFirst" placeholder="First name" required />
         </div>
         <div class="fg">
-          <label id="lln">Dealer Last Name <span style="color:var(--red)">*</span></label>
+          <label id="lln">Buyer Last Name <span style="color:var(--red)">*</span></label>
           <input type="text" id="dealerNameLast" placeholder="Last name" required />
         </div>
       </div>
@@ -268,8 +268,8 @@ const T={
   en:{
     ht:'Settlement Agreement Request',
     hs:'Complete this form to submit a settlement agreement request. A case manager will be assigned and will begin processing the file immediately.',
-    s1:'Dealer Name', s2:'Request Details', s3:"What's the dealership giving in return?", s4:'Documents to Upload',
-    lfn:'Dealer Name', lln:'Dealer Last Name', lph:'Phone', lem:'Email', leopt:'(optional)',
+    s1:'Buyer Name', s2:'Request Details', s3:"What's the dealership giving in return?", s4:'Documents to Upload',
+    lfn:'Buyer First Name', lln:'Buyer Last Name', lph:'Phone', lem:'Email', leopt:'(optional)',
     ldn:'Dealership Name', lwd:'What are you doing for the customer?',
     llang:'In what language was the deal negotiated?',
     lhap:'Has this already happened?',
@@ -295,8 +295,8 @@ const T={
   es:{
     ht:'Solicitud de Acuerdo de Liquidación',
     hs:'Complete este formulario para enviar una solicitud de acuerdo de liquidación. Se asignará un gestor de casos de inmediato.',
-    s1:'Nombre del Dealer', s2:'Detalles de la Solicitud', s3:'¿Qué ofrece el concesionario?', s4:'Documentos',
-    lfn:'Nombre del Dealer', lln:'Apellido del Dealer', lph:'Teléfono', lem:'Correo electrónico', leopt:'(opcional)',
+    s1:'Nombre del Comprador', s2:'Detalles de la Solicitud', s3:'¿Qué ofrece el concesionario?', s4:'Documentos',
+    lfn:'Nombre del Comprador', lln:'Apellido del Comprador', lph:'Teléfono', lem:'Correo electrónico', leopt:'(opcional)',
     ldn:'Nombre del Concesionario', lwd:'¿Qué está haciendo para el cliente?',
     llang:'¿En qué idioma se negoció el trato?',
     lhap:'¿Ya ha ocurrido esto?',
@@ -403,10 +403,11 @@ async function go(){
     return;
   }
 
-  // Step 2: upload each file individually (each request is one file = stays under 6MB).
-  // Netlify caps the function request body at ~6MB; base64 inflates a file by ~37%,
-  // so files larger than ~4.3MB can't be auto-stored and must be uploaded in-app.
-  const MAX_STORE_BYTES = 4_300_000;
+  // Step 2: upload each file individually. Netlify caps a single function
+  // request body at ~6MB, so files over CHUNK_BYTES are split into several
+  // small requests and reassembled server-side (see store-file.js) — real
+  // scanned RISC contracts routinely run 5-8MB, well past a single request.
+  const CHUNK_BYTES = 2_500_000;
   let okCount = 0;
   const failed = [];
   if(files.length>0 && sarId){
@@ -414,19 +415,19 @@ async function go(){
     for(let i=0;i<files.length;i++){
       const f=files[i];
       ls.textContent=`Uploading file ${i+1} of ${files.length}: ${f.name}…`;
-      if(f.size > MAX_STORE_BYTES){
-        failed.push(f.name+' (too large)');
-        continue;
-      }
       try{
-        const data=await b64(f);
-        const r=await fetch('/.netlify/functions/store-file',{
-          method:'POST',headers:{'Content-Type':'application/json'},
-          body:JSON.stringify({id:sarId,file:{name:f.name,type:f.type||'application/octet-stream',data}})
-        });
-        const d=await r.json().catch(()=>({}));
-        if(r.ok && d.ok){ okCount++; }
-        else { failed.push(f.name); console.warn('store-file rejected',f.name,r.status,d.error||''); }
+        if (f.size > CHUNK_BYTES) {
+          await uploadFileChunked(sarId, f, (part, total) => { ls.textContent=`Uploading file ${i+1} of ${files.length}: ${f.name} (part ${part}/${total})…`; });
+        } else {
+          const data=await b64(f);
+          const r=await fetch('/.netlify/functions/store-file',{
+            method:'POST',headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({id:sarId,file:{name:f.name,type:f.type||'application/octet-stream',data}})
+          });
+          const d=await r.json().catch(()=>({}));
+          if(!r.ok || !d.ok) throw new Error(d.error || `HTTP ${r.status}`);
+        }
+        okCount++;
       }catch(e){ failed.push(f.name); console.warn('File upload failed for',f.name,':',e.message); }
     }
   }
@@ -463,6 +464,23 @@ async function go(){
 
 function v(id){return(document.getElementById(id)?.value||'').trim();}
 function b64(f){return new Promise((res,rej)=>{const r=new FileReader();r.onload=e=>res(e.target.result.split(',')[1]);r.onerror=rej;r.readAsDataURL(f);});}
+function uint8ToBase64(bytes){let binary='';const chunkSize=0x8000;for(let i=0;i<bytes.length;i+=chunkSize){binary+=String.fromCharCode.apply(null,bytes.subarray(i,i+chunkSize));}return btoa(binary);}
+async function uploadFileChunked(sarId, file, onProgress){
+  const CHUNK_BYTES=2_500_000;
+  const buf=await file.arrayBuffer();
+  const bytes=new Uint8Array(buf);
+  const total=Math.max(1,Math.ceil(bytes.length/CHUNK_BYTES));
+  for(let i=0;i<total;i++){
+    if(onProgress) onProgress(i+1,total);
+    const slice=bytes.subarray(i*CHUNK_BYTES,(i+1)*CHUNK_BYTES);
+    const data=uint8ToBase64(slice);
+    const r=await fetch('/.netlify/functions/store-file',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({id:sarId,chunk:{name:file.name,type:file.type||'application/octet-stream',index:i,total,data}})
+    });
+    if(!r.ok) throw new Error(`Upload failed on part ${i+1}/${total} (HTTP ${r.status})`);
+  }
+}
 function showErr(m){const e=document.getElementById('eb');e.textContent=m;e.style.display='block';window.scrollTo({top:0,behavior:'smooth'});}
 function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 </script>

@@ -24,6 +24,9 @@
 [functions."templates"]
   timeout = 26
 
+[functions."extract-risc"]
+  timeout = 26
+
 [[redirects]]
   from = "/submit"
   to = "/submit.html"
