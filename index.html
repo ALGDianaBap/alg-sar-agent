@@ -1248,7 +1248,7 @@ function riscLikelihood(filename) {
 // instead, since real scanned RISC contracts routinely run 5-8MB and a single
 // inline request that size gets reset by Netlify's ~6MB function request limit.
 const INLINE_EXTRACT_MAX_BYTES = 3_000_000;
-const CHUNK_UPLOAD_BYTES = 2_500_000; // raw bytes per chunk, well under the 6MB request limit once base64-encoded + JSON overhead
+const CHUNK_UPLOAD_BYTES = 2_400_000; // raw bytes per chunk (must be a multiple of 3 — base64-encoding a non-multiple-of-3 slice pads mid-stream, corrupting the reassembled string on concat). Well under the 6MB request limit once base64-encoded + JSON overhead.
 
 function uint8ToBase64(bytes) {
   let binary = '';

@@ -407,7 +407,7 @@ async function go(){
   // request body at ~6MB, so files over CHUNK_BYTES are split into several
   // small requests and reassembled server-side (see store-file.js) — real
   // scanned RISC contracts routinely run 5-8MB, well past a single request.
-  const CHUNK_BYTES = 2_500_000;
+  const CHUNK_BYTES = 2_400_000;
   let okCount = 0;
   const failed = [];
   if(files.length>0 && sarId){
@@ -466,7 +466,7 @@ function v(id){return(document.getElementById(id)?.value||'').trim();}
 function b64(f){return new Promise((res,rej)=>{const r=new FileReader();r.onload=e=>res(e.target.result.split(',')[1]);r.onerror=rej;r.readAsDataURL(f);});}
 function uint8ToBase64(bytes){let binary='';const chunkSize=0x8000;for(let i=0;i<bytes.length;i+=chunkSize){binary+=String.fromCharCode.apply(null,bytes.subarray(i,i+chunkSize));}return btoa(binary);}
 async function uploadFileChunked(sarId, file, onProgress){
-  const CHUNK_BYTES=2_500_000;
+  const CHUNK_BYTES=2_400_000; // multiple of 3 — see comment above uploadFileChunked's caller
   const buf=await file.arrayBuffer();
   const bytes=new Uint8Array(buf);
   const total=Math.max(1,Math.ceil(bytes.length/CHUNK_BYTES));
