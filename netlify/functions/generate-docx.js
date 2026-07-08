@@ -67,6 +67,8 @@ exports.handler = async (event) => {
             third_party:             zc.thirdParty   || '',
             has_happened:            zc.hasHappened  || '',
             who_work:                zc.whoWork      || '',
+            dispute_recital:         fields.dispute_recital     || '',
+            section_b_paragraph:     fields.section_b_paragraph || '',
           };
 
           const content = Buffer.from(templateBase64, 'base64');
@@ -92,6 +94,16 @@ exports.handler = async (event) => {
     }
 
     // ── Programmatic fallback ─────────────────────────────────────────────────
+    // English-only — never silently hand back an English document for a
+    // Spanish request. If no Spanish template is uploaded yet, fail loudly
+    // so a CM finds out now instead of a buyer finding out at signing.
+    if (!usedTemplate && lang === 'es') {
+      return {
+        statusCode: 422,
+        headers: { ...cors, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ error: 'No Spanish template uploaded yet for this deal type (es_' + type + '). Upload one via Template Library, or generate in English for now.' })
+      };
+    }
     if (!usedTemplate) {
       const doc = buildDocument(fields, dealType || 'cash_keep', zc);
       base64 = await Packer.toBase64String(doc);

@@ -1,3 +1,6 @@
 node_modules/
 .netlify/
 .env
+
+# Real client case files (names, VINs, settlement amounts) — never commit.
+samples/

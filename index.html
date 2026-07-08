@@ -1017,6 +1017,23 @@ function renderDetail(item) {
         ${f.notes ? `<div style="margin-top:10px;padding:8px 10px;background:var(--yellow-bg);border-radius:var(--radius);font-size:12px;color:var(--yellow)">⚠ ${esc(f.notes)}</div>` : ''}
         ${(f.missing_fields||[]).length ? `<div style="margin-top:8px;font-size:12px;color:var(--red)">Missing: ${f.missing_fields.join(', ')}</div>` : ''}
       </div>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">✍️ Settlement Language ${f.section_b_paragraph ? `<span style="font-size:10px;color:var(--green);font-weight:600;background:var(--green-bg);padding:2px 6px;border-radius:3px">Drafted</span>` : ''}</div>
+        <button class="btn xs" id="draft-btn-${item.id}" onclick="draftSettlementLanguage('${item.id}')">${f.section_b_paragraph ? '↻ Re-draft' : '✍️ Draft with AI'}</button>
+      </div>
+      <div class="card-body">
+        <div class="field" style="margin-bottom:10px">
+          <div class="field-label">Dispute Recital (goes into the WHEREAS paragraph)</div>
+          <textarea id="dd-${item.id}-dispute_recital" class="field-value editable" rows="3" style="width:100%;resize:vertical;font-family:inherit" placeholder="Drafted automatically from the intake answers — or click Draft with AI" onchange="updateField('${item.id}','dispute_recital',this.value)">${esc(f.dispute_recital||'')}</textarea>
+        </div>
+        <div class="field">
+          <div class="field-label">Section B — Payment / Consideration Paragraph</div>
+          <textarea id="dd-${item.id}-section_b_paragraph" class="field-value editable" rows="4" style="width:100%;resize:vertical;font-family:inherit" placeholder="Drafted automatically from the intake answers — or click Draft with AI" onchange="updateField('${item.id}','section_b_paragraph',this.value)">${esc(f.section_b_paragraph||'')}</textarea>
+        </div>
+        <div style="margin-top:8px;font-size:11px;color:var(--text3)">Everything else in the agreement (releases, 1542 waiver, signatures) comes from the firm's Word template — these are the only two paragraphs the agent writes per case. Review before generating.</div>
+      </div>
     </div>`;
 
   // Agent panel (for 'new' status)
@@ -1276,6 +1293,79 @@ Return ONLY valid JSON no markdown:
   const jsonStart = cleaned.indexOf('{');
   const jsonEnd   = cleaned.lastIndexOf('}');
   if (jsonStart === -1) throw new Error('AI did not return JSON. Response: ' + cleaned.slice(0, 150));
+  return JSON.parse(cleaned.slice(jsonStart, jsonEnd + 1));
+}
+
+// Draft the two case-specific paragraphs of the Settlement Agreement (the
+// dispute recital and the Section B payment/consideration paragraph) in
+// ALG's house style, learned from 15 attorney-approved settlement agreements.
+// Everything else in the document (releases, 1542 waiver, signatures, and —
+// for Section B — the fixed RISC-affirmation / vehicle-return sentences) is
+// boilerplate baked into the .docx template, NOT drafted here, so attorney
+// updates to that boilerplate always take effect without any code change.
+async function callAIDraftAgreement(item) {
+  const f  = item.fields || {};
+  const zc = item.zohoContext || {};
+  const dealType = item.dealType === 'rescission' ? 'rescission' : 'cash_keep';
+  const language = item.language === 'es' ? 'es' : 'en';
+
+  const caseFacts = {
+    dealType, language,
+    buyer_name: f.buyer_name || '', dealer_name: f.dealer_name || '',
+    vehicle: [f.vehicle_year, f.vehicle_make, f.vehicle_model].filter(Boolean).join(' '),
+    vin: f.vin || '', purchase_date: f.purchase_date || '',
+    settlement_amount: f.settlement_amount || '', down_payment: f.down_payment || '',
+    work_description: zc.workDesc || '',
+    has_already_happened: zc.hasHappened || '',
+    who_is_doing_the_work: zc.whoWork || '',
+    third_party: zc.thirdParty || '',
+    dealer_is_giving: zc.dealerGiving || '',
+    refund_or_deduction_notes: zc.refundNotes || '',
+    cm_notes: f.notes || '',
+  };
+
+  const r = await fetch(API.ai, {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-6', max_tokens: 1500,
+      system: `You draft two case-specific paragraphs for a California auto-dealer Settlement & Release Agreement, in the exact house style of Auto Legal Group, LLP (ALG). You write ONLY the two paragraphs described below — never the surrounding boilerplate (recital framing, release language, 1542 waiver, non-disparagement, signatures, etc.), which lives in the firm's Word template and is inserted separately.
+
+STYLE RULES, learned from 15 attorney-approved ALG settlement agreements (reviewed by senior attorneys Amir Nezaratizadeh and Ali Kamarei):
+- Formal legal tone, third person ("Buyer"/"Buyers", "Dealer"). Match the buyer/dealer's exact given names/entity names, in ALL CAPS is NOT required here (the template handles casing).
+- Never invent facts, dollar amounts, or vendor names that were not given. If something needed is missing, write the paragraph as completely as the facts allow and list what's missing in "missing_info" — do not guess a number.
+- Never mention or imply the resolution path that does NOT apply (e.g. never mention rescission/returning the vehicle in a cash_keep deal, and never mention the buyer keeping the vehicle in a rescission deal).
+- Keep named third-party vendors/repair shops OUT of the payment paragraph — they belong only in the dispute recital. The payment paragraph should stick to Dealer's obligation and any disclaimer.
+- Whenever Dealer is reimbursing, contributing toward, or arranging a repair performed by someone other than Dealer itself (a third-party shop, the manufacturer, a warranty company), OR the vehicle was sold "As-Is", include a no-warranty disclaimer along these lines: "Dealer provides no warranty, guarantee, or representation, express or implied, regarding the repair/replacement, and any applicable warranty is solely that of the manufacturer, supplier, repair facility, or other third party, if any."
+- If the payment has multiple components (e.g. a shared deductible, labor vs. parts, buyer's own contribution), itemize each dollar amount explicitly, and confirm the pieces add up.
+
+PARAGRAPH 1 — "dispute_recital": one to two sentences that will be inserted into a WHEREAS recital. Do NOT include the word "WHEREAS" or any surrounding sentence — just the dispute description itself, following this pattern: "certain disputes among the settling Parties herein have arisen. Buyer claims [buyer's specific complaint]. [Dealer's position — typically denies the obligation and/or asserts the vehicle was sold "As-Is", or asserts its own countervailing claim such as mileage/resale/cleaning deductions or a missed payment]."
+
+PARAGRAPH 2 — "section_b_paragraph": the ONLY variable content of Section B (Covenants & Agreements). A fixed sentence is appended automatically right after your text by the template — for a cash_keep deal that's the RISC-affirmation sentence ("Buyer will remain obligated under the Retail Installment Sales Contract...") and for a rescission deal that's the vehicle-return and RISC-rescission sentences — so do NOT write those yourself.
+  - CASH & KEEP (dealType=cash_keep): one paragraph. Start with a short label ending in a period naming the resolution — e.g. "Payment to Buyer.", "Consideration to Buyer.", "Service to Buyer.", "Repairs to the Vehicle.", "Payment for [specific repair] Repair." — pick whichever best names what's actually happening; this is a stylistic choice attorneys make per case, not a fixed enum. Then state exactly what Dealer will pay and/or do, in consideration for the Settlement Agreement. Buyer keeps the vehicle.
+  - RESCISSION (dealType=rescission): write ONLY the payment sentence, starting "Payment to Buyer." Then either "Dealer will pay the sum of $X directly to Buyer" for a flat settlement number, OR "Dealer shall pay the Buyer a partial return of the down payment in the amount of $X" when the dispute concerns the down payment, add-on products, or fees. Pick whichever framing matches the dispute.
+
+LANGUAGE: if language is "es", write both paragraphs entirely in formal legal Spanish (matching the register of a California settlement agreement) and set "needs_review" to true, since ALG has not yet attorney-verified a Spanish sample of this pattern. If language is "en", set "needs_review" to false.
+
+Return ONLY valid JSON, no markdown: {"dispute_recital":"...", "section_b_paragraph":"...", "missing_info":["..."], "needs_review":false}`,
+      messages: [{ role: 'user', content: [{ type: 'text', text: 'Case facts:\n' + JSON.stringify(caseFacts, null, 2) }] }]
+    })
+  });
+
+  if (!r.ok) {
+    const txt = await r.text().catch(() => '');
+    throw new Error(`AI service error (HTTP ${r.status})${txt ? ': ' + txt.slice(0, 200) : ''}`);
+  }
+  const d = await r.json();
+  if (d.type === 'error' || d.error) {
+    const errObj = d.error || {};
+    throw new Error(typeof errObj === 'string' ? errObj : (errObj.message || 'AI drafting failed — check API key'));
+  }
+  const text = (d.content || []).find(b => b.type === 'text')?.text || '';
+  if (!text) throw new Error('No response from AI when drafting the agreement text');
+  const cleaned = text.replace(/```json\n?/g, '').replace(/```/g, '').trim();
+  const jsonStart = cleaned.indexOf('{');
+  const jsonEnd   = cleaned.lastIndexOf('}');
+  if (jsonStart === -1) throw new Error('AI did not return JSON when drafting the agreement text. Response: ' + cleaned.slice(0, 150));
   return JSON.parse(cleaned.slice(jsonStart, jsonEnd + 1));
 }
 
@@ -1590,6 +1680,32 @@ function enableGenerateStep(id) {
   }
 }
 
+// Standalone drafting step — lets a CM review/edit the AI's language
+// before generating the .docx, rather than only seeing it baked into the file.
+async function draftSettlementLanguage(id) {
+  const item = findSAR(id);
+  if (!item) return;
+  const btn = document.getElementById('draft-btn-' + id);
+  if (btn) { btn.innerHTML = '<div class="spin"></div> Drafting…'; btn.disabled = true; }
+  try {
+    const drafted = await callAIDraftAgreement(item);
+    item.fields = { ...item.fields, dispute_recital: drafted.dispute_recital, section_b_paragraph: drafted.section_b_paragraph };
+    await patchSAR(item.id, { fields: item.fields });
+    if (drafted.missing_info && drafted.missing_info.length) {
+      notify('info', 'Drafted, but flagged missing info: ' + drafted.missing_info.join('; '));
+    }
+    if (drafted.needs_review) {
+      notify('info', 'Spanish draft generated — ALG has no attorney-verified Spanish sample yet, so have this reviewed before it goes out.');
+    } else {
+      notify('ok', 'Settlement language drafted — review it below');
+    }
+    openSAR(id);
+  } catch (e) {
+    notify('err', 'Drafting failed: ' + e.message);
+    if (btn) { btn.innerHTML = '✍️ Draft with AI'; btn.disabled = false; }
+  }
+}
+
 async function generateDraft(id) {
   const item = findSAR(id);
   if (!item) return;
@@ -1609,8 +1725,33 @@ async function generateDraft(id) {
     notify('info', 'No Clio matter linked — draft will generate but won\'t be uploadable to Clio yet');
   }
   const btn = document.getElementById('gen-btn-' + id);
-  if (btn) { btn.innerHTML = '<div class="spin"></div> Generating…'; btn.disabled = true; }
+  if (btn) { btn.innerHTML = '<div class="spin"></div> Drafting settlement terms…'; btn.disabled = true; }
+  setAgentStepNote(4, 'Drafting the dispute recital and settlement paragraph…');
   try {
+    // Draft the case-specific paragraphs first (dispute recital + Section B
+    // payment clause), then merge them into the .docx template. Keeping this
+    // as its own step means a drafting failure never silently produces a
+    // document missing its most important paragraph. If a CM already drafted
+    // (and possibly hand-edited) the language via "Draft with AI" above, reuse
+    // it as-is rather than silently overwriting their edits.
+    if (!item.fields?.section_b_paragraph) {
+      let drafted = null;
+      try {
+        drafted = await callAIDraftAgreement(item);
+      } catch (e) {
+        throw new Error('Could not draft settlement language: ' + e.message);
+      }
+      item.fields = { ...item.fields, dispute_recital: drafted.dispute_recital, section_b_paragraph: drafted.section_b_paragraph };
+      if (drafted.missing_info && drafted.missing_info.length) {
+        notify('info', 'Drafted, but flagged missing info: ' + drafted.missing_info.join('; '));
+      }
+      if (drafted.needs_review) {
+        notify('info', 'Spanish draft generated — ALG has no attorney-verified Spanish sample yet, so have this reviewed before it goes out.');
+      }
+    }
+
+    if (btn) btn.innerHTML = '<div class="spin"></div> Generating…';
+    setAgentStepNote(4, 'Generating the .docx…');
     const r = await fetch(API.docx, {
       method: 'POST',
       headers: {'Content-Type':'application/json'},
@@ -1637,6 +1778,7 @@ async function generateDraft(id) {
     }
     setTimeout(() => openSAR(id), 800);
   } catch(e) {
+    markAgentStep(4, 'err', e.message);
     notify('err', 'Generation failed: ' + e.message);
     if (btn) { btn.innerHTML = 'Generate Draft'; btn.disabled = false; }
   }

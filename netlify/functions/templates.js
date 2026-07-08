@@ -13,6 +13,18 @@
  *   vehicle_make, vehicle_model, vin, purchase_date, settlement_amount,
  *   settlement_amount_words, down_payment, down_payment_words, miles_driven,
  *   apr, work_desc, dealer_giving, refund_notes, third_party
+ *
+ * AI-drafted case-specific paragraphs (see callAIDraftAgreement in index.html):
+ *   dispute_recital      — the "Buyer claims... Dealer claims..." sentence(s)
+ *                           for Recital A.2. Fixed WHEREAS framing surrounds it
+ *                           in the template.
+ *   section_b_paragraph  — the payment/consideration paragraph for Section B.
+ *                           The fixed RISC-affirmation sentence (cash_keep) or
+ *                           vehicle-return + RISC-rescission sentences
+ *                           (rescission) must be typed directly into the
+ *                           template right after this tag — they are NOT
+ *                           part of this field, so attorney edits to that
+ *                           boilerplate always take effect without a code change.
  */
 
 const { store: getStore } = require('./_blobs');
