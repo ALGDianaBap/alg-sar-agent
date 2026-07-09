@@ -2576,13 +2576,9 @@ async function sendSlackAssignment(entry, cm) {
   const langLabel = entry.language === 'es' ? 'Spanish' : 'English';
   const urgPrefix = entry.urgency === 'urgent' ? '🚨 *URGENT* ' : '';
   const matterInfo = entry.matter ? `#${entry.matter.num} — ${entry.matter.name}` : 'Not linked yet';
-  const dmText = `${urgPrefix}*New SAR Assignment*\n\nYou've been assigned a new Settlement Agreement Request.\n\n*Buyer:* ${entry.buyer}\n*Dealer:* ${entry.dealer}\n*Type:* ${dealLabel} · ${langLabel}\n${entry.amount?'*Settlement:* $'+entry.amount+'\n':''}`+
-               `*Matter:* ${matterInfo}${entry.notes?'\n*Notes:* '+entry.notes:''}\n\nOpen the SAR Agent to process this request.`;
-  await sendSlackDM(cm.slackId, dmText);
-  // The whole legal team needs visibility into every new SAR, so this one
-  // also always posts to the public channel — unlike other individual
-  // notifications, which stay DM-only.
-  const publicText = `${urgPrefix}📋 *New SAR — assigned to ${cm.name}*\n\n*Buyer:* ${entry.buyer}\n*Dealer:* ${entry.dealer}\n*Type:* ${dealLabel} · ${langLabel}\n${entry.amount?'*Settlement:* $'+entry.amount+'\n':''}*Matter:* ${matterInfo}`;
+  // Public channel only, tagging the assigned CM — the whole legal team
+  // needs visibility into every new SAR, so no separate DM here.
+  const publicText = `${urgPrefix}📋 *New SAR* — <@${cm.slackId}> assigned\n\n*Buyer:* ${entry.buyer}\n*Dealer:* ${entry.dealer}\n*Type:* ${dealLabel} · ${langLabel}\n${entry.amount?'*Settlement:* $'+entry.amount+'\n':''}*Matter:* ${matterInfo}${entry.notes?'\n*Notes:* '+entry.notes:''}`;
   await sendSlack(SLACK_SAR_CHANNEL, publicText, [{type:'section', text:{type:'mrkdwn', text: publicText}}]);
 }
 

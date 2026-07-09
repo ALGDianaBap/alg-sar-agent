@@ -280,8 +280,10 @@ exports.handler = async (event) => {
     .map(l => `> ${l.slice(0, 120)}`)
     .join('\n');
 
+  // Public channel only, tagging the assigned CM — the whole legal team
+  // needs visibility into every new SAR, so no separate DM here.
   const slackText =
-    `📋 *New SAR Assignment*\n\nYou've been assigned a new Settlement Agreement Request.\n\n` +
+    `📋 *New SAR* — <@${cm.slackId}> assigned\n\n` +
     `*Buyer:* ${finalBuyer}\n` +
     `*Dealer:* ${finalDealer}\n` +
     `*Type:* ${dealLabel} · ${langLabel}\n` +
@@ -292,21 +294,8 @@ exports.handler = async (event) => {
     (contextLines ? `\n*From form:*\n${contextLines}\n` : '') +
     `\n${draftLine}`;
 
-  // DM the assigned CM directly, AND always post to the public channel too
-  // — the whole legal team needs visibility into every new SAR as it comes in.
   try {
-    await postSlack(cm.slackId, slackText);
-  } catch (e) {
-    console.error('Slack DM error:', e.message);
-  }
-  const publicText =
-    `📋 *New SAR — assigned to ${cm.name}*\n\n` +
-    `*Buyer:* ${finalBuyer}\n*Dealer:* ${finalDealer}\n` +
-    `*Type:* ${dealLabel} · ${langLabel}\n` +
-    (vehicle ? `*Vehicle:* ${vehicle}${fields.vin ? ' · VIN ' + fields.vin : ''}\n` : '') +
-    `*Clio matter:* ${matterStr}\n${draftLine}`;
-  try {
-    await postSlack(SLACK_CHANNEL, publicText);
+    await postSlack(SLACK_CHANNEL, slackText);
   } catch (e) {
     console.error('Slack public post error:', e.message);
   }

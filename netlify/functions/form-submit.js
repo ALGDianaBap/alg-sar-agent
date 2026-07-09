@@ -88,8 +88,10 @@ exports.handler = async (event) => {
     const dealLabel = isResc ? 'Rescission' : 'Cash & Keep';
     const langLabel = language === 'es' ? 'Spanish' : 'English';
     const ctx = [workDesc, dealerGiving].filter(Boolean).map(l => `> ${l.slice(0, 100)}`).join('\n');
+    // Public channel only, tagging the assigned CM — the whole legal team
+    // needs visibility into every new SAR, so no separate DM here.
     const slackText =
-      `📋 *New SAR Assignment*\n\nYou've been assigned a new Settlement Agreement Request.\n\n` +
+      `📋 *New SAR* — <@${cm.slackId}> assigned\n\n` +
       `*Dealer Name:* ${buyer}\n*Dealership:* ${dealer}\n` +
       `*Type:* ${dealLabel} · ${langLabel}\n*Phone:* ${phone || '—'}\n` +
       `*Submitted by:* ${contactName || '—'}\n` +
@@ -97,16 +99,7 @@ exports.handler = async (event) => {
       (fileNames.length ? `\n📎 ${fileNames.join(', ')}\n` : '') +
       `▶️ Open SAR Agent → Run Agent to extract and generate draft`;
 
-    // DM the assigned CM directly, AND always post to the public channel too
-    // — the whole legal team needs visibility into every new SAR as it comes in.
-    await cap(postSlack(cm.slackId, slackText), 4000)
-      .catch(e => console.warn('Slack DM failed:', e.message));
-    const publicText =
-      `📋 *New SAR — assigned to ${cm.name}*\n\n` +
-      `*Dealer Name:* ${buyer}\n*Dealership:* ${dealer}\n` +
-      `*Type:* ${dealLabel} · ${langLabel}\n*Phone:* ${phone || '—'}\n` +
-      `*Submitted by:* ${contactName || '—'}`;
-    await cap(postSlack(SLACK_CHANNEL, publicText), 4000)
+    await cap(postSlack(SLACK_CHANNEL, slackText), 4000)
       .catch(e => console.warn('Slack public post failed:', e.message));
 
     return {
