@@ -7,7 +7,6 @@
 const https = require('https');
 const { store: getStore } = require('./_blobs');
 
-const SLACK_CHANNEL = 'C09QF0PRLJ2';
 const CMS = [
   { name: 'Pedro',     slackId: 'U09QP4Z4KUG' },
   { name: 'Samir',     slackId: 'U09PDBV7287' },
@@ -89,7 +88,7 @@ exports.handler = async (event) => {
     const langLabel = language === 'es' ? 'Spanish' : 'English';
     const ctx = [workDesc, dealerGiving].filter(Boolean).map(l => `> ${l.slice(0, 100)}`).join('\n');
     const slackText =
-      `📋 *New SAR — <@${cm.slackId}> assigned*\n\n` +
+      `📋 *New SAR Assignment*\n\nYou've been assigned a new Settlement Agreement Request.\n\n` +
       `*Dealer Name:* ${buyer}\n*Dealership:* ${dealer}\n` +
       `*Type:* ${dealLabel} · ${langLabel}\n*Phone:* ${phone || '—'}\n` +
       `*Submitted by:* ${contactName || '—'}\n` +
@@ -97,7 +96,8 @@ exports.handler = async (event) => {
       (fileNames.length ? `\n📎 ${fileNames.join(', ')}\n` : '') +
       `▶️ Open SAR Agent → Run Agent to extract and generate draft`;
 
-    await cap(postSlack(SLACK_CHANNEL, slackText), 4000)
+    // DM the assigned CM directly rather than posting to the public channel.
+    await cap(postSlack(cm.slackId, slackText), 4000)
       .catch(e => console.warn('Slack failed:', e.message));
 
     return {

@@ -256,9 +256,40 @@ select { appearance:none; background-image:url("data:image/svg+xml,%3Csvg xmlns=
 ::-webkit-scrollbar-thumb:hover { background:var(--text3); }
 .empty-list { text-align:center; padding:40px 16px; color:var(--text3); font-size:12px; line-height:1.7; }
 .urgency-bar { display:flex; align-items:center; gap:6px; padding:8px 12px; background:var(--red-bg); border-radius:var(--radius); font-size:12px; color:var(--red); font-weight:600; margin-bottom:16px; border:1px solid #fca5a5; }
+.sidebar-counts { padding:0 12px 8px; font-size:10.5px; color:var(--text3); line-height:1.5; flex-shrink:0; }
 </style>
 </head>
 <body>
+
+<!-- IDENTITY -->
+<div id="identity-screen" style="min-height:100vh; display:none; align-items:center; justify-content:center; flex-direction:column; gap:24px; padding:40px; background:linear-gradient(135deg,#faf9f7 0%,#f0eeeb 100%);">
+  <div class="auth-brand">
+    <div class="auth-mark">A</div>
+    <div class="auth-brand-text">ALG SAR Agent</div>
+  </div>
+  <div class="auth-card">
+    <div id="identity-step-role">
+      <div class="auth-title">Who are you?</div>
+      <div class="auth-sub">Pick your role to load the right dashboard.</div>
+      <div class="btn-row" style="flex-direction:column;gap:8px">
+        <button class="btn primary" style="justify-content:center;padding:14px" onclick="pickIdentityRole('ops')">🗂 Ops (Diana)</button>
+        <button class="btn" style="justify-content:center;padding:14px" onclick="pickIdentityRole('cm')">👤 Case Manager</button>
+        <button class="btn" style="justify-content:center;padding:14px" onclick="pickIdentityRole('attorney')">⚖️ Attorney</button>
+      </div>
+    </div>
+    <div id="identity-step-name" style="display:none">
+      <div class="auth-title" id="identity-name-title">Pick your name</div>
+      <div class="auth-sub">This decides which cases you see.</div>
+      <div class="form-group">
+        <select id="identity-name-select"></select>
+      </div>
+      <div class="btn-row">
+        <button class="btn primary" style="flex:1;justify-content:center" onclick="confirmIdentityName()">Continue →</button>
+        <button class="btn ghost" onclick="backToRolePick()">← Back</button>
+      </div>
+    </div>
+  </div>
+</div>
 
 <!-- AUTH -->
 <div id="auth-screen">
@@ -307,7 +338,9 @@ select { appearance:none; background-image:url("data:image/svg+xml,%3Csvg xmlns=
             <div class="sidebar-sub">Auto Legal Group</div>
           </div>
         </div>
-        <div style="display:flex;align-items:center;gap:8px">
+        <div style="display:flex;align-items:center;gap:6px">
+          <span id="identity-badge" style="font-size:9px;color:var(--text3);font-family:'JetBrains Mono',monospace;white-space:nowrap"></span>
+          <button class="btn ghost" style="padding:4px 6px;font-size:11px" onclick="switchIdentity()" title="Switch identity">⇄</button>
           <button class="btn ghost" style="padding:4px 6px;font-size:11px" onclick="loadSARsFromServer()" title="Refresh">↻</button>
           <div class="conn" id="conn" onclick="disconnectClio()">
             <div class="conn-dot" id="conn-dot"></div>
@@ -318,18 +351,11 @@ select { appearance:none; background-image:url("data:image/svg+xml,%3Csvg xmlns=
       <div class="sidebar-search">
         <input type="text" id="sb-search" placeholder="Search SARs…" oninput="renderSidebar()" />
       </div>
-      <div class="sidebar-filters">
-        <div class="chip active" data-f="" onclick="setFilter('')">All</div>
-        <div class="chip" data-f="mine" onclick="setFilter('mine')">Mine</div>
-        <div class="chip" data-f="new" onclick="setFilter('new')">New</div>
-        <div class="chip" data-f="draft" onclick="setFilter('draft')">Draft</div>
-        <div class="chip" data-f="review" onclick="setFilter('review')">Review</div>
-        <div class="chip" data-f="approved" onclick="setFilter('approved')">Approved</div>
-        <div class="chip" data-f="sent" onclick="setFilter('sent')">Sent</div>
-      </div>
+      <div class="sidebar-filters" id="sb-filters"></div>
+      <div class="sidebar-counts" id="sb-counts" style="display:none"></div>
       <div class="sidebar-list" id="sb-list"></div>
       <div class="sidebar-footer" style="display:flex;flex-direction:column;gap:6px">
-        <button class="btn primary" onclick="showNewSAR()" style="justify-content:center">
+        <button class="btn primary" id="new-sar-btn" onclick="showNewSAR()" style="justify-content:center">
           <svg width="13" height="13" fill="none" viewBox="0 0 24 24"><line stroke="currentColor" stroke-width="2.5" x1="12" y1="5" x2="12" y2="19"/><line stroke="currentColor" stroke-width="2.5" x1="5" y1="12" x2="19" y2="12"/></svg>
           New SAR Request
         </button>
@@ -337,7 +363,7 @@ select { appearance:none; background-image:url("data:image/svg+xml,%3Csvg xmlns=
           <div id="zoho-dot" class="conn-dot off" style="width:7px;height:7px"></div>
           <span id="zoho-label">Connect Zoho (admin)</span>
         </button>
-        <button class="btn sm ghost" onclick="openTemplatesModal()" style="justify-content:center;font-size:11px">
+        <button class="btn sm ghost" id="templates-btn" onclick="openTemplatesModal()" style="justify-content:center;font-size:11px">
           📄 Template Library
         </button>
       </div>
@@ -429,6 +455,31 @@ select { appearance:none; background-image:url("data:image/svg+xml,%3Csvg xmlns=
   </div>
 </div>
 
+<!-- REASSIGN MODAL -->
+<div class="modal-bg" id="reassign-modal" onclick="if(event.target===this)closeReassignModal()">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Request Reassignment</div>
+      <button class="modal-close" onclick="closeReassignModal()">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Reassign to</label>
+        <select id="reassign-target"></select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Reason (optional)</label>
+        <textarea id="reassign-reason" placeholder="Why can't you take this case?" style="min-height:70px"></textarea>
+      </div>
+      <div style="font-size:11px;color:var(--text3)">This sends a request to Diana for approval — the case stays assigned to you until she approves it.</div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeReassignModal()">Cancel</button>
+      <button class="btn primary" onclick="requestReassignment()">Send Request</button>
+    </div>
+  </div>
+</div>
+
 <!-- TEMPLATES MODAL -->
 <div class="modal-bg" id="templates-modal" onclick="if(event.target===this)closeTemplatesModal()">
   <div class="modal wide">
@@ -494,6 +545,7 @@ const API = {
 };
 const SLACK_SAR_CHANNEL = 'C09QF0PRLJ2';
 const STORAGE_KEY = 'alg_sar_v2';
+const IDENTITY_KEY = 'alg_sar_identity';
 
 // ── STATE ────────────────────────────────────────────────────────────────────
 let state = {
@@ -516,6 +568,7 @@ let state = {
     {name:'Ali K',  slackId:'U09QP4X69PA'}
   ],
   diana: {name:'Diana', slackId:'U09PN032H5H'},
+  identity: null,
   activeView: null,
   activeFilter: '',
   pendingWebhooks: []
@@ -550,6 +603,82 @@ function saveState() {
       roundRobinIndex: state.roundRobinIndex,
     }));
   } catch(e) {}
+}
+
+// ── IDENTITY (Ops / Case Manager / Attorney) ──────────────────────────────────
+// Kept in a separate localStorage key from STORAGE_KEY so switching identity
+// never clobbers the cached queue or Clio session.
+function loadIdentity() {
+  try {
+    const s = localStorage.getItem(IDENTITY_KEY);
+    if (s) state.identity = JSON.parse(s);
+  } catch(e) {}
+}
+
+function saveIdentity() {
+  try {
+    if (state.identity) localStorage.setItem(IDENTITY_KEY, JSON.stringify(state.identity));
+    else localStorage.removeItem(IDENTITY_KEY);
+  } catch(e) {}
+}
+
+function isOps() { return state.identity?.role === 'ops'; }
+function isAttorneyRole() { return state.identity?.role === 'attorney'; }
+
+function showIdentityScreen() {
+  document.getElementById('identity-screen').style.display = 'flex';
+  document.getElementById('auth-screen').style.display = 'none';
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('identity-step-role').style.display = 'block';
+  document.getElementById('identity-step-name').style.display = 'none';
+}
+
+let identityDraftRole = null;
+
+function pickIdentityRole(role) {
+  if (role === 'ops') {
+    state.identity = { role: 'ops', name: state.diana.name, slackId: state.diana.slackId };
+    saveIdentity();
+    routeAfterIdentity();
+    return;
+  }
+  identityDraftRole = role;
+  const list = role === 'cm' ? state.cms : state.attorneys;
+  document.getElementById('identity-name-title').textContent = role === 'cm' ? 'Pick your name (Case Manager)' : 'Pick your name (Attorney)';
+  document.getElementById('identity-name-select').innerHTML = list.map(p => `<option value="${esc(p.name)}">${esc(p.name)}</option>`).join('');
+  document.getElementById('identity-step-role').style.display = 'none';
+  document.getElementById('identity-step-name').style.display = 'block';
+}
+
+function backToRolePick() {
+  document.getElementById('identity-step-role').style.display = 'block';
+  document.getElementById('identity-step-name').style.display = 'none';
+}
+
+function confirmIdentityName() {
+  const name = document.getElementById('identity-name-select').value;
+  const list = identityDraftRole === 'cm' ? state.cms : state.attorneys;
+  const person = list.find(p => p.name === name);
+  if (!person) return;
+  state.identity = { role: identityDraftRole, name: person.name, slackId: person.slackId };
+  saveIdentity();
+  routeAfterIdentity();
+}
+
+function switchIdentity() {
+  state.identity = null;
+  saveIdentity();
+  document.getElementById('app').style.display = 'none';
+  showIdentityScreen();
+}
+
+// Attorneys skip Clio entirely (their view never calls the Clio API).
+// Ops and Case Managers go through the existing Clio auth screen unchanged.
+function routeAfterIdentity() {
+  if (state.identity?.role === 'attorney') { launchApp(); return; }
+  document.getElementById('identity-screen').style.display = 'none';
+  if (state.clioToken || state.demoMode) launchApp();
+  else document.getElementById('auth-screen').style.display = 'flex';
 }
 
 // ── SERVER SYNC ───────────────────────────────────────────────────────────────
@@ -700,17 +829,36 @@ function disconnectClio() {
 }
 
 function launchApp() {
+  document.getElementById('identity-screen').style.display = 'none';
   document.getElementById('auth-screen').style.display = 'none';
   document.getElementById('app').style.display = 'block';
-  const dot = document.getElementById('conn-dot');
-  const label = document.getElementById('conn-label');
-  if (state.demoMode) {
-    dot.className = 'conn-dot demo';
-    label.textContent = 'Demo';
+
+  const role = state.identity?.role;
+  const badge = document.getElementById('identity-badge');
+  if (badge) badge.textContent = state.identity ? `${role.toUpperCase()} · ${state.identity.name}` : '';
+
+  const connWrap = document.getElementById('conn');
+  if (role === 'attorney') {
+    if (connWrap) connWrap.style.display = 'none';
   } else {
-    dot.className = 'conn-dot on';
-    label.textContent = state.clioUser || 'Clio';
+    if (connWrap) connWrap.style.display = 'flex';
+    const dot = document.getElementById('conn-dot');
+    const label = document.getElementById('conn-label');
+    if (state.demoMode) {
+      dot.className = 'conn-dot demo';
+      label.textContent = 'Demo';
+    } else {
+      dot.className = 'conn-dot on';
+      label.textContent = state.clioUser || 'Clio';
+    }
   }
+
+  // Attorneys get a minimal view — hide CM/ops-only sidebar actions.
+  ['new-sar-btn', 'zoho-connect-btn', 'templates-btn'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = role === 'attorney' ? 'none' : '';
+  });
+
   renderSidebar();
   loadSARsFromServer();
   checkZohoStatus();
@@ -741,16 +889,42 @@ async function clioPost(path, body) {
 
 // ── SIDEBAR ───────────────────────────────────────────────────────────────────
 function renderSidebar() {
+  renderFilterChips();
+  renderCountsStrip();
+
   const q = (document.getElementById('sb-search')?.value || '').toLowerCase();
   const f = state.activeFilter;
-  const items = state.queue.filter(i => {
+  const role = state.identity?.role;
+
+  let base = state.queue;
+  if (role === 'attorney') {
+    base = base.filter(i => i.attorney === state.identity.name);
+  }
+
+  const items = base.filter(i => {
     const matchSearch = !q || i.buyer.toLowerCase().includes(q) || i.dealer.toLowerCase().includes(q) || (i.assignee||'').toLowerCase().includes(q);
     let matchFilter = true;
     if (f === 'mine') {
-      // Match if current Clio user name overlaps with the assignee name
-      const cu = (state.clioUser || '').toLowerCase();
-      const as = (i.assignee || '').toLowerCase();
-      matchFilter = !!cu && (as.includes(cu.split(' ')[0]) || cu.includes(as.split(' ')[0]));
+      const idName = state.identity?.name;
+      if (idName) {
+        matchFilter = i.assignee === idName;
+      } else {
+        // Legacy fallback for a cached session with no identity yet — match
+        // on the connected Clio user's first name overlapping the assignee.
+        const cu = (state.clioUser || '').toLowerCase();
+        const as = (i.assignee || '').toLowerCase();
+        matchFilter = !!cu && (as.includes(cu.split(' ')[0]) || cu.includes(as.split(' ')[0]));
+      }
+    } else if (f === 'pending') {
+      matchFilter = i.status !== 'sent';
+    } else if (f === 'responded') {
+      matchFilter = i.status === 'sent';
+    } else if (f === 'reassign') {
+      matchFilter = i.reassignRequest?.status === 'pending';
+    } else if (f === 'atty-pending') {
+      matchFilter = i.status === 'review';
+    } else if (f === 'atty-history') {
+      matchFilter = i.status !== 'review';
     } else if (f) {
       matchFilter = i.status === f;
     }
@@ -775,6 +949,7 @@ function renderSidebar() {
       <div class="sar-item-meta">
         <span class="tag ${i.dealType==='rescission'?'resc':'ck'}">${i.dealType==='rescission'?'Resc':'C&K'}</span>
         <span class="tag ${i.language==='es'?'es':'en'}">${i.language==='es'?'ES':'EN'}</span>
+        ${i.reassignRequest?.status==='pending' ? '<span class="tag" style="background:var(--yellow-bg);color:var(--yellow)">🔁 Reassign</span>' : ''}
         ${i.assignee ? '<span>→ '+esc(i.assignee)+'</span>' : ''}
         <span class="sar-item-time">${fmtDate(i.created)}</span>
       </div>
@@ -782,9 +957,59 @@ function renderSidebar() {
   `).join('');
 }
 
+function renderFilterChips() {
+  const container = document.getElementById('sb-filters');
+  if (!container) return;
+  const role = state.identity?.role;
+  let chips, defaultFilter;
+  if (role === 'attorney') {
+    chips = [
+      {f:'atty-pending', label:'Pending Approval'},
+      {f:'atty-history', label:'History'},
+    ];
+    defaultFilter = 'atty-pending';
+  } else if (role === 'ops') {
+    const reassignCount = state.queue.filter(i => i.reassignRequest?.status === 'pending').length;
+    chips = [
+      {f:'', label:'All'},
+      {f:'pending', label:'Pending'},
+      {f:'responded', label:'Responded'},
+      {f:'new', label:'Received & Assigned'},
+      {f:'draft', label:'In Review by CM'},
+      {f:'review', label:'Pending Approval'},
+      {f:'approved', label:'Approved'},
+      {f:'sent', label:'Sent'},
+      {f:'reassign', label:'🔁 Reassignment' + (reassignCount ? ` (${reassignCount})` : '')},
+    ];
+    defaultFilter = '';
+  } else {
+    chips = [
+      {f:'mine', label:'Mine'},
+      {f:'', label:'All'},
+      {f:'new', label:'Received & Assigned'},
+      {f:'draft', label:'In Review by CM'},
+      {f:'review', label:'Pending Approval'},
+      {f:'approved', label:'Approved'},
+      {f:'sent', label:'Sent'},
+    ];
+    defaultFilter = 'mine';
+  }
+  if (!chips.some(c => c.f === state.activeFilter)) state.activeFilter = defaultFilter;
+  container.innerHTML = chips.map(c => `<div class="chip${state.activeFilter===c.f?' active':''}" onclick="setFilter('${c.f}')">${c.label}</div>`).join('');
+}
+
+function renderCountsStrip() {
+  const el = document.getElementById('sb-counts');
+  if (!el) return;
+  if (state.identity?.role !== 'ops') { el.style.display = 'none'; return; }
+  const counts = {new:0, draft:0, review:0, approved:0, sent:0};
+  state.queue.forEach(i => { if (counts[i.status] !== undefined) counts[i.status]++; });
+  el.style.display = 'block';
+  el.textContent = `${counts.new} received · ${counts.draft} in review by CM · ${counts.review} pending approval · ${counts.approved} approved · ${counts.sent} sent to client`;
+}
+
 function setFilter(f) {
   state.activeFilter = f;
-  document.querySelectorAll('.chip[data-f]').forEach(c => c.classList.toggle('active', c.dataset.f === f));
   renderSidebar();
 }
 
@@ -942,6 +1167,8 @@ function openSAR(id) {
 }
 
 function renderDetail(item) {
+  if (isAttorneyRole()) { renderAttorneyDetail(item); return; }
+
   const main = document.getElementById('main-panel');
   const dealLabel = item.dealType === 'rescission' ? 'Rescission' : 'Cash &amp; Keep';
   const langLabel = item.language === 'es' ? 'Spanish' : 'English';
@@ -969,6 +1196,9 @@ function renderDetail(item) {
       <button class="btn success" onclick="markStatus('${item.id}','sent')">✓ Mark Sent</button>`;
   } else if (item.status === 'sent') {
     actions = `${item.draftBase64 ? `<button class="btn sm" onclick="downloadDraft('${item.id}')">⬇ Download</button>` : ''}`;
+  }
+  if (!isOps() && item.reassignRequest?.status !== 'pending') {
+    actions += `<button class="btn sm ghost" onclick="openReassignModal('${item.id}')">🔁 Request Reassignment</button>`;
   }
   actions += `
     <button class="btn sm" onclick="openTimeModal('${item.id}')">⏱ Log Time</button>
@@ -1070,9 +1300,19 @@ function renderDetail(item) {
       </div>
     </div>`;
 
+  const reassignBanner = item.reassignRequest?.status === 'pending' ? `
+    <div class="urgency-bar" style="background:var(--yellow-bg);border-color:#f6d78b;color:var(--yellow)">
+      🔁 Reassignment requested by ${esc(item.reassignRequest.requestedBy||'—')} → ${esc(item.reassignRequest.requestedTo || 'Anyone available')}${item.reassignRequest.reason ? ' — "' + esc(item.reassignRequest.reason) + '"' : ''}
+      ${isOps() ? `<span style="margin-left:auto;display:flex;gap:6px">
+          <button class="btn xs success" onclick="approveReassignment('${item.id}')">Approve</button>
+          <button class="btn xs danger" onclick="denyReassignment('${item.id}')">Deny</button>
+        </span>` : '<span style="margin-left:auto;font-size:11px">Pending Diana\'s approval</span>'}
+    </div>` : '';
+
   main.innerHTML = `
     <div class="detail-wrap">
       ${item.urgency==='urgent' ? '<div class="urgency-bar">🚨 URGENT — Expedite this request</div>' : ''}
+      ${reassignBanner}
       <div class="detail-header">
         <div>
           <div class="detail-title">${esc(item.buyer)}</div>
@@ -1102,10 +1342,11 @@ function renderDetail(item) {
               </div>
               <div class="field">
                 <div class="field-label">Assigned CM</div>
+                ${isOps() ? `
                 <select style="font-size:12px;padding:6px 28px 6px 8px;margin-top:2px" onchange="updateAssignee('${item.id}',this.value)">
                   <option value="">Unassigned</option>
                   ${state.cms.map(cm=>`<option value="${cm.name}"${item.assignee===cm.name?' selected':''}>${cm.name}</option>`).join('')}
-                </select>
+                </select>` : `<div class="field-value">${esc(item.assignee||'Unassigned')}</div>`}
               </div>
               <div class="field">
                 <div class="field-label">Reviewing Attorney</div>
@@ -1169,6 +1410,107 @@ function buildPipeline(status) {
       ${i<steps.length-1?'<div class="pipeline-line"></div>':''}
     `).join('')}
   </div>`;
+}
+
+// ── ATTORNEY VIEW (minimal: view draft, upload final version, approve) ────────
+let attorneyUpload = {};
+
+function renderAttorneyDetail(item) {
+  const main = document.getElementById('main-panel');
+  const dealLabel = item.dealType === 'rescission' ? 'Rescission' : 'Cash & Keep';
+  const langLabel = item.language === 'es' ? 'Spanish' : 'English';
+  const staged = attorneyUpload[item.id];
+  const isPending = item.status === 'review';
+
+  main.innerHTML = `
+    <div class="detail-wrap">
+      <div class="detail-header">
+        <div>
+          <div class="detail-title">${esc(item.buyer)}</div>
+          <div class="detail-sub">
+            <span>${esc(item.dealer)}</span>
+            ${item.vehicle ? `<span style="color:var(--text3)">·</span><span>${esc(item.vehicle)}</span>` : ''}
+            <span style="color:var(--text3)">·</span>
+            <span class="tag ${item.dealType==='rescission'?'resc':'ck'}">${dealLabel}</span>
+            <span class="tag ${item.language==='es'?'es':'en'}">${langLabel}</span>
+            <span class="badge ${item.status}" style="margin-left:6px">${statusLabel(item.status)}</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header"><div class="card-title">📄 Case Summary</div></div>
+        <div class="card-body">
+          <div class="field-grid">
+            <div class="field"><div class="field-label">Settlement Amount</div><div class="field-value">${item.amount ? '$'+esc(item.amount) : '—'}</div></div>
+            <div class="field"><div class="field-label">VIN</div><div class="field-value mono">${esc(item.vin||'—')}</div></div>
+            <div class="field"><div class="field-label">Case Manager</div><div class="field-value">${esc(item.assignee||'—')}</div></div>
+            <div class="field"><div class="field-label">Matter</div><div class="field-value">${item.matter ? '#'+esc(item.matter.num)+' — '+esc(item.matter.name) : 'Not linked'}</div></div>
+          </div>
+          ${item.reviewNotes ? `<div style="margin-top:10px;padding:8px 10px;background:var(--accent-bg);border-radius:var(--radius);font-size:12px;color:var(--accent2)"><strong>Notes from CM:</strong> ${esc(item.reviewNotes)}</div>` : ''}
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header"><div class="card-title">✍️ Draft for Review</div></div>
+        <div class="card-body">
+          ${item.draftBase64
+            ? `<button class="btn" onclick="downloadDraft('${item.id}')">⬇ Download Draft</button>`
+            : `<div class="empty-list" style="padding:10px 0">No draft on file yet — check with the CM.</div>`}
+
+          ${isPending ? `
+          <div style="margin-top:16px">
+            <label class="form-label">Upload final / approved version</label>
+            <input type="file" id="atty-upload-${item.id}" accept=".docx,.doc,.pdf" onchange="stageAttorneyFile('${item.id}', this)" />
+            ${staged
+              ? `<div style="font-size:11px;color:var(--green);margin-top:4px">Staged: ${esc(staged.name)}</div>`
+              : `<div style="font-size:11px;color:var(--text3);margin-top:4px">Whether you edited it or not, re-upload it here before approving.</div>`}
+          </div>
+          <div class="btn-row" style="margin-top:14px">
+            <button class="btn success" id="atty-approve-btn-${item.id}" ${staged ? '' : 'disabled'} onclick="approveAsAttorney('${item.id}')">✓ Approve &amp; Notify CM</button>
+          </div>` : `
+          <div style="margin-top:14px;font-size:12px;color:var(--text3)">
+            ${item.approvedDraftFilename ? `Final file on record: ${esc(item.approvedDraftFilename)}.` : 'Already resolved.'}
+          </div>`}
+        </div>
+      </div>
+    </div>`;
+}
+
+function stageAttorneyFile(id, inputEl) {
+  const file = inputEl.files[0];
+  if (!file) return;
+  if (file.size > 4_500_000) {
+    notify('err', 'File too large (over 4.5MB) — please compress and try again.');
+    inputEl.value = '';
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = e => {
+    attorneyUpload[id] = { name: file.name, type: file.type || 'application/octet-stream', data: e.target.result.split(',')[1] };
+    const btn = document.getElementById('atty-approve-btn-' + id);
+    if (btn) btn.disabled = false;
+    notify('ok', 'File staged: ' + file.name);
+  };
+  reader.onerror = () => notify('err', 'Could not read file');
+  reader.readAsDataURL(file);
+}
+
+async function approveAsAttorney(id) {
+  const item = findSAR(id);
+  const staged = attorneyUpload[id];
+  if (!item || !staged) { notify('err', 'Upload the final draft first'); return; }
+  const changes = {
+    approvedDraftBase64: staged.data,
+    approvedDraftFilename: staged.name,
+    status: 'approved',
+  };
+  await patchSAR(id, changes);
+  Object.assign(item, changes);
+  delete attorneyUpload[id];
+  notify('ok', 'Approved — CM notified');
+  await sendSlackAttorneyApproved(item);
+  openSAR(id);
 }
 
 function buildAgentPanel(item) {
@@ -1913,6 +2255,76 @@ function updateAssignee(id, name) {
   patchSAR(id, { assignee: name || null, assigneeSlackId: cm?.slackId || null });
 }
 
+// ── REASSIGNMENT REQUESTS (CM requests → Ops approves) ────────────────────────
+let reassignSARId = null;
+
+function openReassignModal(id) {
+  const item = findSAR(id);
+  if (!item) return;
+  reassignSARId = id;
+  const sel = document.getElementById('reassign-target');
+  sel.innerHTML = '<option value="">Anyone available</option>' +
+    state.cms.filter(cm => cm.name !== item.assignee).map(cm => `<option value="${esc(cm.name)}">${esc(cm.name)}</option>`).join('');
+  document.getElementById('reassign-reason').value = '';
+  document.getElementById('reassign-modal').classList.add('open');
+}
+
+function closeReassignModal() {
+  document.getElementById('reassign-modal').classList.remove('open');
+  reassignSARId = null;
+}
+
+async function requestReassignment() {
+  const item = findSAR(reassignSARId);
+  if (!item) return;
+  const target = document.getElementById('reassign-target').value;
+  const reason = document.getElementById('reassign-reason').value.trim();
+  const reassignRequest = {
+    requestedBy: item.assignee || state.identity?.name || '',
+    requestedTo: target || null,
+    reason,
+    requestedAt: new Date().toISOString(),
+    status: 'pending',
+  };
+  await patchSAR(item.id, { reassignRequest });
+  Object.assign(item, { reassignRequest });
+  closeReassignModal();
+  openSAR(item.id);
+  notify('ok', 'Reassignment requested — Diana will review');
+  await sendSlackReassignRequested(item);
+}
+
+async function approveReassignment(id) {
+  const item = findSAR(id);
+  if (!item?.reassignRequest) return;
+  const req = item.reassignRequest;
+  const targetName = req.requestedTo || getNextCM().name;
+  const targetCM = state.cms.find(c => c.name === targetName);
+  const fromName = item.assignee;
+  const changes = {
+    assignee: targetCM?.name || targetName,
+    assigneeSlackId: targetCM?.slackId || null,
+    reassignRequest: { ...req, status: 'approved', resolvedAt: new Date().toISOString() },
+  };
+  await patchSAR(id, changes);
+  Object.assign(item, changes);
+  notify('ok', 'Reassigned to ' + changes.assignee);
+  await sendSlackReassignResolved(item, fromName, changes.assignee, true);
+  openSAR(id);
+}
+
+async function denyReassignment(id) {
+  const item = findSAR(id);
+  if (!item?.reassignRequest) return;
+  const req = item.reassignRequest;
+  const changes = { reassignRequest: { ...req, status: 'denied', resolvedAt: new Date().toISOString() } };
+  await patchSAR(id, changes);
+  Object.assign(item, changes);
+  notify('ok', 'Reassignment denied');
+  await sendSlackReassignResolved(item, item.assignee, item.assignee, false);
+  openSAR(id);
+}
+
 function updateField(id, field, value) {
   const item = findSAR(id);
   if (!item) return;
@@ -2022,6 +2434,9 @@ function renderTimeEntries(item) {
 }
 
 // ── SLACK NOTIFICATIONS ───────────────────────────────────────────────────────
+// Default is a direct DM to the person who needs to act — the public
+// #settlement-agreements channel is reserved for team-visible outcomes
+// (currently just reassignment resolutions).
 async function sendSlack(channel, text, blocks) {
   try {
     await fetch(API.slack, {
@@ -2031,25 +2446,57 @@ async function sendSlack(channel, text, blocks) {
   } catch(e) { console.warn('Slack error:', e); }
 }
 
+async function sendSlackDM(slackId, text) {
+  if (!slackId) return;
+  await sendSlack(slackId, text, [{type:'section', text:{type:'mrkdwn', text}}]);
+}
+
 async function sendSlackAssignment(entry, cm) {
   const dealLabel = entry.dealType === 'rescission' ? 'Rescission' : 'Cash & Keep';
   const langLabel = entry.language === 'es' ? 'Spanish' : 'English';
   const urgPrefix = entry.urgency === 'urgent' ? '🚨 *URGENT* ' : '';
   const matterInfo = entry.matter ? `#${entry.matter.num} — ${entry.matter.name}` : 'Not linked yet';
-  const text = `${urgPrefix}*New SAR Assignment*\n\n<@${cm.slackId}> — you've been assigned a new Settlement Agreement Request.\n\n*Buyer:* ${entry.buyer}\n*Dealer:* ${entry.dealer}\n*Type:* ${dealLabel} · ${langLabel}\n${entry.amount?'*Settlement:* $'+entry.amount+'\n':''}`+
+  const text = `${urgPrefix}*New SAR Assignment*\n\nYou've been assigned a new Settlement Agreement Request.\n\n*Buyer:* ${entry.buyer}\n*Dealer:* ${entry.dealer}\n*Type:* ${dealLabel} · ${langLabel}\n${entry.amount?'*Settlement:* $'+entry.amount+'\n':''}`+
                `*Matter:* ${matterInfo}${entry.notes?'\n*Notes:* '+entry.notes:''}\n\nOpen the SAR Agent to process this request.`;
-  await sendSlack(SLACK_SAR_CHANNEL, urgPrefix + 'New SAR — ' + entry.buyer, [
-    {type:'section', text:{type:'mrkdwn', text}}
-  ]);
+  await sendSlackDM(cm.slackId, text);
 }
 
 async function sendSlackReview(entry) {
   if (!entry.attorneySlackId) return;
   const dealLabel = entry.dealType === 'rescission' ? 'Rescission' : 'Cash & Keep';
   const langLabel = entry.language === 'es' ? 'Spanish' : 'English';
-  const text = `*SAR Ready for Review*\n\n<@${entry.attorneySlackId}> — a Settlement Agreement draft is ready for your review.\n\n*Buyer:* ${entry.buyer}\n*Dealer:* ${entry.dealer}\n*Vehicle:* ${entry.vehicle||'—'} ${entry.vin?'(VIN: '+entry.vin+')':''}\n*Type:* ${dealLabel} · ${langLabel}\n${entry.amount?'*Settlement:* $'+entry.amount+'\n':''}*CM:* ${entry.assignee||'—'}\n*Matter:* ${entry.matter?'#'+entry.matter.num+' — '+entry.matter.name:'Not linked'}${entry.reviewNotes?'\n*Notes from CM:* '+entry.reviewNotes:''}`;
-  await sendSlack(SLACK_SAR_CHANNEL, 'SAR Review — ' + entry.buyer, [
-    {type:'section', text:{type:'mrkdwn', text}}
+  const text = `*SAR Ready for Review*\n\nA Settlement Agreement draft is ready for your review.\n\n*Buyer:* ${entry.buyer}\n*Dealer:* ${entry.dealer}\n*Vehicle:* ${entry.vehicle||'—'} ${entry.vin?'(VIN: '+entry.vin+')':''}\n*Type:* ${dealLabel} · ${langLabel}\n${entry.amount?'*Settlement:* $'+entry.amount+'\n':''}*CM:* ${entry.assignee||'—'}\n*Matter:* ${entry.matter?'#'+entry.matter.num+' — '+entry.matter.name:'Not linked'}${entry.reviewNotes?'\n*Notes from CM:* '+entry.reviewNotes:''}`;
+  await sendSlackDM(entry.attorneySlackId, text);
+}
+
+async function sendSlackAttorneyApproved(entry) {
+  const cm = state.cms.find(c => c.name === entry.assignee);
+  const slackId = cm?.slackId || entry.assigneeSlackId;
+  if (!slackId) return;
+  const text = `✅ *Attorney Approved*\n\n*Case:* ${entry.buyer} vs. ${entry.dealer}\n*Attorney:* ${entry.attorney||'—'}\n\nThe final settlement agreement has been approved and uploaded. It's ready to send.`;
+  await sendSlackDM(slackId, text);
+}
+
+async function sendSlackReassignRequested(entry) {
+  const req = entry.reassignRequest;
+  if (!req) return;
+  const text = `🔁 *Reassignment Requested*\n\n*Case:* ${entry.buyer} vs. ${entry.dealer}\n*Requested by:* ${req.requestedBy||'—'}\n*Requested to:* ${req.requestedTo || 'Anyone available'}\n${req.reason ? '*Reason:* '+req.reason+'\n' : ''}\nOpen the SAR Agent → Reassignment Requests to approve or deny.`;
+  await sendSlackDM(state.diana.slackId, text);
+}
+
+// Reassignment outcomes are team-visible, so this also posts to the public
+// channel in addition to DMing the CMs involved.
+async function sendSlackReassignResolved(entry, fromName, toName, approved) {
+  const outcomeText = approved
+    ? `✅ Approved — reassigned from *${fromName||'—'}* to *${toName||'—'}*.`
+    : `❌ Denied — case stays with *${fromName||'—'}*.`;
+  const dmText = `🔁 *Reassignment ${approved?'Approved':'Denied'}*\n\n*Case:* ${entry.buyer} vs. ${entry.dealer}\n${outcomeText}`;
+  const fromCM = state.cms.find(c => c.name === fromName);
+  const toCM = state.cms.find(c => c.name === toName);
+  await sendSlackDM(fromCM?.slackId, dmText);
+  if (approved && toCM && toCM.name !== fromCM?.name) await sendSlackDM(toCM.slackId, dmText);
+  await sendSlack(SLACK_SAR_CHANNEL, 'Reassignment — ' + entry.buyer, [
+    {type:'section', text:{type:'mrkdwn', text: `🔁 *${entry.buyer}* vs. *${entry.dealer}* — ${outcomeText}`}}
   ]);
 }
 
@@ -2129,7 +2576,13 @@ function getDefaultAtty(dealType) {
 }
 
 function statusLabel(s) {
-  return {new:'New', draft:'Draft', review:'In Review', approved:'Approved', sent:'Sent'}[s] || s;
+  return {
+    new: 'Received & Assigned',
+    draft: 'In Review by CM',
+    review: 'Pending Attorney Approval',
+    approved: 'Approved – Preparing to Send',
+    sent: 'Sent to Client',
+  }[s] || s;
 }
 
 function fmtDate(iso) {
@@ -2296,6 +2749,7 @@ function setZohoStatus(connected) {
 // ── INIT ──────────────────────────────────────────────────────────────────────
 window.addEventListener('DOMContentLoaded', () => {
   loadState();
+  loadIdentity();
   const params = new URLSearchParams(location.search);
 
   // Handle Zoho OAuth callback (/zoho-callback redirects here with ?code=)
@@ -2303,7 +2757,7 @@ window.addEventListener('DOMContentLoaded', () => {
     const zohoCode = params.get('code') || params.get('zoho_code');
     if (zohoCode) {
       history.replaceState({}, '', '/');
-      if (state.clioToken || state.demoMode) launchApp();
+      if (state.identity && (state.identity.role === 'attorney' || state.clioToken || state.demoMode)) launchApp();
       handleZohoCallback(zohoCode);
       return;
     }
@@ -2315,9 +2769,8 @@ window.addEventListener('DOMContentLoaded', () => {
     history.replaceState({}, '', '/');
   }
 
-  if (state.clioToken || state.demoMode) {
-    launchApp();
-  }
+  if (!state.identity) { showIdentityScreen(); return; }
+  routeAfterIdentity();
 });
 </script>
 </body>

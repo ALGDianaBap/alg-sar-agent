@@ -19,7 +19,6 @@ const { buildDocument, Packer } = require('./_docx-builder');
 const { getClioToken } = require('./_clio-auth');
 const { getZohoToken } = require('./_zoho-auth');
 
-const SLACK_CHANNEL = 'C09QF0PRLJ2';
 const CMS = [
   { name: 'Pedro',     slackId: 'U09QP4Z4KUG' },
   { name: 'Samir',     slackId: 'U09PDBV7287' },
@@ -281,7 +280,7 @@ exports.handler = async (event) => {
     .join('\n');
 
   const slackText =
-    `📋 *New SAR — <@${cm.slackId}> assigned*\n\n` +
+    `📋 *New SAR Assignment*\n\nYou've been assigned a new Settlement Agreement Request.\n\n` +
     `*Buyer:* ${finalBuyer}\n` +
     `*Dealer:* ${finalDealer}\n` +
     `*Type:* ${dealLabel} · ${langLabel}\n` +
@@ -292,8 +291,9 @@ exports.handler = async (event) => {
     (contextLines ? `\n*From form:*\n${contextLines}\n` : '') +
     `\n${draftLine}`;
 
+  // DM the assigned CM directly rather than posting to the public channel.
   try {
-    await postSlack(SLACK_CHANNEL, slackText);
+    await postSlack(cm.slackId, slackText);
   } catch (e) {
     console.error('Slack error:', e.message);
   }
