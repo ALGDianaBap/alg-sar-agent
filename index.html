@@ -557,6 +557,7 @@ const API = {
   getFiles:  '/.netlify/functions/get-files',
   storeFile: '/.netlify/functions/store-file',
   templates: '/.netlify/functions/templates',
+  sendReviewPackage: '/.netlify/functions/send-review-package',
 };
 const SLACK_SAR_CHANNEL = 'C09QF0PRLJ2';
 const STORAGE_KEY = 'alg_sar_v2';
@@ -2309,7 +2310,13 @@ async function submitForReview() {
   closeReviewModal();
   openSAR(item.id);
   notify('ok', `Submitted for ${attyName}'s review`);
-  await sendSlackReview(item);
+  // Server-side: builds a case summary PDF and DMs the attorney the draft +
+  // summary + original documents together. Best-effort — it has its own
+  // fallback if anything fails, so we don't block the UI on it.
+  fetch(API.sendReviewPackage, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ id: item.id }),
+  }).catch(e => console.warn('sendReviewPackage error:', e.message));
 }
 
 // ── STATUS / FIELD UPDATES ─────────────────────────────────────────────────────
@@ -2529,14 +2536,6 @@ async function sendSlackAssignment(entry, cm) {
   const text = `${urgPrefix}*New SAR Assignment*\n\nYou've been assigned a new Settlement Agreement Request.\n\n*Buyer:* ${entry.buyer}\n*Dealer:* ${entry.dealer}\n*Type:* ${dealLabel} · ${langLabel}\n${entry.amount?'*Settlement:* $'+entry.amount+'\n':''}`+
                `*Matter:* ${matterInfo}${entry.notes?'\n*Notes:* '+entry.notes:''}\n\nOpen the SAR Agent to process this request.`;
   await sendSlackDM(cm.slackId, text);
-}
-
-async function sendSlackReview(entry) {
-  if (!entry.attorneySlackId) return;
-  const dealLabel = entry.dealType === 'rescission' ? 'Rescission' : 'Cash & Keep';
-  const langLabel = entry.language === 'es' ? 'Spanish' : 'English';
-  const text = `*SAR Ready for Review*\n\nA Settlement Agreement draft is ready for your review.\n\n*Buyer:* ${entry.buyer}\n*Dealer:* ${entry.dealer}\n*Vehicle:* ${entry.vehicle||'—'} ${entry.vin?'(VIN: '+entry.vin+')':''}\n*Type:* ${dealLabel} · ${langLabel}\n${entry.amount?'*Settlement:* $'+entry.amount+'\n':''}*CM:* ${entry.assignee||'—'}\n*Matter:* ${entry.matter?'#'+entry.matter.num+' — '+entry.matter.name:'Not linked'}${entry.reviewNotes?'\n*Notes from CM:* '+entry.reviewNotes:''}`;
-  await sendSlackDM(entry.attorneySlackId, text);
 }
 
 async function sendSlackAttorneyApproved(entry) {
