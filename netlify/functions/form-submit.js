@@ -37,13 +37,14 @@ exports.handler = async (event) => {
     catch (e) { return { statusCode: 400, headers: { ...cors, 'Content-Type': 'application/json' }, body: JSON.stringify({ error: 'Invalid JSON' }) }; }
 
     const {
+      contactName = '',
       dealerNameFirst = '', dealerNameLast = '', dealershipName = '',
       phone = '', email = '', workDesc = '', language = 'en',
       hasHappened = '', whoWork = '', thirdParty = '',
       dealerGiving = '', refundNotes = '', fileNames = [],
     } = body;
 
-    if (!dealerNameFirst || !dealerNameLast || !dealershipName || !workDesc) {
+    if (!contactName || !dealerNameFirst || !dealerNameLast || !dealershipName || !workDesc) {
       return { statusCode: 400, headers: { ...cors, 'Content-Type': 'application/json' }, body: JSON.stringify({ error: 'Missing required fields' }) };
     }
 
@@ -66,7 +67,7 @@ exports.handler = async (event) => {
     const sarData = {
       id, created: new Date().toISOString(),
       status: 'new', source: 'native-form', urgency: 'normal',
-      buyer, dealer, phone, email, language,
+      buyer, dealer, contactName, phone, email, language,
       dealType: isResc ? 'rescission' : 'cash_keep',
       vehicle: '', vin: '', amount: '',
       attachments: fileNames.map(n => ({ name: n, source: 'native-form', extracted: false })),
@@ -91,6 +92,7 @@ exports.handler = async (event) => {
       `📋 *New SAR — <@${cm.slackId}> assigned*\n\n` +
       `*Dealer Name:* ${buyer}\n*Dealership:* ${dealer}\n` +
       `*Type:* ${dealLabel} · ${langLabel}\n*Phone:* ${phone || '—'}\n` +
+      `*Submitted by:* ${contactName || '—'}\n` +
       (ctx ? `\n*From form:*\n${ctx}\n` : '') +
       (fileNames.length ? `\n📎 ${fileNames.join(', ')}\n` : '') +
       `▶️ Open SAR Agent → Run Agent to extract and generate draft`;
