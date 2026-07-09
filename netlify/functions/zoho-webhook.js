@@ -19,6 +19,7 @@ const { buildDocument, Packer } = require('./_docx-builder');
 const { getClioToken } = require('./_clio-auth');
 const { getZohoToken } = require('./_zoho-auth');
 
+const SLACK_CHANNEL = 'C09QF0PRLJ2';
 const CMS = [
   { name: 'Pedro',     slackId: 'U09QP4Z4KUG' },
   { name: 'Samir',     slackId: 'U09PDBV7287' },
@@ -291,11 +292,23 @@ exports.handler = async (event) => {
     (contextLines ? `\n*From form:*\n${contextLines}\n` : '') +
     `\n${draftLine}`;
 
-  // DM the assigned CM directly rather than posting to the public channel.
+  // DM the assigned CM directly, AND always post to the public channel too
+  // — the whole legal team needs visibility into every new SAR as it comes in.
   try {
     await postSlack(cm.slackId, slackText);
   } catch (e) {
-    console.error('Slack error:', e.message);
+    console.error('Slack DM error:', e.message);
+  }
+  const publicText =
+    `📋 *New SAR — assigned to ${cm.name}*\n\n` +
+    `*Buyer:* ${finalBuyer}\n*Dealer:* ${finalDealer}\n` +
+    `*Type:* ${dealLabel} · ${langLabel}\n` +
+    (vehicle ? `*Vehicle:* ${vehicle}${fields.vin ? ' · VIN ' + fields.vin : ''}\n` : '') +
+    `*Clio matter:* ${matterStr}\n${draftLine}`;
+  try {
+    await postSlack(SLACK_CHANNEL, publicText);
+  } catch (e) {
+    console.error('Slack public post error:', e.message);
   }
 
   return {

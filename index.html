@@ -2345,11 +2345,21 @@ async function submitForReview() {
   notify('ok', `Submitted for ${attyName}'s review`);
   // Server-side: builds a case summary PDF and DMs the attorney the draft +
   // summary + original documents together. Best-effort — it has its own
-  // fallback if anything fails, so we don't block the UI on it.
+  // fallback if anything fails, so we don't block the UI on it — but we do
+  // surface a warning here if the attachments didn't actually go through,
+  // so a Slack-permissions problem is caught immediately instead of only
+  // being discovered when the attorney says "I got nothing."
   fetch(API.sendReviewPackage, {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ id: item.id }),
-  }).catch(e => console.warn('sendReviewPackage error:', e.message));
+  }).then(async r => {
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok || d.error) {
+      notify('err', `Attorney DM may not have sent correctly: ${d.error || 'HTTP ' + r.status}`);
+    } else if (typeof d.filesSent === 'number' && d.filesSent < d.filesTotal) {
+      notify('err', `Attorney was notified, but only ${d.filesSent}/${d.filesTotal} documents attached — check Slack app permissions (files:write scope)`);
+    }
+  }).catch(e => notify('err', 'Could not reach attorney notification service: ' + e.message));
 }
 
 // ── STATUS / FIELD UPDATES ─────────────────────────────────────────────────────
@@ -2566,9 +2576,14 @@ async function sendSlackAssignment(entry, cm) {
   const langLabel = entry.language === 'es' ? 'Spanish' : 'English';
   const urgPrefix = entry.urgency === 'urgent' ? '🚨 *URGENT* ' : '';
   const matterInfo = entry.matter ? `#${entry.matter.num} — ${entry.matter.name}` : 'Not linked yet';
-  const text = `${urgPrefix}*New SAR Assignment*\n\nYou've been assigned a new Settlement Agreement Request.\n\n*Buyer:* ${entry.buyer}\n*Dealer:* ${entry.dealer}\n*Type:* ${dealLabel} · ${langLabel}\n${entry.amount?'*Settlement:* $'+entry.amount+'\n':''}`+
+  const dmText = `${urgPrefix}*New SAR Assignment*\n\nYou've been assigned a new Settlement Agreement Request.\n\n*Buyer:* ${entry.buyer}\n*Dealer:* ${entry.dealer}\n*Type:* ${dealLabel} · ${langLabel}\n${entry.amount?'*Settlement:* $'+entry.amount+'\n':''}`+
                `*Matter:* ${matterInfo}${entry.notes?'\n*Notes:* '+entry.notes:''}\n\nOpen the SAR Agent to process this request.`;
-  await sendSlackDM(cm.slackId, text);
+  await sendSlackDM(cm.slackId, dmText);
+  // The whole legal team needs visibility into every new SAR, so this one
+  // also always posts to the public channel — unlike other individual
+  // notifications, which stay DM-only.
+  const publicText = `${urgPrefix}📋 *New SAR — assigned to ${cm.name}*\n\n*Buyer:* ${entry.buyer}\n*Dealer:* ${entry.dealer}\n*Type:* ${dealLabel} · ${langLabel}\n${entry.amount?'*Settlement:* $'+entry.amount+'\n':''}*Matter:* ${matterInfo}`;
+  await sendSlack(SLACK_SAR_CHANNEL, publicText, [{type:'section', text:{type:'mrkdwn', text: publicText}}]);
 }
 
 async function sendSlackAttorneyApproved(entry) {

@@ -7,6 +7,7 @@
 const https = require('https');
 const { store: getStore } = require('./_blobs');
 
+const SLACK_CHANNEL = 'C09QF0PRLJ2';
 const CMS = [
   { name: 'Pedro',     slackId: 'U09QP4Z4KUG' },
   { name: 'Samir',     slackId: 'U09PDBV7287' },
@@ -96,9 +97,17 @@ exports.handler = async (event) => {
       (fileNames.length ? `\n📎 ${fileNames.join(', ')}\n` : '') +
       `▶️ Open SAR Agent → Run Agent to extract and generate draft`;
 
-    // DM the assigned CM directly rather than posting to the public channel.
+    // DM the assigned CM directly, AND always post to the public channel too
+    // — the whole legal team needs visibility into every new SAR as it comes in.
     await cap(postSlack(cm.slackId, slackText), 4000)
-      .catch(e => console.warn('Slack failed:', e.message));
+      .catch(e => console.warn('Slack DM failed:', e.message));
+    const publicText =
+      `📋 *New SAR — assigned to ${cm.name}*\n\n` +
+      `*Dealer Name:* ${buyer}\n*Dealership:* ${dealer}\n` +
+      `*Type:* ${dealLabel} · ${langLabel}\n*Phone:* ${phone || '—'}\n` +
+      `*Submitted by:* ${contactName || '—'}`;
+    await cap(postSlack(SLACK_CHANNEL, publicText), 4000)
+      .catch(e => console.warn('Slack public post failed:', e.message));
 
     return {
       statusCode: 200,
