@@ -1246,7 +1246,11 @@ function renderDetail(item) {
     actions = `
       ${item.draftBase64 ? `<button class="btn" onclick="downloadDraft('${item.id}')">⬇ Download Draft</button>` : ''}
       <button class="btn" onclick="uploadToClio('${item.id}')">↑ Upload to Clio</button>
-      <button class="btn success" onclick="markStatus('${item.id}','approved')">✓ Mark Approved</button>`;
+      <button class="btn success" onclick="markStatus('${item.id}','approved')">✓ Mark Reviewed by Attorney</button>
+      <label class="btn sm ghost" style="cursor:pointer" title="If the attorney sent back an edited file (Slack, email, etc.), attach it here — this also marks the case Reviewed by Attorney">
+        📎 Attach Corrected Draft
+        <input type="file" accept=".docx,.doc,.pdf" style="display:none" onchange="uploadCorrectedDraft('${item.id}', this)">
+      </label>`;
   } else if (item.status === 'approved') {
     actions = `
       ${item.draftBase64 ? `<button class="btn" onclick="downloadDraft('${item.id}')">⬇ Download</button>` : ''}
@@ -1574,6 +1578,34 @@ async function approveAsAttorney(id) {
   notify('ok', 'Approved — CM notified');
   await sendSlackAttorneyApproved(item);
   openSAR(id);
+}
+
+// CM-side fallback: if the attorney sends their correction back some other
+// way (Slack DM, email, in person) instead of using their own dashboard
+// view, the CM attaches it here — same effect as approveAsAttorney above.
+function uploadCorrectedDraft(id, inputEl) {
+  const file = inputEl.files[0];
+  if (!file) return;
+  if (file.size > 4_500_000) {
+    notify('err', 'File too large (over 4.5MB) — please compress and try again.');
+    inputEl.value = '';
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = async e => {
+    const changes = {
+      approvedDraftBase64: e.target.result.split(',')[1],
+      approvedDraftFilename: file.name,
+      status: 'approved',
+    };
+    await patchSAR(id, changes);
+    const item = findSAR(id);
+    if (item) Object.assign(item, changes);
+    notify('ok', 'Corrected draft attached — marked Reviewed by Attorney');
+    openSAR(id);
+  };
+  reader.onerror = () => notify('err', 'Could not read file');
+  reader.readAsDataURL(file);
 }
 
 function buildAgentPanel(item) {
