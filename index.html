@@ -706,6 +706,16 @@ async function loadSARsFromServer() {
     const serverSARs = await r.json();
     if (!Array.isArray(serverSARs)) return;
 
+    // Snapshot the currently-open case's data BEFORE the queue is replaced,
+    // so we can tell below whether anything actually changed for it — a full
+    // rebuild of the detail view on every 30s poll wipes any in-progress,
+    // not-yet-saved UI (like an open Clio matter search) even when nothing
+    // about that case changed on the server.
+    const prevActiveItem = state.activeView
+      ? state.queue.find(i => String(i.id) === String(state.activeView))
+      : null;
+    const prevActiveSnapshot = prevActiveItem ? JSON.stringify(prevActiveItem) : null;
+
     if (serverSARs.length > 0) {
       // Server has records — it's the source of truth
       const prevCount = state.queue.length;
@@ -722,11 +732,12 @@ async function loadSARsFromServer() {
         createSAROnServer(item).catch(() => {});
       }
     }
-    // Re-open active view if still present — but NOT if the user has staged a
-    // file for it (re-rendering would rebuild the file input and disrupt the run).
+    // Re-render the active case only if its data actually changed, and NOT
+    // if the user has staged a file for it (re-rendering would rebuild the
+    // file input and disrupt the run).
     if (state.activeView && state.activeView !== 'new' && !agentState[state.activeView]?.riscFile) {
       const item = state.queue.find(i => String(i.id) === String(state.activeView));
-      if (item) renderDetail(item);
+      if (item && JSON.stringify(item) !== prevActiveSnapshot) renderDetail(item);
     }
   } catch(e) { /* fall back to cached data silently */ }
 }
@@ -1347,9 +1358,12 @@ function renderDetail(item) {
     </div>`;
 
   const reassignBanner = item.reassignRequest?.status === 'pending' ? `
-    <div class="urgency-bar" style="background:var(--yellow-bg);border-color:#f6d78b;color:var(--yellow)">
+    <div class="urgency-bar" style="background:var(--yellow-bg);border-color:#f6d78b;color:var(--yellow);flex-wrap:wrap">
       🔁 Reassignment requested by ${esc(item.reassignRequest.requestedBy||'—')} → ${esc(item.reassignRequest.requestedTo || 'Anyone available')}${item.reassignRequest.reason ? ' — "' + esc(item.reassignRequest.reason) + '"' : ''}
-      ${isOps() ? `<span style="margin-left:auto;display:flex;gap:6px">
+      ${isOps() ? `<span style="margin-left:auto;display:flex;gap:6px;align-items:center">
+          <select id="reassign-approve-select-${item.id}" style="font-size:11px;padding:5px 24px 5px 8px;background:#fff">
+            ${state.cms.filter(cm => cm.name !== item.assignee).map(cm => `<option value="${esc(cm.name)}"${item.reassignRequest.requestedTo===cm.name?' selected':''}>${esc(cm.name)}</option>`).join('')}
+          </select>
           <button class="btn xs success" onclick="approveReassignment('${item.id}')">Approve</button>
           <button class="btn xs danger" onclick="denyReassignment('${item.id}')">Deny</button>
         </span>` : '<span style="margin-left:auto;font-size:11px">Pending Diana\'s approval</span>'}
@@ -1371,6 +1385,26 @@ function renderDetail(item) {
           </div>
         </div>
         <div class="detail-actions">${actions}</div>
+      </div>
+      <div class="card" style="border:1.5px solid ${item.matter ? 'var(--border)' : 'var(--accent)'}">
+        <div class="card-header">
+          <div class="card-title">🔗 Clio Matter — link this first</div>
+          <button class="btn xs ghost" onclick="toggleMatterSearch('${item.id}')" style="font-size:10px;padding:2px 6px">
+            ${item.matter ? '✎ Change' : '+ Link Matter'}
+          </button>
+        </div>
+        <div class="card-body">
+          ${item.matter
+            ? `<div class="field-value mono" style="font-size:13px"><span style="color:var(--accent)">#${esc(item.matter.num)}</span> · ${esc(item.matter.name)}${item.matter.client?' · '+esc(item.matter.client):''}</div>`
+            : `<div class="field-value muted">Not linked yet — search and select the dealer's Clio matter below before running the agent.</div>`}
+          <div id="ms-area-${item.id}" style="display:${item.matter ? 'none' : 'block'};margin-top:10px">
+            <div style="display:flex;gap:6px;margin-bottom:8px">
+              <input type="text" id="ms-q-${item.id}" placeholder="Search dealer name…" value="${esc(item.dealer||'')}" style="flex:1;font-size:12px;padding:7px 10px" />
+              <button class="btn sm" onclick="doMatterSearch('${item.id}')">Search</button>
+            </div>
+            <div id="ms-res-${item.id}"></div>
+          </div>
+        </div>
       </div>
       ${pipeline}
       ${agentSection}
@@ -1397,24 +1431,6 @@ function renderDetail(item) {
               <div class="field">
                 <div class="field-label">Reviewing Attorney</div>
                 <div class="field-value">${esc(item.attorney||'—')}</div>
-              </div>
-              <div class="field full">
-                <div class="field-label" style="display:flex;align-items:center;justify-content:space-between">
-                  Clio Matter
-                  <button class="btn xs ghost" onclick="toggleMatterSearch('${item.id}')" style="font-size:10px;padding:2px 6px">
-                    ${item.matter ? '✎ Change' : '+ Link'}
-                  </button>
-                </div>
-                ${item.matter
-                  ? `<div class="field-value mono" style="font-size:12px;margin-top:2px"><span style="color:var(--accent)">#${esc(item.matter.num)}</span> · ${esc(item.matter.name)}${item.matter.client?' · '+esc(item.matter.client):''}</div>`
-                  : `<div class="field-value muted" style="margin-top:2px">Not linked — time entries and Clio upload require a matter</div>`}
-                <div id="ms-area-${item.id}" style="display:none;margin-top:10px">
-                  <div style="display:flex;gap:6px;margin-bottom:8px">
-                    <input type="text" id="ms-q-${item.id}" placeholder="Search dealer name…" value="${esc(item.dealer||'')}" style="flex:1;font-size:12px;padding:7px 10px" />
-                    <button class="btn sm" onclick="doMatterSearch('${item.id}')">Search</button>
-                  </div>
-                  <div id="ms-res-${item.id}"></div>
-                </div>
               </div>
             </div>
           </div>
@@ -1971,20 +1987,27 @@ async function runAgent(id) {
     return;
   }
 
-  // Step 3: Clio search
+  // Step 3: Clio matter — skip entirely if already linked (e.g. via the
+  // Clio Matter card at the top of the page, which is now the first thing
+  // a CM does before running the agent at all).
   markAgentStepActive(3);
-  const csa = document.getElementById('clio-search-area-' + id);
-  if (csa) {
-    csa.style.display = 'block';
-    const qi = document.getElementById('clio-q-' + id);
-    if (qi) qi.value = fields.dealer_name || item.dealer;
-    setAgentStepNote(3, 'Search for the dealer\'s Clio matter and select it.');
+  if (item.matter) {
+    markAgentStep(3, 'done', `#${item.matter.num} — ${item.matter.name}`);
+    enableGenerateStep(id);
+  } else {
+    const csa = document.getElementById('clio-search-area-' + id);
+    if (csa) {
+      csa.style.display = 'block';
+      const qi = document.getElementById('clio-q-' + id);
+      if (qi) qi.value = fields.dealer_name || item.dealer;
+      setAgentStepNote(3, 'Search for the dealer\'s Clio matter and select it.');
+    }
+    // Auto-trigger search
+    await doClioSearch(id);
   }
-  // Auto-trigger search
-  await doClioSearch(id);
 
   if (btn) { btn.innerHTML = '▶ Re-run'; btn.disabled = false; }
-  notify('ok', 'Fields extracted — select Clio matter to continue');
+  notify('ok', item.matter ? 'Fields extracted — matter already linked' : 'Fields extracted — select Clio matter to continue');
 }
 
 // extractRISC replaced by extractFileAsRISC + callAIExtract above
@@ -2344,7 +2367,8 @@ async function approveReassignment(id) {
   const item = findSAR(id);
   if (!item?.reassignRequest) return;
   const req = item.reassignRequest;
-  const targetName = req.requestedTo || getNextCM().name;
+  const targetName = document.getElementById('reassign-approve-select-' + id)?.value;
+  if (!targetName) { notify('err', 'Pick a case manager to assign this to'); return; }
   const targetCM = state.cms.find(c => c.name === targetName);
   const fromName = item.assignee;
   const changes = {
