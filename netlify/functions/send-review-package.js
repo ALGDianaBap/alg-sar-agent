@@ -70,12 +70,14 @@ exports.handler = async (event) => {
 
     const summaryText = buildSummaryText(sar, checklist);
 
+    // Slack's files.completeUploadExternal only accepts a plain-text
+    // initial_comment (no Block Kit buttons) — so the files go out with a
+    // short caption, and the full summary + Approve button always follows
+    // as its own message, regardless of whether any file upload succeeded.
     if (uploaded.length) {
-      await completeUploadExternal(token, uploaded, sar.attorneySlackId, summaryText);
-    } else {
-      // Every attachment failed — the attorney still needs the notification.
-      await postMessage(token, sar.attorneySlackId, summaryText);
+      await completeUploadExternal(token, uploaded, sar.attorneySlackId, 'Documents for your review below:');
     }
+    await postMessageWithApprove(token, sar.attorneySlackId, summaryText, sar.id);
 
     return {
       statusCode: 200,
@@ -87,7 +89,7 @@ exports.handler = async (event) => {
     try {
       const sar = await getStore('sar-records').get(String(id), { type: 'json' }).catch(() => null);
       if (sar && sar.attorneySlackId) {
-        await postMessage(token, sar.attorneySlackId, buildSummaryText(sar, ['✗ Could not prepare documents — check the SAR Agent app']));
+        await postMessageWithApprove(token, sar.attorneySlackId, buildSummaryText(sar, ['✗ Could not prepare documents — check the SAR Agent app']), sar.id);
       }
     } catch (e2) { /* give up quietly */ }
     return { statusCode: 500, headers: { ...cors, 'Content-Type': 'application/json' }, body: JSON.stringify({ error: e.message }) };
@@ -219,6 +221,22 @@ async function completeUploadExternal(token, uploaded, channelId, initialComment
   return resp;
 }
 
-async function postMessage(token, channel, text) {
-  return slackApi(token, 'chat.postMessage', { channel, text, blocks: [{ type: 'section', text: { type: 'mrkdwn', text } }] }, 'json');
+async function postMessageWithApprove(token, channel, text, sarId) {
+  return slackApi(token, 'chat.postMessage', {
+    channel,
+    text,
+    blocks: [
+      { type: 'section', text: { type: 'mrkdwn', text } },
+      {
+        type: 'actions',
+        elements: [{
+          type: 'button',
+          text: { type: 'plain_text', text: '✅ Approve — No Corrections Needed', emoji: true },
+          style: 'primary',
+          action_id: 'approve_review',
+          value: String(sarId),
+        }],
+      },
+    ],
+  }, 'json');
 }

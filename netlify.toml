@@ -30,6 +30,9 @@
 [functions."send-review-package"]
   timeout = 26
 
+[functions."slack-interactive"]
+  timeout = 26
+
 [[redirects]]
   from = "/submit"
   to = "/submit.html"
