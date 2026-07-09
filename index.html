@@ -556,7 +556,6 @@ function saveState() {
 // All mutations write to the server so every user sees the same data.
 
 async function loadSARsFromServer() {
-  if (state.demoMode) return;
   try {
     const r = await fetch(API.sars);
     if (!r.ok) return;
