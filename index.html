@@ -257,6 +257,21 @@ select { appearance:none; background-image:url("data:image/svg+xml,%3Csvg xmlns=
 .empty-list { text-align:center; padding:40px 16px; color:var(--text3); font-size:12px; line-height:1.7; }
 .urgency-bar { display:flex; align-items:center; gap:6px; padding:8px 12px; background:var(--red-bg); border-radius:var(--radius); font-size:12px; color:var(--red); font-weight:600; margin-bottom:16px; border:1px solid #fca5a5; }
 .sidebar-counts { padding:0 12px 8px; font-size:10.5px; color:var(--text3); line-height:1.5; flex-shrink:0; }
+
+/* CM checkbox filters + simplified case list */
+.cm-filter-title { padding:2px 4px 8px; font-size:12px; font-weight:700; color:var(--text); }
+.cm-filter-group { display:flex; flex-direction:column; gap:7px; padding-bottom:10px; }
+.cm-filter-check { display:flex; align-items:center; gap:7px; font-size:12px; color:var(--text2); cursor:pointer; }
+.cm-filter-check input { accent-color:var(--accent); cursor:pointer; }
+.cm-case-row { display:flex; align-items:center; gap:10px; padding:13px 12px; border-radius:var(--radius); cursor:pointer; margin-bottom:4px; border:1px solid transparent; transition:all .12s; }
+.cm-case-row:hover { background:var(--surface); border-color:var(--border); }
+.cm-case-row.active { background:var(--surface); border-color:var(--accent); box-shadow:var(--shadow); }
+.cm-case-main { flex:1; min-width:0; }
+.cm-case-buyer { font-weight:700; font-size:14px; margin-bottom:2px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.cm-case-dealer { font-size:12px; color:var(--text2); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.cm-case-side { text-align:right; flex-shrink:0; }
+.cm-case-status { font-size:10.5px; font-weight:600; color:var(--accent); margin-bottom:2px; white-space:nowrap; }
+.cm-case-date { font-size:10px; color:var(--text3); font-family:'JetBrains Mono',monospace; }
 </style>
 </head>
 <body>
@@ -720,12 +735,15 @@ function findSAR(id) {
   return state.queue.find(i => String(i.id) === String(id));
 }
 
+// demoMode only ever means "no personal Clio token" (see clioGet/clioPost) —
+// it must NOT block writes to the shared sar-records store, or one person's
+// action (e.g. requesting reassignment) silently never reaches anyone else
+// even though Slack notifications about it still go out.
 async function patchSAR(id, changes) {
   const item = findSAR(id);
   if (item) Object.assign(item, changes);
   saveState();
   renderSidebar();
-  if (state.demoMode) return;
   try {
     await fetch(API.sars + '?id=' + id, {
       method: 'PATCH',
@@ -736,7 +754,6 @@ async function patchSAR(id, changes) {
 }
 
 async function createSAROnServer(item) {
-  if (state.demoMode) return;
   try {
     await fetch(API.sars, {
       method: 'POST',
@@ -747,13 +764,11 @@ async function createSAROnServer(item) {
 }
 
 async function deleteSAROnServer(id) {
-  if (state.demoMode) return;
   try { await fetch(API.sars + '?id=' + id, { method: 'DELETE' }); } catch(e) {}
 }
 
 // Poll for updates every 30 seconds so the dashboard stays in sync for all users
 function startPolling() {
-  if (state.demoMode) return;
   setInterval(loadSARsFromServer, 30000);
 }
 
@@ -888,6 +903,10 @@ async function clioPost(path, body) {
 }
 
 // ── SIDEBAR ───────────────────────────────────────────────────────────────────
+// Per-session status filter for the CM checkbox view — not persisted,
+// resets to "show everything assigned to me" on each load.
+let cmStatusFilter = { new:true, draft:true, review:true, approved:true, sent:true };
+
 function renderSidebar() {
   renderFilterChips();
   renderCountsStrip();
@@ -896,47 +915,36 @@ function renderSidebar() {
   const f = state.activeFilter;
   const role = state.identity?.role;
 
-  let base = state.queue;
-  if (role === 'attorney') {
-    base = base.filter(i => i.attorney === state.identity.name);
+  let items;
+  if (role === 'cm') {
+    // Case Managers only ever see cases assigned to them — never anyone else's.
+    items = state.queue.filter(i => i.assignee === state.identity.name && cmStatusFilter[i.status] !== false);
+  } else if (role === 'attorney') {
+    items = state.queue.filter(i => i.attorney === state.identity.name);
+    items = items.filter(i => f === 'atty-history' ? i.status !== 'review' : i.status === 'review');
+  } else { // ops — sees everything, scoped only by the chip row
+    items = state.queue.filter(i => {
+      if (f === 'pending') return i.status !== 'sent';
+      if (f === 'responded') return i.status === 'sent';
+      if (f === 'reassign') return i.reassignRequest?.status === 'pending';
+      if (f) return i.status === f;
+      return true;
+    });
   }
 
-  const items = base.filter(i => {
-    const matchSearch = !q || i.buyer.toLowerCase().includes(q) || i.dealer.toLowerCase().includes(q) || (i.assignee||'').toLowerCase().includes(q);
-    let matchFilter = true;
-    if (f === 'mine') {
-      const idName = state.identity?.name;
-      if (idName) {
-        matchFilter = i.assignee === idName;
-      } else {
-        // Legacy fallback for a cached session with no identity yet — match
-        // on the connected Clio user's first name overlapping the assignee.
-        const cu = (state.clioUser || '').toLowerCase();
-        const as = (i.assignee || '').toLowerCase();
-        matchFilter = !!cu && (as.includes(cu.split(' ')[0]) || cu.includes(as.split(' ')[0]));
-      }
-    } else if (f === 'pending') {
-      matchFilter = i.status !== 'sent';
-    } else if (f === 'responded') {
-      matchFilter = i.status === 'sent';
-    } else if (f === 'reassign') {
-      matchFilter = i.reassignRequest?.status === 'pending';
-    } else if (f === 'atty-pending') {
-      matchFilter = i.status === 'review';
-    } else if (f === 'atty-history') {
-      matchFilter = i.status !== 'review';
-    } else if (f) {
-      matchFilter = i.status === f;
-    }
-    return matchSearch && matchFilter;
-  });
+  items = items.filter(i => !q || i.buyer.toLowerCase().includes(q) || i.dealer.toLowerCase().includes(q) || (i.assignee||'').toLowerCase().includes(q));
+
   const list = document.getElementById('sb-list');
   if (!list) return;
   if (!items.length) {
     list.innerHTML = '<div class="empty-list">No SARs found</div>';
     return;
   }
-  list.innerHTML = items.map(i => `
+  list.innerHTML = items.map(i => role === 'cm' ? renderCMListItem(i) : renderListItem(i)).join('');
+}
+
+function renderListItem(i) {
+  return `
     <div class="sar-item${String(state.activeView)===String(i.id)?' active':''}" onclick="openSAR('${i.id}')">
       <div class="sar-item-row1">
         <div class="sar-item-buyer">
@@ -953,14 +961,51 @@ function renderSidebar() {
         ${i.assignee ? '<span>→ '+esc(i.assignee)+'</span>' : ''}
         <span class="sar-item-time">${fmtDate(i.created)}</span>
       </div>
-    </div>
-  `).join('');
+    </div>`;
+}
+
+// Simplified layout Diana asked for: a clean pick-a-case list, no tag clutter.
+function renderCMListItem(i) {
+  return `
+    <div class="cm-case-row${String(state.activeView)===String(i.id)?' active':''}" onclick="openSAR('${i.id}')">
+      <div class="urgency-pip ${i.urgency==='urgent'?'urgent':'normal'}"></div>
+      <div class="cm-case-main">
+        <div class="cm-case-buyer">${esc(i.buyer)}</div>
+        <div class="cm-case-dealer">${esc(i.dealer)}${i.reassignRequest?.status==='pending' ? ' · <span style="color:var(--yellow)">🔁 reassignment pending</span>' : ''}</div>
+      </div>
+      <div class="cm-case-side">
+        <div class="cm-case-status">${statusLabel(i.status)}</div>
+        <div class="cm-case-date">${fmtDate(i.created)}</div>
+      </div>
+    </div>`;
 }
 
 function renderFilterChips() {
   const container = document.getElementById('sb-filters');
   if (!container) return;
   const role = state.identity?.role;
+
+  if (role === 'cm') {
+    const myCount = state.queue.filter(i => i.assignee === state.identity.name).length;
+    const statusOpts = [
+      {s:'new', label:'Received & Assigned'},
+      {s:'draft', label:'In Review by CM'},
+      {s:'review', label:'Pending Attorney Approval'},
+      {s:'approved', label:'Approved'},
+      {s:'sent', label:'Sent to Client'},
+    ];
+    container.innerHTML = `
+      <div class="cm-filter-title">Your Cases (${myCount})</div>
+      <div class="cm-filter-group">
+        ${statusOpts.map(o => `
+          <label class="cm-filter-check">
+            <input type="checkbox" ${cmStatusFilter[o.s] !== false ? 'checked' : ''} onchange="toggleCMStatusFilter('${o.s}', this.checked)" />
+            ${o.label}
+          </label>`).join('')}
+      </div>`;
+    return;
+  }
+
   let chips, defaultFilter;
   if (role === 'attorney') {
     chips = [
@@ -968,7 +1013,7 @@ function renderFilterChips() {
       {f:'atty-history', label:'History'},
     ];
     defaultFilter = 'atty-pending';
-  } else if (role === 'ops') {
+  } else {
     const reassignCount = state.queue.filter(i => i.reassignRequest?.status === 'pending').length;
     chips = [
       {f:'', label:'All'},
@@ -982,20 +1027,14 @@ function renderFilterChips() {
       {f:'reassign', label:'🔁 Reassignment' + (reassignCount ? ` (${reassignCount})` : '')},
     ];
     defaultFilter = '';
-  } else {
-    chips = [
-      {f:'mine', label:'Mine'},
-      {f:'', label:'All'},
-      {f:'new', label:'Received & Assigned'},
-      {f:'draft', label:'In Review by CM'},
-      {f:'review', label:'Pending Approval'},
-      {f:'approved', label:'Approved'},
-      {f:'sent', label:'Sent'},
-    ];
-    defaultFilter = 'mine';
   }
   if (!chips.some(c => c.f === state.activeFilter)) state.activeFilter = defaultFilter;
   container.innerHTML = chips.map(c => `<div class="chip${state.activeFilter===c.f?' active':''}" onclick="setFilter('${c.f}')">${c.label}</div>`).join('');
+}
+
+function toggleCMStatusFilter(status, checked) {
+  cmStatusFilter[status] = checked;
+  renderSidebar();
 }
 
 function renderCountsStrip() {
@@ -1161,6 +1200,13 @@ function cancelNewSAR() {
 function openSAR(id) {
   const item = findSAR(id);
   if (!item) return;
+  // Defense in depth: a CM's list only ever contains their own cases, but if
+  // one gets reassigned away mid-session, don't let a stale click open it.
+  if (state.identity?.role === 'cm' && item.assignee !== state.identity.name) {
+    notify('err', 'This case is no longer assigned to you');
+    cancelNewSAR();
+    return;
+  }
   state.activeView = id;
   renderSidebar();
   renderDetail(item);
@@ -2728,7 +2774,6 @@ async function handleZohoCallback(code) {
 }
 
 async function checkZohoStatus() {
-  if (state.demoMode) return;
   try {
     const r = await fetch('/.netlify/functions/zoho-setup?action=status');
     const { connected } = await r.json();
