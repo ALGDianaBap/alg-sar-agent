@@ -1232,18 +1232,10 @@ function renderDetail(item) {
   const dealLabel = item.dealType === 'rescission' ? 'Rescission' : 'Cash &amp; Keep';
   const langLabel = item.language === 'es' ? 'Spanish' : 'English';
 
-  // Action buttons by status
+  // Action buttons by status — 'new'/'draft' moved into the gated step
+  // flow below (Steps 2-5), so the header stays uncluttered.
   let actions = '';
-  if (item.status === 'new') {
-    actions = `
-      <button class="btn primary" onclick="runAgent('${item.id}')">🤖 Run Agent</button>
-      <button class="btn" onclick="generateDraft('${item.id}')">📝 Generate Draft</button>`;
-  } else if (item.status === 'draft') {
-    actions = `
-      ${item.draftBase64 ? `<button class="btn success" onclick="downloadDraft('${item.id}')">⬇ Download Draft</button>` : ''}
-      <button class="btn primary" onclick="openReviewModal('${item.id}')">Submit for Review →</button>
-      <button class="btn sm" onclick="generateDraft('${item.id}')" title="Regenerate with current fields">↺ Regenerate</button>`;
-  } else if (item.status === 'review') {
+  if (item.status === 'review') {
     actions = `
       ${item.draftBase64 ? `<button class="btn" onclick="downloadDraft('${item.id}')">⬇ Download Draft</button>` : ''}
       <button class="btn" onclick="uploadToClio('${item.id}')">↑ Upload to Clio</button>
@@ -1269,6 +1261,12 @@ function renderDetail(item) {
 
   const pipeline = buildPipeline(item.status);
 
+  // Before a case is submitted for review, the gated step flow (Steps 2-5)
+  // owns Deal Details / Settlement Language / drafting. After submission,
+  // fall back to the old always-editable, ungated view — there's no more
+  // sequence to enforce once it's with the attorney.
+  const showStepFlow = item.status === 'new' || item.status === 'draft';
+
   // Deal Details — always shown, always editable.
   // Pre-seeded from RISC extraction when available; otherwise from form data or blank.
   // CMs can fill/correct any field manually at any time.
@@ -1286,7 +1284,7 @@ function renderDetail(item) {
     ? `<span style="font-size:10px;color:var(--green);font-weight:600;background:var(--green-bg);padding:2px 6px;border-radius:3px">Auto-extracted</span>`
     : `<span style="font-size:10px;color:var(--text3);background:var(--bg);padding:2px 6px;border-radius:3px;border:1px solid var(--border)">Manual entry</span>`;
 
-  const fieldsSection = `
+  const fieldsSection = showStepFlow ? buildStepFlow(item) : `
     <div class="card">
       <div class="card-header">
         <div class="card-title">📄 Deal Details ${sourceLabel}</div>
@@ -1328,12 +1326,6 @@ function renderDetail(item) {
         <div style="margin-top:8px;font-size:11px;color:var(--text3)">Everything else in the agreement (releases, 1542 waiver, signatures) comes from the firm's Word template — these are the only two paragraphs the agent writes per case. Review before generating.</div>
       </div>
     </div>`;
-
-  // Agent panel (for 'new' status)
-  let agentSection = '';
-  if (item.status === 'new') {
-    agentSection = buildAgentPanel(item);
-  }
 
   // Attachments — always shown, supports manual PDF upload + extraction
   const attachList = (item.attachments || []).map(a => {
@@ -1392,9 +1384,15 @@ function renderDetail(item) {
         </div>
         <div class="detail-actions">${actions}</div>
       </div>
+      ${showStepFlow ? `
+      <div style="display:flex;gap:16px;flex-wrap:wrap;font-size:12px;color:var(--text2);padding:10px 14px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:16px">
+        <span><strong>Dealership:</strong> ${esc(item.dealer||'—')}</span>
+        <span><strong>Submitted by:</strong> ${esc(item.contactName||'—')}</span>
+        <span><strong>Files attached:</strong> ${(item.attachments||[]).length ? (item.attachments||[]).map(a=>esc(a.name||a)).join(', ') : 'none'}</span>
+      </div>` : ''}
       <div class="card" style="border:1.5px solid ${item.matter ? 'var(--border)' : 'var(--accent)'}">
         <div class="card-header">
-          <div class="card-title">🔗 Clio Matter — link this first</div>
+          <div class="card-title">🔗 ${showStepFlow ? 'Step 1 — Select Clio Matter' : 'Clio Matter'}</div>
           <button class="btn xs ghost" onclick="toggleMatterSearch('${item.id}')" style="font-size:10px;padding:2px 6px">
             ${item.matter ? '✎ Change' : '+ Link Matter'}
           </button>
@@ -1413,7 +1411,6 @@ function renderDetail(item) {
         </div>
       </div>
       ${pipeline}
-      ${agentSection}
       ${fieldsSection}
       <div class="detail-grid">
         <div class="card" style="margin-bottom:0">
@@ -1609,60 +1606,165 @@ function uploadCorrectedDraft(id, inputEl) {
   reader.readAsDataURL(file);
 }
 
-function buildAgentPanel(item) {
+// ── STEP-BY-STEP CASE FLOW (statuses 'new'/'draft') ───────────────────────────
+// Replaces the old scattered Run Agent / Generate Draft / Draft with AI
+// buttons with one hard-gated sequence: a locked step is non-interactive
+// until the one before it is actually done.
+
+function computeStepState(item) {
+  return {
+    step1Done: !!item.matter,
+    step2Done: !!item.fields,
+    step3Done: !!(item.fields?.dispute_recital && item.fields?.section_b_paragraph),
+    step4Done: !!item.reviewConfirmed,
+    step5Done: item.status !== 'new' && item.status !== 'draft',
+  };
+}
+
+function stepCard(num, title, done, locked, bodyHtml) {
+  const badge = done
+    ? `<span style="font-size:10px;color:var(--green);font-weight:700;background:var(--green-bg);padding:2px 7px;border-radius:10px">✓ DONE</span>`
+    : locked
+      ? `<span style="font-size:10px;color:var(--text3);font-weight:700;background:var(--bg);padding:2px 7px;border-radius:10px;border:1px solid var(--border)">🔒 LOCKED</span>`
+      : `<span style="font-size:10px;color:var(--accent);font-weight:700;background:var(--accent-bg);padding:2px 7px;border-radius:10px">CURRENT STEP</span>`;
   return `
-    <div class="agent-panel" id="agent-panel-${item.id}">
-      <div class="agent-header">
-        <div class="agent-title">🤖 SAR Agent — Process This Request</div>
+    <div class="card"${locked ? ' style="opacity:.5"' : ''}>
+      <div class="card-header">
+        <div class="card-title">Step ${num} — ${title}</div>
+        ${badge}
       </div>
-      <div class="agent-body" id="agent-body-${item.id}">
-        <div class="agent-step" id="astep-1">
-          <div class="agent-step-num">1</div>
-          <div class="agent-step-body">
-            <div class="agent-step-label">RISC Contract (PDF)</div>
-            ${item.hasStoredFiles
-              ? `<div class="agent-step-note" style="margin-bottom:8px">A file was submitted with the form. The agent will try to fetch it automatically — but large scans don't always save, so if it can't be found, choose the RISC PDF below.</div>`
-              : `<div class="agent-step-note" style="margin-bottom:8px">Choose the RISC PDF below — it contains buyer info, vehicle details, VIN, purchase date, and financial terms.</div>`
-            }
-            <input type="file" id="risc-file-${item.id}" accept=".pdf" style="margin-bottom:8px"
-              onchange="stageRiscFile('${item.id}', this)" />
-            ${agentState[item.id]?.riscFile ? `<div style="font-size:11px;color:var(--green)">Staged: ${esc(agentState[item.id].riscFile.name)} — click Run Agent</div>` : (item.hasStoredFiles ? `<div style="font-size:11px;color:var(--text3)">A file was uploaded via the form. If the agent can't find it, choose it here to override.</div>` : '')}
-          </div>
-        </div>
-        <div class="agent-step" id="astep-2">
-          <div class="agent-step-num">2</div>
-          <div class="agent-step-body">
-            <div class="agent-step-label">Extract Fields via AI</div>
-            <div class="agent-step-note" id="astep-2-note">Upload RISC PDF above, then run.</div>
-          </div>
-        </div>
-        <div class="agent-step" id="astep-3">
-          <div class="agent-step-num">3</div>
-          <div class="agent-step-body">
-            <div class="agent-step-label">Link Clio Matter</div>
-            <div class="agent-step-note" id="astep-3-note">Completes after extraction.</div>
-            <div id="clio-search-area-${item.id}" style="display:none;margin-top:8px">
-              <div style="display:flex;gap:8px;margin-bottom:8px">
-                <input type="text" id="clio-q-${item.id}" placeholder="Search dealer name…" style="flex:1" />
-                <button class="btn sm" onclick="doClioSearch('${item.id}')">Search</button>
-              </div>
-              <div id="clio-res-${item.id}"></div>
-            </div>
-          </div>
-        </div>
-        <div class="agent-step" id="astep-4">
-          <div class="agent-step-num">4</div>
-          <div class="agent-step-body">
-            <div class="agent-step-label">Generate Draft .docx</div>
-            <div class="agent-step-note" id="astep-4-note">Completes after Clio matter is linked.</div>
-          </div>
-        </div>
-        <div class="btn-row" style="margin-top:16px">
-          <button class="btn primary" onclick="runAgent('${item.id}')" id="run-agent-btn-${item.id}">▶ Run Agent</button>
-          <button class="btn sm ghost" onclick="skipToManualDraft('${item.id}')">Skip — draft manually</button>
-        </div>
+      <div class="card-body">
+        ${locked ? `<div class="empty-list" style="padding:14px 0">Complete Step ${num - 1} to unlock this.</div>` : bodyHtml}
       </div>
     </div>`;
+}
+
+function defaultFields(item) {
+  return {
+    buyer_name: item.buyer || '', dealer_name: item.dealer || '',
+    vehicle_year: '', vehicle_make: '', vehicle_model: '',
+    vin: item.vin || '', purchase_date: '', settlement_amount: item.amount || '',
+    settlement_amount_words: '', down_payment: '', miles_driven: '', apr: '',
+    notes: '', missing_fields: [],
+  };
+}
+
+function buildStep2Body(item, f) {
+  return `
+    <div style="margin-bottom:16px;padding-bottom:16px;border-bottom:1px solid var(--bg)">
+      ${item.hasStoredFiles
+        ? `<div class="agent-step-note" style="margin-bottom:8px">A file was submitted with the form. Extraction will try to fetch it automatically — but large scans don't always save, so if it can't be found, choose the RISC PDF below.</div>`
+        : `<div class="agent-step-note" style="margin-bottom:8px">Choose the RISC PDF below — it contains buyer info, vehicle details, VIN, purchase date, and financial terms.</div>`}
+      <input type="file" id="risc-file-${item.id}" accept=".pdf" style="margin-bottom:8px" onchange="stageRiscFile('${item.id}', this)" />
+      ${agentState[item.id]?.riscFile ? `<div style="font-size:11px;color:var(--green);margin-bottom:8px">Staged: ${esc(agentState[item.id].riscFile.name)} — click Extract Data</div>` : (item.hasStoredFiles ? `<div style="font-size:11px;color:var(--text3);margin-bottom:8px">A file was uploaded via the form. If extraction can't find it, choose it here to override.</div>` : '')}
+      <div class="agent-step-note" id="astep-1-note"></div>
+      <div class="btn-row" style="margin-top:8px">
+        <button class="btn primary" onclick="runAgent('${item.id}')" id="run-agent-btn-${item.id}">▶ Extract Data</button>
+        <button class="btn sm ghost" onclick="skipToManualFields('${item.id}')">Skip — enter manually</button>
+      </div>
+      <div class="agent-step-note" id="astep-2-note" style="margin-top:6px"></div>
+    </div>
+    <div class="field-grid">
+      <div class="field"><div class="field-label">Buyer Full Name</div><input id="dd-${item.id}-buyer_name" class="field-value editable" placeholder="FIRST LAST" value="${esc(f.buyer_name||'')}" onchange="updateField('${item.id}','buyer_name',this.value)" /></div>
+      <div class="field"><div class="field-label">Dealership Name</div><input id="dd-${item.id}-dealer_name" class="field-value editable" placeholder="DEALERSHIP, INC." value="${esc(f.dealer_name||'')}" onchange="updateField('${item.id}','dealer_name',this.value)" /></div>
+      <div class="field"><div class="field-label">Year</div><input id="dd-${item.id}-vehicle_year" class="field-value editable" placeholder="2022" value="${esc(f.vehicle_year||'')}" onchange="updateField('${item.id}','vehicle_year',this.value)" /></div>
+      <div class="field"><div class="field-label">Make</div><input id="dd-${item.id}-vehicle_make" class="field-value editable" placeholder="Toyota" value="${esc(f.vehicle_make||'')}" onchange="updateField('${item.id}','vehicle_make',this.value)" /></div>
+      <div class="field"><div class="field-label">Model</div><input id="dd-${item.id}-vehicle_model" class="field-value editable" placeholder="Camry" value="${esc(f.vehicle_model||'')}" onchange="updateField('${item.id}','vehicle_model',this.value)" /></div>
+      <div class="field"><div class="field-label">VIN</div><input id="dd-${item.id}-vin" class="field-value editable mono" placeholder="17-character VIN" value="${esc(f.vin||'')}" onchange="updateField('${item.id}','vin',this.value)" /></div>
+      <div class="field"><div class="field-label">Purchase Date</div><input id="dd-${item.id}-purchase_date" class="field-value editable" placeholder="MM/DD/YYYY" value="${esc(f.purchase_date||'')}" onchange="updateField('${item.id}','purchase_date',this.value)" /></div>
+      <div class="field"><div class="field-label">Settlement Amount $</div><input id="dd-${item.id}-settlement_amount" class="field-value editable" placeholder="1200.00" value="${esc(f.settlement_amount||'')}" onchange="updateField('${item.id}','settlement_amount',this.value)" /></div>
+      <div class="field"><div class="field-label">Amount in Words</div><input id="dd-${item.id}-settlement_amount_words" class="field-value editable" placeholder="One Thousand Two Hundred" value="${esc(f.settlement_amount_words||'')}" onchange="updateField('${item.id}','settlement_amount_words',this.value)" /></div>
+      <div class="field"><div class="field-label">Down Payment $</div><input id="dd-${item.id}-down_payment" class="field-value editable" placeholder="3000.00" value="${esc(f.down_payment||'')}" onchange="updateField('${item.id}','down_payment',this.value)" /></div>
+      <div class="field"><div class="field-label">Miles Driven</div><input id="dd-${item.id}-miles_driven" class="field-value editable" placeholder="12000" value="${esc(f.miles_driven||'')}" onchange="updateField('${item.id}','miles_driven',this.value)" /></div>
+      <div class="field"><div class="field-label">APR %</div><input id="dd-${item.id}-apr" class="field-value editable" placeholder="24.99" value="${esc(f.apr||'')}" onchange="updateField('${item.id}','apr',this.value)" /></div>
+    </div>
+    ${f.notes ? `<div style="margin-top:10px;padding:8px 10px;background:var(--yellow-bg);border-radius:var(--radius);font-size:12px;color:var(--yellow)">⚠ ${esc(f.notes)}</div>` : ''}
+    ${(f.missing_fields||[]).length ? `<div style="margin-top:8px;padding:8px 10px;background:var(--yellow-bg);border-radius:var(--radius);font-size:12px;color:var(--yellow)">⚠ Couldn't clearly read: ${f.missing_fields.join(', ')} — please verify or fill in manually above.</div>` : ''}
+  `;
+}
+
+function buildStep3Body(item, f) {
+  return `
+    <div class="field" style="margin-bottom:10px">
+      <div class="field-label">Dispute Recital (goes into the WHEREAS paragraph)</div>
+      <textarea id="dd-${item.id}-dispute_recital" class="field-value editable" rows="3" style="width:100%;resize:vertical;font-family:inherit" placeholder="Drafted automatically from the intake answers — or click Draft with AI" onchange="updateField('${item.id}','dispute_recital',this.value)">${esc(f.dispute_recital||'')}</textarea>
+    </div>
+    <div class="field" style="margin-bottom:10px">
+      <div class="field-label">Section B — Payment / Consideration Paragraph</div>
+      <textarea id="dd-${item.id}-section_b_paragraph" class="field-value editable" rows="4" style="width:100%;resize:vertical;font-family:inherit" placeholder="Drafted automatically from the intake answers — or click Draft with AI" onchange="updateField('${item.id}','section_b_paragraph',this.value)">${esc(f.section_b_paragraph||'')}</textarea>
+    </div>
+    <button class="btn" id="draft-btn-${item.id}" onclick="draftSettlementLanguage('${item.id}')">${f.section_b_paragraph ? '↻ Re-draft with AI' : '✍️ Draft with AI'}</button>
+    <div style="margin-top:8px;font-size:11px;color:var(--text3)">Everything else in the agreement (releases, 1542 waiver, signatures) comes from the firm's Word template — these are the only two paragraphs written per case.</div>
+  `;
+}
+
+function buildStep4Body(item, f) {
+  const vehicle = [f.vehicle_year, f.vehicle_make, f.vehicle_model].filter(Boolean).join(' ');
+  return `
+    <div class="field-grid" style="margin-bottom:12px">
+      <div class="field"><div class="field-label">Buyer</div><div class="field-value">${esc(f.buyer_name||'—')}</div></div>
+      <div class="field"><div class="field-label">Dealer</div><div class="field-value">${esc(f.dealer_name||'—')}</div></div>
+      <div class="field"><div class="field-label">Vehicle</div><div class="field-value">${esc(vehicle||'—')}</div></div>
+      <div class="field"><div class="field-label">VIN</div><div class="field-value mono">${esc(f.vin||'—')}</div></div>
+      <div class="field"><div class="field-label">Settlement Amount</div><div class="field-value">${f.settlement_amount?'$'+esc(f.settlement_amount):'—'}</div></div>
+      <div class="field"><div class="field-label">Down Payment</div><div class="field-value">${f.down_payment?'$'+esc(f.down_payment):'—'}</div></div>
+    </div>
+    <div class="field" style="margin-bottom:8px">
+      <div class="field-label">Dispute Recital</div>
+      <div class="ai-box">${esc(f.dispute_recital || '(not drafted)')}</div>
+    </div>
+    <div class="field" style="margin-bottom:12px">
+      <div class="field-label">Section B — Payment / Consideration</div>
+      <div class="ai-box">${esc(f.section_b_paragraph || '(not drafted)')}</div>
+    </div>
+    <div style="font-size:12px;color:var(--text2);margin-bottom:10px">Double-check everything above — go back and edit Steps 2–3 if anything needs fixing — then continue.</div>
+    <button class="btn success" onclick="confirmReview('${item.id}')">✓ Looks Good — Continue</button>
+  `;
+}
+
+function buildStep5Body(item) {
+  if (item.status === 'new') {
+    return `
+      <button class="btn primary" onclick="generateDraft('${item.id}')" id="gen-btn-${item.id}">📝 Generate Draft</button>
+      <div class="agent-step-note" id="astep-4-note" style="margin-top:8px"></div>
+    `;
+  }
+  return `
+    ${item.draftBase64 ? `<button class="btn success" onclick="downloadDraft('${item.id}')">⬇ Download Draft</button>` : ''}
+    <button class="btn primary" onclick="openReviewModal('${item.id}')">Submit for Review →</button>
+    <button class="btn sm ghost" onclick="generateDraft('${item.id}')" title="Regenerate with current fields">↺ Regenerate</button>
+  `;
+}
+
+function buildStepFlow(item) {
+  const s = computeStepState(item);
+  const f = item.fields || defaultFields(item);
+  return `
+    ${stepCard(2, 'Extract Data', s.step2Done, !s.step1Done, buildStep2Body(item, f))}
+    ${stepCard(3, 'Draft the Sections', s.step3Done, !s.step2Done, buildStep3Body(item, f))}
+    ${stepCard(4, 'Review', s.step4Done, !s.step3Done, buildStep4Body(item, f))}
+    ${stepCard(5, item.status === 'new' ? 'Generate Draft' : 'Submit to Attorney', s.step5Done, !s.step4Done, buildStep5Body(item))}
+  `;
+}
+
+function skipToManualFields(id) {
+  const item = findSAR(id);
+  if (!item) return;
+  if (!item.fields) {
+    item.fields = defaultFields(item);
+    patchSAR(id, { fields: item.fields });
+  }
+  notify('ok', 'Enter the deal details manually below');
+  openSAR(id);
+}
+
+function confirmReview(id) {
+  const item = findSAR(id);
+  if (!item) return;
+  item.reviewConfirmed = true;
+  patchSAR(id, { reviewConfirmed: true });
+  notify('ok', 'Reviewed — Step 5 unlocked');
+  openSAR(id);
 }
 
 // ── RISC EXTRACTION (shared by Run Agent and manual upload) ───────────────────
@@ -1915,7 +2017,7 @@ async function runAgent(id) {
   if (!item) return;
 
   const btn = document.getElementById('run-agent-btn-' + id);
-  if (btn) { btn.innerHTML = '<div class="spin"></div> Running…'; btn.disabled = true; }
+  if (btn) { btn.innerHTML = '<div class="spin"></div> Extracting… (10–20s)'; btn.disabled = true; }
 
   // Preserve any file staged via stageRiscFile — do NOT clobber it on reset.
   agentState[id] = { ...(agentState[id] || {}), step: 1 };
@@ -1959,9 +2061,8 @@ async function runAgent(id) {
   }
 
   if (!filesToProcess.length && !state.demoMode) {
-    setAgentStepNote(1, '⚠ No PDF available yet — click "Choose File" in Step 1 and pick the RISC PDF, then click Run Agent again.', 'err');
-    setAgentStepNote(2, 'Needs a PDF from Step 1.', 'err');
-    if (btn) { btn.innerHTML = '▶ Run Agent'; btn.disabled = false; }
+    setAgentStepNote(1, '⚠ No PDF available yet — choose the RISC PDF above, then click Extract Data again.', 'err');
+    if (btn) { btn.innerHTML = '▶ Extract Data'; btn.disabled = false; }
     return;
   }
 
@@ -2014,42 +2115,23 @@ async function runAgent(id) {
     });
     refreshDealDetails(id);
     markAgentStep(2, 'done', `${item.buyer || 'buyer'} · ${item.vehicle || 'vehicle'} · VIN ${fields.vin || '—'}`);
+    if (btn) { btn.innerHTML = '↺ Re-extract'; btn.disabled = false; }
     notify('ok', 'Fields extracted — review the Deal Details below');
+    openSAR(id);
   } catch(e) {
     markAgentStep(2, 'err', 'Extraction failed: ' + e.message);
-    if (btn) { btn.innerHTML = '▶ Run Agent'; btn.disabled = false; }
-    return;
+    if (btn) { btn.innerHTML = '▶ Extract Data'; btn.disabled = false; }
   }
-
-  // Step 3: Clio matter — skip entirely if already linked (e.g. via the
-  // Clio Matter card at the top of the page, which is now the first thing
-  // a CM does before running the agent at all).
-  markAgentStepActive(3);
-  if (item.matter) {
-    markAgentStep(3, 'done', `#${item.matter.num} — ${item.matter.name}`);
-    enableGenerateStep(id);
-  } else {
-    const csa = document.getElementById('clio-search-area-' + id);
-    if (csa) {
-      csa.style.display = 'block';
-      const qi = document.getElementById('clio-q-' + id);
-      if (qi) qi.value = fields.dealer_name || item.dealer;
-      setAgentStepNote(3, 'Search for the dealer\'s Clio matter and select it.');
-    }
-    // Auto-trigger search
-    await doClioSearch(id);
-  }
-
-  if (btn) { btn.innerHTML = '▶ Re-run'; btn.disabled = false; }
-  notify('ok', item.matter ? 'Fields extracted — matter already linked' : 'Fields extracted — select Clio matter to continue');
 }
 
 // extractRISC replaced by extractFileAsRISC + callAIExtract above
 
 function markAgentStep(num, state, note) {
+  // The step-flow redesign dropped the old numbered wrapper elements —
+  // only the note div is guaranteed to exist now, so update that
+  // independently rather than bailing out when the wrapper is missing.
   const step = document.getElementById('astep-' + num);
-  if (!step) return;
-  step.className = 'agent-step ' + (state === 'err' ? '' : state);
+  if (step) step.className = 'agent-step ' + (state === 'err' ? '' : state);
   const noteEl = document.getElementById('astep-' + num + '-note');
   if (noteEl) { noteEl.textContent = note || ''; noteEl.className = 'agent-step-note' + (state==='done'?' ok':state==='err'?' err':''); }
 }
@@ -2059,80 +2141,8 @@ function setAgentStepNote(num, text, cls) {
   if (el) { el.textContent = text; el.className = 'agent-step-note' + (cls?' '+cls:''); }
 }
 
-// ── CLIO MATTER SEARCH ────────────────────────────────────────────────────────
+// ── CLIO MATTER SEARCH (Step 1 — see doMatterSearch/linkMatterFromDetail below) ─
 let clioResults = {};
-
-async function doClioSearch(id) {
-  const q = (document.getElementById('clio-q-' + id)?.value || '').trim();
-  if (!q) return;
-  const container = document.getElementById('clio-res-' + id);
-  if (!container) return;
-  container.innerHTML = '<div style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2)"><div class="spin"></div> Searching Clio…</div>';
-
-  if (state.demoMode) {
-    clioResults[id] = [{id:1001,display_number:'GM-001',description:q+' — General Matters',client:{name:q},status:'Open',practice_area:{name:'General Matters'}}];
-    renderClioResults(id);
-    return;
-  }
-  try {
-    const data = await clioGet('matters', {query:q, limit:12, fields:'id,display_number,description,client,status,practice_area'});
-    clioResults[id] = data?.data || [];
-    renderClioResults(id);
-  } catch(e) {
-    container.innerHTML = `<div style="color:var(--red);font-size:12px">Error: ${esc(e.message)}</div>`;
-  }
-}
-
-function renderClioResults(id) {
-  const container = document.getElementById('clio-res-' + id);
-  if (!container) return;
-  const results = clioResults[id] || [];
-  if (!results.length) { container.innerHTML = '<div style="font-size:12px;color:var(--text3)">No matters found</div>'; return; }
-  container.innerHTML = results.map((m, idx) => {
-    const isGen = (m.practice_area?.name||'').toLowerCase().includes('general');
-    const st = m.status || '';
-    const stColor = st === 'Open' ? 'var(--green)' : 'var(--text3)';
-    return `<div class="clio-result${isGen?' general':''}" onclick="selectMatter(${id},${idx})">
-      <div>
-        <div class="clio-result-name">${esc(m.description||'Unnamed')}</div>
-        <div class="clio-result-meta">
-          <span style="color:var(--accent)">#${esc(m.display_number||'')}</span>
-          · <span style="color:${stColor}">${esc(st)}</span>
-          · ${esc(m.practice_area?.name||'')}
-          ${m.client?.name ? ' · '+esc(m.client.name) : ''}
-        </div>
-      </div>
-      ${isGen ? '<span class="tag ck" style="font-size:9px">General</span>' : ''}
-    </div>`;
-  }).join('');
-}
-
-function selectMatter(sarId, idx) {
-  const m = (clioResults[sarId] || [])[idx];
-  if (!m) return;
-  const item = findSAR(sarId);
-  if (!item) return;
-  item.matter = { id: m.id, num: m.display_number||'', name: m.description||'', client: m.client?.name||'' };
-  document.querySelectorAll(`#clio-res-${sarId} .clio-result`).forEach((el,i) => el.classList.toggle('selected', i===idx));
-  markAgentStep(3, 'done', `#${item.matter.num} — ${item.matter.name}`);
-  patchSAR(sarId, { matter: item.matter });
-  notify('ok', 'Matter #' + item.matter.num + ' selected');
-  enableGenerateStep(sarId);
-}
-
-function enableGenerateStep(id) {
-  const item = findSAR(id);
-  if (!item || !item.matter) return;
-  setAgentStepNote(4, '');
-  markAgentStepActive(4);
-  const note = document.getElementById('astep-4-note');
-  if (note) {
-    note.innerHTML = `
-      <div class="btn-row" style="margin-top:6px">
-        <button class="btn primary sm" onclick="generateDraft('${id}')" id="gen-btn-${id}">Generate Draft</button>
-      </div>`;
-  }
-}
 
 // Standalone drafting step — lets a CM review/edit the AI's language
 // before generating the .docx, rather than only seeing it baked into the file.
@@ -2236,12 +2246,6 @@ async function generateDraft(id) {
     notify('err', 'Generation failed: ' + e.message);
     if (btn) { btn.innerHTML = 'Generate Draft'; btn.disabled = false; }
   }
-}
-
-function skipToManualDraft(id) {
-  patchSAR(id, { status: 'draft' });
-  openSAR(id);
-  notify('ok', 'Status set to Draft — generate or upload the .docx manually');
 }
 
 // ── DRAFT DOWNLOAD ─────────────────────────────────────────────────────────────
