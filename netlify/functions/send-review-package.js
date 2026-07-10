@@ -40,6 +40,13 @@ exports.handler = async (event) => {
       return { statusCode: 200, headers: { ...cors, 'Content-Type': 'application/json' }, body: JSON.stringify({ ok: true, skipped: 'no attorney assigned' }) };
     }
 
+    // files.completeUploadExternal needs a real conversation id, not a raw
+    // user id — unlike chat.postMessage, which auto-opens a DM when given
+    // one. Passing a bare user id here silently "succeeds" (no error, no
+    // thrown exception) but the file never actually attaches anywhere,
+    // which is exactly the failure mode this was built to fix.
+    const dmChannel = await resolveDmChannel(token, sar.attorneySlackId);
+
     // Every file this case is supposed to have.
     const wanted = [];
     if (sar.draftBase64) {
@@ -75,9 +82,9 @@ exports.handler = async (event) => {
     // short caption, and the full summary + Approve button always follows
     // as its own message, regardless of whether any file upload succeeded.
     if (uploaded.length) {
-      await completeUploadExternal(token, uploaded, sar.attorneySlackId, 'Documents for your review below:');
+      await completeUploadExternal(token, uploaded, dmChannel, 'Documents for your review below:');
     }
-    await postMessageWithApprove(token, sar.attorneySlackId, summaryText, sar.id);
+    await postMessageWithApprove(token, dmChannel, summaryText, sar.id);
 
     return {
       statusCode: 200,
@@ -85,13 +92,16 @@ exports.handler = async (event) => {
       body: JSON.stringify({ ok: true, filesSent: uploaded.length, filesTotal: wanted.length }),
     };
   } catch (e) {
+    console.error('send-review-package error:', e.message);
     // Last-resort fallback: try to at least get a plain text DM out.
+    // chat.postMessage tolerates a raw user id as the channel (unlike the
+    // file-sharing calls above), so this doesn't need dmChannel resolved.
     try {
       const sar = await getStore('sar-records').get(String(id), { type: 'json' }).catch(() => null);
       if (sar && sar.attorneySlackId) {
         await postMessageWithApprove(token, sar.attorneySlackId, buildSummaryText(sar, ['✗ Could not prepare documents — check the SAR Agent app']), sar.id);
       }
-    } catch (e2) { /* give up quietly */ }
+    } catch (e2) { console.error('send-review-package fallback also failed:', e2.message); }
     return { statusCode: 500, headers: { ...cors, 'Content-Type': 'application/json' }, body: JSON.stringify({ error: e.message }) };
   }
 };
@@ -199,6 +209,12 @@ function httpPostRaw(url, buffer, contentType) {
     req.write(buffer);
     req.end();
   });
+}
+
+async function resolveDmChannel(token, userId) {
+  const resp = await slackApi(token, 'conversations.open', { users: userId }, 'json');
+  if (!resp.ok) throw new Error('conversations.open failed: ' + (resp.error || 'unknown'));
+  return resp.channel.id;
 }
 
 async function uploadFileToSlack(token, filename, buffer) {
