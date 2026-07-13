@@ -558,6 +558,7 @@ const API = {
   storeFile: '/.netlify/functions/store-file',
   templates: '/.netlify/functions/templates',
   sendReviewPackage: '/.netlify/functions/send-review-package',
+  diffDraft: '/.netlify/functions/diff-draft',
 };
 const SLACK_SAR_CHANNEL = 'C09QF0PRLJ2';
 const STORAGE_KEY = 'alg_sar_v2';
@@ -1246,8 +1247,11 @@ function renderDetail(item) {
         <input type="file" accept=".docx,.doc,.pdf" style="display:none" onchange="uploadCorrectedDraft('${item.id}', this)">
       </label>`;
   } else if (item.status === 'approved') {
+    // No plain Download button here once the attorney has responded — the
+    // banner below is the single, unambiguous download action so there's
+    // never a second "which one is the real file" button on screen.
     actions = `
-      ${item.draftBase64 ? `<button class="btn" onclick="downloadDraft('${item.id}')">⬇ Download</button>` : ''}
+      ${(item.draftBase64 && !item.attorneyRespondedAt) ? `<button class="btn" onclick="downloadDraft('${item.id}')">⬇ Download</button>` : ''}
       <button class="btn" onclick="uploadToClio('${item.id}')">↑ Upload to Clio</button>
       <button class="btn success" onclick="markStatus('${item.id}','sent')">✓ Mark Sent</button>`;
   } else if (item.status === 'sent') {
@@ -1368,11 +1372,26 @@ function renderDetail(item) {
     </div>` : '';
 
   // Makes it unmistakable that the attorney sent something back and where to
-  // get it — the same Download button now always returns the corrected file.
-  const attorneyBackBanner = (item.status === 'approved' && item.attorneyRespondedAt) ? `
-    <div class="urgency-bar" style="background:var(--green-bg);border-color:#a8d5bd;color:var(--green);flex-wrap:wrap">
-      🖋 <strong>${esc(item.attorney||'The attorney')}</strong> sent back the draft on ${fmtDate(item.attorneyRespondedAt)}${item.attorneyNotes ? ' — "' + esc(item.attorneyNotes) + '"' : ''}
-      <button class="btn xs success" style="margin-left:auto" onclick="downloadDraft('${item.id}')">⬇ Download Corrected Draft</button>
+  // get it — a full card (not a thin bar) since this is the single, canonical
+  // download action once the attorney has responded; no plain Download
+  // button appears anywhere else on this page in that case.
+  const attorneyResponded = item.status === 'approved' && item.attorneyRespondedAt;
+  const attorneyNoChangesApproved = attorneyResponded && item.attorneyNoChanges;
+  const attorneyBackBanner = attorneyResponded ? `
+    <div class="card" style="border:2px solid ${attorneyNoChangesApproved ? 'var(--green)' : 'var(--accent)'};background:${attorneyNoChangesApproved ? 'var(--green-bg)' : 'var(--accent-bg)'};margin-bottom:16px">
+      <div class="card-body" style="padding:16px 18px">
+        <div style="font-size:13px;font-weight:700;color:${attorneyNoChangesApproved ? 'var(--green)' : 'var(--accent2)'};margin-bottom:4px">
+          ${attorneyNoChangesApproved ? '✅ Attorney Approved As-Is — No Changes' : '🖋 Attorney Sent Back Corrections'}
+        </div>
+        <div style="font-size:12px;color:var(--text2);margin-bottom:12px">
+          ${esc(item.attorney||'The attorney')} · ${fmtDate(item.attorneyRespondedAt)}${item.attorneyNotes ? ' — "' + esc(item.attorneyNotes) + '"' : ''}
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+          <button class="btn ${attorneyNoChangesApproved ? 'success' : 'primary'} lg" style="font-size:15px;padding:12px 22px" onclick="downloadDraft('${item.id}')">⬇ Download ${attorneyNoChangesApproved ? 'Draft' : 'Corrected Draft'}</button>
+          ${!attorneyNoChangesApproved ? `<button class="btn sm ghost" id="diff-toggle-${item.id}" onclick="toggleDraftDiff('${item.id}')">🔍 See What Changed</button>` : ''}
+        </div>
+        ${!attorneyNoChangesApproved ? `<div id="diff-view-${item.id}" style="display:none;margin-top:14px"></div>` : ''}
+      </div>
     </div>` : '';
 
   main.innerHTML = `
@@ -1489,6 +1508,13 @@ function buildPipeline(status) {
 // ── ATTORNEY VIEW (minimal: view draft, upload final version, approve) ────────
 let attorneyUpload = {};
 let attorneyNoteDraft = {};
+let attorneyNoChangesDraft = {};
+
+function toggleAttorneyNoChanges(id, checked) {
+  attorneyNoChangesDraft[id] = checked;
+  if (checked && !(attorneyNoteDraft[id] || '').trim()) attorneyNoteDraft[id] = 'No changes — approved as drafted.';
+  openSAR(id);
+}
 
 function renderAttorneyDetail(item) {
   const main = document.getElementById('main-panel');
@@ -1496,8 +1522,9 @@ function renderAttorneyDetail(item) {
   const langLabel = item.language === 'es' ? 'Spanish' : 'English';
   const staged = attorneyUpload[item.id];
   const isPending = item.status === 'review';
+  const noChanges = !!attorneyNoChangesDraft[item.id];
   const noteVal = attorneyNoteDraft[item.id] ?? '';
-  const canSend = !!staged && noteVal.trim().length > 0;
+  const canSend = noChanges || (!!staged && noteVal.trim().length > 0);
 
   main.innerHTML = `
     <div class="detail-wrap">
@@ -1541,11 +1568,18 @@ function renderAttorneyDetail(item) {
         </div>
       </div>
 
-      <div class="card">
-        <div class="card-header"><div class="card-title">Step 2 — Attach Your Final Version</div></div>
+      <div class="card" style="background:${noChanges?'var(--green-bg)':'var(--surface)'};border-color:${noChanges?'#a8d5bd':'var(--border)'}">
+        <div class="card-body" style="display:flex;align-items:center;gap:10px;padding:14px 16px">
+          <input type="checkbox" id="atty-nochanges-${item.id}" ${noChanges ? 'checked' : ''} onchange="toggleAttorneyNoChanges('${item.id}', this.checked)" style="width:18px;height:18px;accent-color:var(--green);cursor:pointer" />
+          <label for="atty-nochanges-${item.id}" style="font-weight:700;color:${noChanges?'var(--green)':'var(--text)'};cursor:pointer;font-size:14px">✓ No changes — ready to send as-is</label>
+        </div>
+      </div>
+
+      <div class="card" ${noChanges ? 'style="opacity:.45"' : ''}>
+        <div class="card-header"><div class="card-title">Step 2 — Attach Your Final Version${noChanges ? ' (not needed)' : ''}</div></div>
         <div class="card-body">
-          <div style="font-size:12px;color:var(--text3);margin-bottom:8px">Made corrections directly in the Word document? Attach it here. Sending it back with no changes also requires re-uploading it, so the CM always has the exact file you reviewed.</div>
-          <input type="file" id="atty-upload-${item.id}" accept=".docx,.doc,.pdf" onchange="stageAttorneyFile('${item.id}', this)" />
+          <div style="font-size:12px;color:var(--text3);margin-bottom:8px">${noChanges ? 'Skipped — you checked "No changes" above.' : "Made corrections directly in the Word document? Attach it here so the CM gets the exact file you reviewed."}</div>
+          <input type="file" id="atty-upload-${item.id}" accept=".docx,.doc,.pdf" ${noChanges ? 'disabled' : ''} onchange="stageAttorneyFile('${item.id}', this)" />
           ${staged
             ? `<div style="font-size:11px;color:var(--green);margin-top:6px">Staged: ${esc(staged.name)}</div>`
             : ''}
@@ -1553,14 +1587,14 @@ function renderAttorneyDetail(item) {
       </div>
 
       <div class="card">
-        <div class="card-header"><div class="card-title">Step 3 — Notes for the Case Manager</div></div>
+        <div class="card-header"><div class="card-title">Step 3 — Notes for the Case Manager${noChanges ? ' (optional)' : ''}</div></div>
         <div class="card-body">
-          <textarea id="atty-note-${item.id}" rows="3" style="width:100%;resize:vertical;font-family:inherit" placeholder="What did you change? (or note that it's approved as-is) — the CM will see this" oninput="attorneyNoteDraft['${item.id}']=this.value;document.getElementById('atty-send-btn-${item.id}').disabled=!(attorneyUpload['${item.id}']&&this.value.trim().length>0)">${esc(noteVal)}</textarea>
+          <textarea id="atty-note-${item.id}" rows="3" style="width:100%;resize:vertical;font-family:inherit" placeholder="What did you change? — the CM will see this" oninput="attorneyNoteDraft['${item.id}']=this.value;document.getElementById('atty-send-btn-${item.id}').disabled=${noChanges} ? false : !(attorneyUpload['${item.id}']&&this.value.trim().length>0)">${esc(noteVal)}</textarea>
         </div>
       </div>
 
       <div class="btn-row">
-        <button class="btn success lg" style="font-size:15px;padding:12px 20px" id="atty-send-btn-${item.id}" ${canSend ? '' : 'disabled'} onclick="approveAsAttorney('${item.id}')">✓ Send Back to CM</button>
+        <button class="btn success lg" style="font-size:15px;padding:12px 20px" id="atty-send-btn-${item.id}" ${canSend ? '' : 'disabled'} onclick="approveAsAttorney('${item.id}')">${noChanges ? '✓ Approve As-Is — Send to CM' : '✓ Send Corrected Draft to CM'}</button>
       </div>` : `
       <div class="card">
         <div class="card-header"><div class="card-title">✍️ Final Draft</div></div>
@@ -1598,21 +1632,31 @@ function stageAttorneyFile(id, inputEl) {
 
 async function approveAsAttorney(id) {
   const item = findSAR(id);
+  if (!item) return;
+  const noChanges = !!attorneyNoChangesDraft[id];
   const staged = attorneyUpload[id];
-  const notes = (attorneyNoteDraft[id] || '').trim();
-  if (!item || !staged || !notes) { notify('err', 'Attach your final version and add a note for the CM first'); return; }
+  const notes = (attorneyNoteDraft[id] || '').trim() || (noChanges ? 'No changes — approved as drafted.' : '');
+  if (!noChanges && (!staged || !notes)) { notify('err', 'Attach your final version and add a note for the CM first'); return; }
+
   const changes = {
-    approvedDraftBase64: staged.data,
-    approvedDraftFilename: staged.name,
     attorneyNotes: notes,
     attorneyRespondedAt: new Date().toISOString(),
+    attorneyNoChanges: noChanges,
     status: 'approved',
   };
+  // Only overwrite the "final" file when there actually is a new one — a
+  // no-changes approval means the original AI draft remains the final file,
+  // so downloadDraft's fallback to draftBase64 is exactly correct here.
+  if (!noChanges) {
+    changes.approvedDraftBase64 = staged.data;
+    changes.approvedDraftFilename = staged.name;
+  }
   await patchSAR(id, changes);
   Object.assign(item, changes);
   delete attorneyUpload[id];
   delete attorneyNoteDraft[id];
-  notify('ok', 'Sent back — CM notified');
+  delete attorneyNoChangesDraft[id];
+  notify('ok', noChanges ? 'Approved as-is — CM notified' : 'Sent back — CM notified');
   await sendSlackAttorneyApproved(item);
   openSAR(id);
 }
@@ -2309,6 +2353,37 @@ function downloadDraft(id) {
   URL.revokeObjectURL(url);
 }
 
+// Shows a word-level highlighted diff between the original AI draft and the
+// attorney's corrected version, so the CM can see exactly what changed
+// without opening both Word files side by side.
+async function toggleDraftDiff(id) {
+  const view = document.getElementById('diff-view-' + id);
+  const btn = document.getElementById('diff-toggle-' + id);
+  if (!view) return;
+  if (view.style.display === 'block') {
+    view.style.display = 'none';
+    if (btn) btn.textContent = '🔍 See What Changed';
+    return;
+  }
+  view.style.display = 'block';
+  view.innerHTML = '<div style="font-size:12px;color:var(--text3)">Comparing documents…</div>';
+  if (btn) btn.textContent = '🔼 Hide Changes';
+  try {
+    const r = await fetch(API.diffDraft, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || 'Failed to compare documents');
+    if (d.unreadable) {
+      view.innerHTML = '<div style="font-size:12px;color:var(--text3)">Could not compare — the attached file may not be a Word document.</div>';
+    } else if (!d.changed) {
+      view.innerHTML = '<div style="font-size:12px;color:var(--text3)">No text differences detected between the two documents.</div>';
+    } else {
+      view.innerHTML = `<div class="field-label" style="margin-bottom:6px">What Changed <span style="font-weight:400;text-transform:none;letter-spacing:0"><span style="background:#d4f4dd;color:#1a6b34;padding:1px 4px;border-radius:2px">green</span> = added, <span style="background:#fde2e1;color:#9b2c2c;padding:1px 4px;border-radius:2px">red strikethrough</span> = removed</span></div><div class="ai-box" style="max-height:420px;overflow-y:auto;line-height:1.8">${d.html}</div>`;
+    }
+  } catch (e) {
+    view.innerHTML = `<div style="font-size:12px;color:var(--red)">Could not load changes: ${esc(e.message)}</div>`;
+  }
+}
+
 // ── UPLOAD TO CLIO ────────────────────────────────────────────────────────────
 async function uploadToClio(id) {
   const item = findSAR(id);
@@ -2662,7 +2737,9 @@ async function sendSlackAttorneyApproved(entry) {
   const cm = state.cms.find(c => c.name === entry.assignee);
   const slackId = cm?.slackId || entry.assigneeSlackId;
   if (!slackId) return;
-  const text = `✅ *Attorney Sent Back the Draft*\n\n*Case:* ${entry.buyer} vs. ${entry.dealer}\n*Attorney:* ${entry.attorney||'—'}\n${entry.attorneyNotes ? `*Notes from attorney:* ${entry.attorneyNotes}\n` : ''}\nOpen the case in the SAR Agent — the corrected draft is attached and ready to Download.`;
+  const text = entry.attorneyNoChanges
+    ? `✅ *Attorney Approved As-Is — No Changes*\n\n*Case:* ${entry.buyer} vs. ${entry.dealer}\n*Attorney:* ${entry.attorney||'—'}\n\nNo edits were made — the draft is ready to send as-is.`
+    : `🖋 *Attorney Sent Back Corrections*\n\n*Case:* ${entry.buyer} vs. ${entry.dealer}\n*Attorney:* ${entry.attorney||'—'}\n${entry.attorneyNotes ? `*Notes from attorney:* ${entry.attorneyNotes}\n` : ''}\nOpen the case in the SAR Agent — the corrected draft is attached and ready to Download.`;
   await sendSlackDM(slackId, text);
 }
 

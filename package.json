@@ -4,6 +4,7 @@
   "description": "ALG Settlement Agreement Request Agent",
   "dependencies": {
     "@netlify/blobs": "^8.1.0",
+    "diff": "^9.0.0",
     "docx": "^9.0.0",
     "docxtemplater": "^3.45.0",
     "pdfkit": "^0.15.2",
