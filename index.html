@@ -474,23 +474,23 @@ select { appearance:none; background-image:url("data:image/svg+xml,%3Csvg xmlns=
 <div class="modal-bg" id="reassign-modal" onclick="if(event.target===this)closeReassignModal()">
   <div class="modal">
     <div class="modal-header">
-      <div class="modal-title">Request Reassignment</div>
+      <div class="modal-title" id="reassign-modal-title">Request Reassignment</div>
       <button class="modal-close" onclick="closeReassignModal()">×</button>
     </div>
     <div class="modal-body">
       <div class="form-group">
-        <label class="form-label">Reassign to</label>
+        <label class="form-label" id="reassign-target-label">Reassign to</label>
         <select id="reassign-target"></select>
       </div>
       <div class="form-group">
         <label class="form-label">Reason (optional)</label>
         <textarea id="reassign-reason" placeholder="Why can't you take this case?" style="min-height:70px"></textarea>
       </div>
-      <div style="font-size:11px;color:var(--text3)">This sends a request to Diana for approval — the case stays assigned to you until she approves it.</div>
+      <div style="font-size:11px;color:var(--text3)" id="reassign-modal-note">This sends a request to Diana for approval — the case stays assigned to you until she approves it.</div>
     </div>
     <div class="modal-footer">
       <button class="btn" onclick="closeReassignModal()">Cancel</button>
-      <button class="btn primary" onclick="requestReassignment()">Send Request</button>
+      <button class="btn primary" id="reassign-send-btn" onclick="requestReassignment()">Send Request</button>
     </div>
   </div>
 </div>
@@ -1236,9 +1236,10 @@ function renderDetail(item) {
   // flow below (Steps 2-5), so the header stays uncluttered.
   let actions = '';
   if (item.status === 'review') {
+    // No "Upload to Clio" here — the draft isn't approved yet, so nothing
+    // should go to Clio until the attorney has actually signed off on it.
     actions = `
       ${item.draftBase64 ? `<button class="btn" onclick="downloadDraft('${item.id}')">⬇ Download Draft</button>` : ''}
-      <button class="btn" onclick="uploadToClio('${item.id}')">↑ Upload to Clio</button>
       <button class="btn success" onclick="markStatus('${item.id}','approved')">✓ Mark Reviewed by Attorney</button>
       <label class="btn sm ghost" style="cursor:pointer" title="If the attorney sent back an edited file (Slack, email, etc.), attach it here — this also marks the case Reviewed by Attorney">
         📎 Attach Corrected Draft
@@ -1311,19 +1312,18 @@ function renderDetail(item) {
     </div>
     <div class="card">
       <div class="card-header">
-        <div class="card-title">✍️ Settlement Language ${f.section_b_paragraph ? `<span style="font-size:10px;color:var(--green);font-weight:600;background:var(--green-bg);padding:2px 6px;border-radius:3px">Drafted</span>` : ''}</div>
-        <button class="btn xs" id="draft-btn-${item.id}" onclick="draftSettlementLanguage('${item.id}')">${f.section_b_paragraph ? '↻ Re-draft' : '✍️ Draft with AI'}</button>
+        <div class="card-title">✍️ Settlement Language <span style="font-size:10px;color:var(--text3);font-weight:600;background:var(--bg);padding:2px 6px;border-radius:3px;border:1px solid var(--border)">Locked — case is past drafting</span></div>
       </div>
       <div class="card-body">
         <div class="field" style="margin-bottom:10px">
           <div class="field-label">Dispute Recital (goes into the WHEREAS paragraph)</div>
-          <textarea id="dd-${item.id}-dispute_recital" class="field-value editable" rows="3" style="width:100%;resize:vertical;font-family:inherit" placeholder="Drafted automatically from the intake answers — or click Draft with AI" onchange="updateField('${item.id}','dispute_recital',this.value)">${esc(f.dispute_recital||'')}</textarea>
+          <div class="ai-box">${esc(f.dispute_recital || '(not drafted)')}</div>
         </div>
         <div class="field">
           <div class="field-label">Section B — Payment / Consideration Paragraph</div>
-          <textarea id="dd-${item.id}-section_b_paragraph" class="field-value editable" rows="4" style="width:100%;resize:vertical;font-family:inherit" placeholder="Drafted automatically from the intake answers — or click Draft with AI" onchange="updateField('${item.id}','section_b_paragraph',this.value)">${esc(f.section_b_paragraph||'')}</textarea>
+          <div class="ai-box">${esc(f.section_b_paragraph || '(not drafted)')}</div>
         </div>
-        <div style="margin-top:8px;font-size:11px;color:var(--text3)">Everything else in the agreement (releases, 1542 waiver, signatures) comes from the firm's Word template — these are the only two paragraphs the agent writes per case. Review before generating.</div>
+        <div style="margin-top:8px;font-size:11px;color:var(--text3)">This case has moved past drafting, so the AI-authored language is shown read-only for context. To change it, reopen the case (set Status back to "In Review by CM" below) and re-draft there.</div>
       </div>
     </div>`;
 
@@ -1367,10 +1367,19 @@ function renderDetail(item) {
         </span>` : '<span style="margin-left:auto;font-size:11px">Pending Diana\'s approval</span>'}
     </div>` : '';
 
+  // Makes it unmistakable that the attorney sent something back and where to
+  // get it — the same Download button now always returns the corrected file.
+  const attorneyBackBanner = (item.status === 'approved' && item.attorneyRespondedAt) ? `
+    <div class="urgency-bar" style="background:var(--green-bg);border-color:#a8d5bd;color:var(--green);flex-wrap:wrap">
+      🖋 <strong>${esc(item.attorney||'The attorney')}</strong> sent back the draft on ${fmtDate(item.attorneyRespondedAt)}${item.attorneyNotes ? ' — "' + esc(item.attorneyNotes) + '"' : ''}
+      <button class="btn xs success" style="margin-left:auto" onclick="downloadDraft('${item.id}')">⬇ Download Corrected Draft</button>
+    </div>` : '';
+
   main.innerHTML = `
     <div class="detail-wrap">
       ${item.urgency==='urgent' ? '<div class="urgency-bar">🚨 URGENT — Expedite this request</div>' : ''}
       ${reassignBanner}
+      ${attorneyBackBanner}
       <div class="detail-header">
         <div>
           <div class="detail-title">${esc(item.buyer)}</div>
@@ -1479,6 +1488,7 @@ function buildPipeline(status) {
 
 // ── ATTORNEY VIEW (minimal: view draft, upload final version, approve) ────────
 let attorneyUpload = {};
+let attorneyNoteDraft = {};
 
 function renderAttorneyDetail(item) {
   const main = document.getElementById('main-panel');
@@ -1486,6 +1496,8 @@ function renderAttorneyDetail(item) {
   const langLabel = item.language === 'es' ? 'Spanish' : 'English';
   const staged = attorneyUpload[item.id];
   const isPending = item.status === 'review';
+  const noteVal = attorneyNoteDraft[item.id] ?? '';
+  const canSend = !!staged && noteVal.trim().length > 0;
 
   main.innerHTML = `
     <div class="detail-wrap">
@@ -1500,6 +1512,9 @@ function renderAttorneyDetail(item) {
             <span class="tag ${item.language==='es'?'es':'en'}">${langLabel}</span>
             <span class="badge ${item.status}" style="margin-left:6px">${statusLabel(item.status)}</span>
           </div>
+        </div>
+        <div class="detail-actions">
+          ${isPending ? `<button class="btn sm ghost" onclick="openReassignModal('${item.id}')">🔁 Reassign to Another Attorney</button>` : ''}
         </div>
       </div>
 
@@ -1516,29 +1531,49 @@ function renderAttorneyDetail(item) {
         </div>
       </div>
 
-      <div class="card">
-        <div class="card-header"><div class="card-title">✍️ Draft for Review</div></div>
+      ${isPending ? `
+      <div class="card" style="border:1.5px solid var(--accent)">
+        <div class="card-header"><div class="card-title">Step 1 — Download &amp; Review the Draft</div></div>
         <div class="card-body">
           ${item.draftBase64
-            ? `<button class="btn" onclick="downloadDraft('${item.id}')">⬇ Download Draft</button>`
+            ? `<button class="btn primary lg" style="font-size:15px;padding:12px 20px" onclick="downloadDraft('${item.id}')">⬇ Download Draft</button>`
             : `<div class="empty-list" style="padding:10px 0">No draft on file yet — check with the CM.</div>`}
-
-          ${isPending ? `
-          <div style="margin-top:16px">
-            <label class="form-label">Upload final / approved version</label>
-            <input type="file" id="atty-upload-${item.id}" accept=".docx,.doc,.pdf" onchange="stageAttorneyFile('${item.id}', this)" />
-            ${staged
-              ? `<div style="font-size:11px;color:var(--green);margin-top:4px">Staged: ${esc(staged.name)}</div>`
-              : `<div style="font-size:11px;color:var(--text3);margin-top:4px">Whether you edited it or not, re-upload it here before approving.</div>`}
-          </div>
-          <div class="btn-row" style="margin-top:14px">
-            <button class="btn success" id="atty-approve-btn-${item.id}" ${staged ? '' : 'disabled'} onclick="approveAsAttorney('${item.id}')">✓ Approve &amp; Notify CM</button>
-          </div>` : `
-          <div style="margin-top:14px;font-size:12px;color:var(--text3)">
-            ${item.approvedDraftFilename ? `Final file on record: ${esc(item.approvedDraftFilename)}.` : 'Already resolved.'}
-          </div>`}
         </div>
       </div>
+
+      <div class="card">
+        <div class="card-header"><div class="card-title">Step 2 — Attach Your Final Version</div></div>
+        <div class="card-body">
+          <div style="font-size:12px;color:var(--text3);margin-bottom:8px">Made corrections directly in the Word document? Attach it here. Sending it back with no changes also requires re-uploading it, so the CM always has the exact file you reviewed.</div>
+          <input type="file" id="atty-upload-${item.id}" accept=".docx,.doc,.pdf" onchange="stageAttorneyFile('${item.id}', this)" />
+          ${staged
+            ? `<div style="font-size:11px;color:var(--green);margin-top:6px">Staged: ${esc(staged.name)}</div>`
+            : ''}
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header"><div class="card-title">Step 3 — Notes for the Case Manager</div></div>
+        <div class="card-body">
+          <textarea id="atty-note-${item.id}" rows="3" style="width:100%;resize:vertical;font-family:inherit" placeholder="What did you change? (or note that it's approved as-is) — the CM will see this" oninput="attorneyNoteDraft['${item.id}']=this.value;document.getElementById('atty-send-btn-${item.id}').disabled=!(attorneyUpload['${item.id}']&&this.value.trim().length>0)">${esc(noteVal)}</textarea>
+        </div>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn success lg" style="font-size:15px;padding:12px 20px" id="atty-send-btn-${item.id}" ${canSend ? '' : 'disabled'} onclick="approveAsAttorney('${item.id}')">✓ Send Back to CM</button>
+      </div>` : `
+      <div class="card">
+        <div class="card-header"><div class="card-title">✍️ Final Draft</div></div>
+        <div class="card-body">
+          ${item.approvedDraftBase64 || item.draftBase64
+            ? `<button class="btn" onclick="downloadDraft('${item.id}')">⬇ Download Final Draft</button>`
+            : `<div class="empty-list" style="padding:10px 0">No draft on file.</div>`}
+          <div style="margin-top:14px;font-size:12px;color:var(--text3)">
+            ${item.approvedDraftFilename ? `Final file on record: ${esc(item.approvedDraftFilename)}.` : 'Already resolved.'}
+            ${item.attorneyNotes ? `<div style="margin-top:8px;padding:8px 10px;background:var(--accent-bg);border-radius:var(--radius);font-size:12px;color:var(--accent2)"><strong>Your notes to the CM:</strong> ${esc(item.attorneyNotes)}</div>` : ''}
+          </div>
+        </div>
+      </div>`}
     </div>`;
 }
 
@@ -1553,8 +1588,8 @@ function stageAttorneyFile(id, inputEl) {
   const reader = new FileReader();
   reader.onload = e => {
     attorneyUpload[id] = { name: file.name, type: file.type || 'application/octet-stream', data: e.target.result.split(',')[1] };
-    const btn = document.getElementById('atty-approve-btn-' + id);
-    if (btn) btn.disabled = false;
+    const btn = document.getElementById('atty-send-btn-' + id);
+    if (btn) btn.disabled = !((attorneyNoteDraft[id] || '').trim().length > 0);
     notify('ok', 'File staged: ' + file.name);
   };
   reader.onerror = () => notify('err', 'Could not read file');
@@ -1564,16 +1599,20 @@ function stageAttorneyFile(id, inputEl) {
 async function approveAsAttorney(id) {
   const item = findSAR(id);
   const staged = attorneyUpload[id];
-  if (!item || !staged) { notify('err', 'Upload the final draft first'); return; }
+  const notes = (attorneyNoteDraft[id] || '').trim();
+  if (!item || !staged || !notes) { notify('err', 'Attach your final version and add a note for the CM first'); return; }
   const changes = {
     approvedDraftBase64: staged.data,
     approvedDraftFilename: staged.name,
+    attorneyNotes: notes,
+    attorneyRespondedAt: new Date().toISOString(),
     status: 'approved',
   };
   await patchSAR(id, changes);
   Object.assign(item, changes);
   delete attorneyUpload[id];
-  notify('ok', 'Approved — CM notified');
+  delete attorneyNoteDraft[id];
+  notify('ok', 'Sent back — CM notified');
   await sendSlackAttorneyApproved(item);
   openSAR(id);
 }
@@ -1589,11 +1628,14 @@ function uploadCorrectedDraft(id, inputEl) {
     inputEl.value = '';
     return;
   }
+  const notes = (prompt("What did the attorney change? (This note is recorded on the case, same as when the attorney attaches it themselves.)") || '').trim();
   const reader = new FileReader();
   reader.onload = async e => {
     const changes = {
       approvedDraftBase64: e.target.result.split(',')[1],
       approvedDraftFilename: file.name,
+      attorneyNotes: notes || '(No note recorded — attached by CM on the attorney\'s behalf.)',
+      attorneyRespondedAt: new Date().toISOString(),
       status: 'approved',
     };
     await patchSAR(id, changes);
@@ -2249,16 +2291,20 @@ async function generateDraft(id) {
 }
 
 // ── DRAFT DOWNLOAD ─────────────────────────────────────────────────────────────
+// Once the attorney attaches their final/corrected version, that's the file
+// everyone should get from here on — never the original AI draft underneath it.
 function downloadDraft(id) {
   const item = findSAR(id);
-  if (!item?.draftBase64) { notify('err', 'No draft available'); return; }
-  const bytes = atob(item.draftBase64);
+  const base64 = item?.approvedDraftBase64 || item?.draftBase64;
+  const filename = item?.approvedDraftFilename || item?.draftFilename || 'SAR_Draft.docx';
+  if (!base64) { notify('err', 'No draft available'); return; }
+  const bytes = atob(base64);
   const arr = new Uint8Array(bytes.length);
   for (let i=0;i<bytes.length;i++) arr[i] = bytes.charCodeAt(i);
   const blob = new Blob([arr], {type:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'});
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
-  a.href = url; a.download = item.draftFilename || 'SAR_Draft.docx';
+  a.href = url; a.download = filename;
   a.click();
   URL.revokeObjectURL(url);
 }
@@ -2267,13 +2313,14 @@ function downloadDraft(id) {
 async function uploadToClio(id) {
   const item = findSAR(id);
   if (!item) return;
-  if (!item.draftBase64) { notify('err', 'No draft to upload'); return; }
+  const base64 = item.approvedDraftBase64 || item.draftBase64;
+  if (!base64) { notify('err', 'No draft to upload'); return; }
   if (!item.matter) { notify('err', 'No Clio matter linked'); return; }
   if (state.demoMode) { notify('info', 'Demo mode — upload skipped'); return; }
 
   notify('info', 'Uploading to Clio…');
   try {
-    const filename = item.draftFilename || 'SAR_Draft.docx';
+    const filename = item.approvedDraftFilename || item.draftFilename || 'SAR_Draft.docx';
     // Create the document entry in Clio
     const created = await clioPost('documents', {
       data: {
@@ -2283,8 +2330,8 @@ async function uploadToClio(id) {
     });
     const docId = created?.data?.id;
     if (!docId) throw new Error('No document ID returned');
-    // Upload the binary content
-    const bytes = atob(item.draftBase64);
+    // Upload the binary content — always the attorney's final version once one exists.
+    const bytes = atob(base64);
     const arr = new Uint8Array(bytes.length);
     for (let i=0;i<bytes.length;i++) arr[i] = bytes.charCodeAt(i);
     const blob = new Blob([arr]);
@@ -2385,9 +2432,17 @@ function openReassignModal(id) {
   const item = findSAR(id);
   if (!item) return;
   reassignSARId = id;
+  const attyMode = isAttorneyRole();
   const sel = document.getElementById('reassign-target');
-  sel.innerHTML = '<option value="">Anyone available</option>' +
-    state.cms.filter(cm => cm.name !== item.assignee).map(cm => `<option value="${esc(cm.name)}">${esc(cm.name)}</option>`).join('');
+  sel.innerHTML = attyMode
+    ? state.attorneys.filter(a => a.name !== item.attorney).map(a => `<option value="${esc(a.name)}">${esc(a.name)}</option>`).join('')
+    : '<option value="">Anyone available</option>' + state.cms.filter(cm => cm.name !== item.assignee).map(cm => `<option value="${esc(cm.name)}">${esc(cm.name)}</option>`).join('');
+  document.getElementById('reassign-target-label').textContent = attyMode ? 'Reassign to (another attorney)' : 'Reassign to';
+  document.getElementById('reassign-modal-title').textContent = attyMode ? 'Reassign to Another Attorney' : 'Request Reassignment';
+  document.getElementById('reassign-modal-note').textContent = attyMode
+    ? 'This reassigns the case immediately — no approval needed. Both attorneys and Diana are notified.'
+    : "This sends a request to Diana for approval — the case stays assigned to you until she approves it.";
+  document.getElementById('reassign-send-btn').textContent = attyMode ? 'Reassign' : 'Send Request';
   document.getElementById('reassign-reason').value = '';
   document.getElementById('reassign-modal').classList.add('open');
 }
@@ -2402,6 +2457,23 @@ async function requestReassignment() {
   if (!item) return;
   const target = document.getElementById('reassign-target').value;
   const reason = document.getElementById('reassign-reason').value.trim();
+
+  // Attorney-to-attorney handoff: immediate, no approval step (Diana's call —
+  // attorneys reassign directly to each other; she's notified for visibility only).
+  if (isAttorneyRole()) {
+    if (!target) { notify('err', 'Pick an attorney to reassign to'); return; }
+    const targetAtty = state.attorneys.find(a => a.name === target);
+    const fromName = item.attorney;
+    const changes = { attorney: targetAtty?.name || target, attorneySlackId: targetAtty?.slackId || null };
+    await patchSAR(item.id, changes);
+    Object.assign(item, changes);
+    closeReassignModal();
+    notify('ok', 'Reassigned to ' + changes.attorney);
+    await sendSlackAttorneyReassigned(item, fromName, changes.attorney, reason);
+    cancelNewSAR();
+    return;
+  }
+
   const reassignRequest = {
     requestedBy: item.assignee || state.identity?.name || '',
     requestedTo: target || null,
@@ -2590,8 +2662,19 @@ async function sendSlackAttorneyApproved(entry) {
   const cm = state.cms.find(c => c.name === entry.assignee);
   const slackId = cm?.slackId || entry.assigneeSlackId;
   if (!slackId) return;
-  const text = `✅ *Attorney Approved*\n\n*Case:* ${entry.buyer} vs. ${entry.dealer}\n*Attorney:* ${entry.attorney||'—'}\n\nThe final settlement agreement has been approved and uploaded. It's ready to send.`;
+  const text = `✅ *Attorney Sent Back the Draft*\n\n*Case:* ${entry.buyer} vs. ${entry.dealer}\n*Attorney:* ${entry.attorney||'—'}\n${entry.attorneyNotes ? `*Notes from attorney:* ${entry.attorneyNotes}\n` : ''}\nOpen the case in the SAR Agent — the corrected draft is attached and ready to Download.`;
   await sendSlackDM(slackId, text);
+}
+
+// Attorney-to-attorney reassignment is immediate (no approval step) — Diana
+// and both attorneys get a Slack notice purely for visibility.
+async function sendSlackAttorneyReassigned(entry, fromName, toName, reason) {
+  const fromAtty = state.attorneys.find(a => a.name === fromName);
+  const toAtty = state.attorneys.find(a => a.name === toName);
+  const text = `🔁 *Attorney Reassignment*\n\n*Case:* ${entry.buyer} vs. ${entry.dealer}\n*From:* ${fromName||'—'}\n*To:* ${toName||'—'}${reason ? `\n*Reason:* ${reason}` : ''}`;
+  await sendSlackDM(fromAtty?.slackId, text);
+  if (toAtty && toAtty.name !== fromAtty?.name) await sendSlackDM(toAtty.slackId, text);
+  await sendSlackDM(state.diana.slackId, text);
 }
 
 async function sendSlackReassignRequested(entry) {
