@@ -862,6 +862,15 @@ function launchApp() {
   document.getElementById('auth-screen').style.display = 'none';
   document.getElementById('app').style.display = 'block';
 
+  // Never carry a previously-open case detail across an identity switch —
+  // #app is only hidden/shown (not destroyed) when switching identities, so
+  // without this, a CM or attorney with zero pending cases would still see
+  // whatever case the last identity had open, even though the sidebar
+  // correctly shows their empty list.
+  state.activeView = null;
+  const mainPanel = document.getElementById('main-panel');
+  if (mainPanel) mainPanel.innerHTML = '<div class="main-empty"><div class="main-empty-icon">📋</div><div style="font-size:13px;text-align:center;line-height:1.7">Select a SAR from the sidebar<br>or create a new request</div></div>';
+
   const role = state.identity?.role;
   const badge = document.getElementById('identity-badge');
   if (badge) badge.textContent = state.identity ? `${role.toUpperCase()} · ${state.identity.name}` : '';
