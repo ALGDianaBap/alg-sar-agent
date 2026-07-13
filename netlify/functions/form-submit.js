@@ -41,7 +41,7 @@ exports.handler = async (event) => {
       dealerNameFirst = '', dealerNameLast = '', dealershipName = '',
       phone = '', email = '', workDesc = '', language = 'en',
       hasHappened = '', whoWork = '', thirdParty = '',
-      dealerGiving = '', refundNotes = '', fileNames = [],
+      dealerGiving = '', refundNotes = '', certified = false, fileNames = [],
     } = body;
 
     if (!contactName || !dealerNameFirst || !dealerNameLast || !dealershipName || !workDesc) {
@@ -50,7 +50,7 @@ exports.handler = async (event) => {
 
     const buyer  = `${dealerNameFirst} ${dealerNameLast}`.toUpperCase();
     const dealer = dealershipName.toUpperCase();
-    const isResc = /rescission|rescind|return.*vehicle|unwind/i.test(workDesc + dealerGiving);
+    const isResc = /rescission|rescind|unwind|vehicle return|return.*vehicle/i.test(workDesc + dealerGiving);
     const id     = Date.now().toString();
 
     // ── CM round-robin (with timeout) ─────────────────────────────────────
@@ -78,6 +78,7 @@ exports.handler = async (event) => {
       draftBase64: null, draftFilename: null,
       zohoContext: { workDesc, dealerGiving, refundNotes, hasHappened, whoWork, thirdParty, priorRepairs: '' },
       notes: [workDesc, dealerGiving, refundNotes, thirdParty].filter(Boolean).join(' | '),
+      certified: !!certified,
       reviewNotes: '', timeEntries: [],
     };
 

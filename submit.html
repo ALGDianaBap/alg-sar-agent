@@ -50,6 +50,8 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
 input::placeholder,textarea::placeholder{color:var(--text3);}
 select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='%239e9891' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 11px center;padding-right:28px;}
 textarea{min-height:90px;resize:vertical;line-height:1.6;}
+.help{font-size:12px;color:var(--text2);margin-top:6px;line-height:1.6;}
+.note{font-size:12px;color:var(--text2);margin-top:10px;line-height:1.6;padding-top:10px;border-top:1px dashed var(--border);}
 
 /* radio/check */
 .opts{display:flex;flex-direction:column;gap:7px;}
@@ -76,6 +78,11 @@ textarea{min-height:90px;resize:vertical;line-height:1.6;}
 .fs{color:var(--text3);font-size:11px;white-space:nowrap;}
 .frm{background:none;border:none;color:var(--text3);cursor:pointer;font-size:15px;padding:0 2px;line-height:1;}
 .frm:hover{color:var(--red);}
+
+/* certification */
+.cbrow{display:flex;align-items:flex-start;gap:10px;padding:11px 12px;border:1.5px solid var(--border);border-radius:var(--radius);cursor:pointer;margin-top:12px;}
+.cbrow.on{border-color:var(--accent);background:var(--accent-bg);}
+.cbrow input{margin-top:2px;accent-color:var(--accent);flex-shrink:0;}
 
 /* submit */
 .eb{display:none;background:var(--red-bg);border:1px solid #fca5a5;border-radius:var(--radius);padding:10px 14px;font-size:13px;color:var(--red);margin-bottom:14px;}
@@ -150,41 +157,43 @@ textarea{min-height:90px;resize:vertical;line-height:1.6;}
       </div>
 
       <div class="fg">
-        <label id="lwd">What are you doing for the customer? <span style="color:var(--red)">*</span></label>
-        <textarea id="workDesc" placeholder="Describe the action being taken for this client..." required></textarea>
+        <label id="lwd">What Are You Doing for the Customer? <span style="color:var(--red)">*</span></label>
+        <textarea id="workDesc" placeholder="e.g., We already repaired the brakes in-house." required></textarea>
+        <div class="help" id="wdhelp">Describe clearly what you are offering the customer as part of the settlement: (Example: "We already repaired the brakes in-house." or "We will reimburse $200 for repairs.")</div>
       </div>
 
       <div class="fg">
-        <label id="llang">In what language was the deal negotiated? <span style="color:var(--red)">*</span></label>
+        <label id="llang">What language was the deal negotiated in? <span style="color:var(--red)">*</span></label>
         <select id="language" required>
           <option value="">— Select language —</option>
           <option value="en" id="lopt-en">English</option>
-          <option value="es" id="lopt-es">Spanish / Español</option>
+          <option value="es" id="lopt-es">Spanish</option>
         </select>
+        <div class="help" id="langnote">Note: If the deal was negotiated in Spanish, translated documents (such as the Buyer's Guide and disclosures) must be provided in Spanish as well.</div>
       </div>
 
-      <!-- Has this already happened? -->
+      <!-- Has this already happened or will it happen? -->
       <div class="fg">
-        <label id="lhap">Has this already happened?</label>
+        <label id="lhap">Has this already happened or will it happen? <span style="color:var(--red)">*</span></label>
         <div class="opts">
           <label class="orow" onclick="pick(this,'hasHappened','yes')">
             <input type="radio" name="hasHappened" value="yes" />
-            <div class="ol" id="hyes">Yes — this has already been done (e.g., repair completed, refund issued, etc.)</div>
+            <div class="ol" id="hyes">This has already been done (e.g., repair completed, refund issued, etc.)</div>
           </label>
           <label class="orow" onclick="pick(this,'hasHappened','no')">
             <input type="radio" name="hasHappened" value="no" />
-            <div class="ol" id="hno">No — not yet</div>
+            <div class="ol" id="hno">This will happen after the agreement is signed</div>
           </label>
         </div>
       </div>
 
-      <!-- Who is doing the work? -->
+      <!-- Who is doing the work (if repairs are part of the agreement)? -->
       <div class="fg">
-        <label id="lwho">Who is doing the work?</label>
+        <label id="lwho">Who is doing the work (if repairs are part of the agreement)? <span style="color:var(--red)">*</span></label>
         <div class="opts">
           <label class="orow" onclick="pick(this,'whoWork','inhouse')">
             <input type="radio" name="whoWork" value="inhouse" />
-            <div class="ol" id="win">The dealership is handling it in-house</div>
+            <div class="ol" id="win">Repairs are done by the dealership staff (in-house)</div>
           </label>
           <label class="orow" onclick="pick(this,'whoWork','thirdparty');cond('ct',true)">
             <input type="radio" name="whoWork" value="thirdparty" />
@@ -192,42 +201,63 @@ textarea{min-height:90px;resize:vertical;line-height:1.6;}
           </label>
         </div>
         <div class="cond" id="ct">
-          <label id="ltp">Third Party</label>
-          <input type="text" id="thirdParty" placeholder="Name of vendor or shop..." />
+          <label id="ltp3">If third-party</label>
+          <div class="opts">
+            <label class="orow" onclick="pick(this,'tpPayer','dealer')">
+              <input type="radio" name="tpPayer" value="dealer" />
+              <div class="ol" id="tpd">Dealer is paying for the repair</div>
+            </label>
+            <label class="orow" onclick="pick(this,'tpPayer','customer')">
+              <input type="radio" name="tpPayer" value="customer" />
+              <div class="ol" id="tpc">Customer is paying for the repair</div>
+            </label>
+            <label class="orow" onclick="pick(this,'tpPayer','other');cond('cto',true)">
+              <input type="radio" name="tpPayer" value="other" />
+              <div class="ol" id="tpo">Other</div>
+            </label>
+          </div>
+          <div class="cond" id="cto">
+            <input type="text" id="tpOtherInput" placeholder="Please specify…" />
+          </div>
+          <div class="note" id="tpnote">Note: If a third-party is involved, the vendor (not the dealer) is responsible for the warranty on parts or labor.</div>
         </div>
       </div>
     </div>
 
     <!-- ── What the dealership is giving ── -->
     <div class="card">
-      <div class="ct" id="s3">What's the dealership giving in return?</div>
+      <div class="ct" id="s3">What's the Dealership Giving in Return?</div>
 
       <div class="fg">
-        <label id="lgiv">Select all that apply <span style="color:var(--red)">*</span></label>
+        <label id="lgiv">What is the dealership giving the customer in return? <span style="color:var(--red)">*</span></label>
         <div class="opts" id="giv-opts">
           <label class="orow" onclick="chk(this)">
-            <input type="checkbox" name="dg" value="Cash payment / settlement" />
-            <div class="ol" id="gc">Cash payment / settlement</div>
-          </label>
-          <label class="orow" onclick="chk(this)">
-            <input type="checkbox" name="dg" value="Vehicle repairs" />
-            <div class="ol" id="gr">Vehicle repairs</div>
-          </label>
-          <label class="orow" onclick="chk(this)">
-            <input type="checkbox" name="dg" value="Rescission — return of vehicle and cancellation of contract" />
-            <div class="ol" id="gresc">Rescission — return of vehicle and cancellation of contract</div>
+            <input type="checkbox" name="dg" value="Full refund of down payment" />
+            <div class="ol" id="gc">Full refund of down payment</div>
           </label>
           <label class="orow" onclick="chk(this);maybeRefund()">
-            <input type="checkbox" name="dg" value="Partial refund" />
-            <div class="ol" id="gref">Partial refund</div>
+            <input type="checkbox" name="dg" value="Partial refund (explain below)" />
+            <div class="ol" id="gr">Partial refund (explain below)</div>
           </label>
           <label class="orow" onclick="chk(this)">
+            <input type="checkbox" name="dg" value="Reimbursement for customer's expense" />
+            <div class="ol" id="gresc">Reimbursement for customer's expense</div>
+          </label>
+          <label class="orow" onclick="chk(this)">
+            <input type="checkbox" name="dg" value="Vehicle return with no refund" />
+            <div class="ol" id="gref">Vehicle return with no refund</div>
+          </label>
+          <label class="orow" onclick="chk(this);cond('cgo',this.querySelector('input').checked)">
             <input type="checkbox" name="dg" value="Other" />
             <div class="ol" id="goth">Other</div>
           </label>
         </div>
+        <div class="cond" id="cgo">
+          <input type="text" id="dgOtherInput" placeholder="Please specify…" />
+        </div>
+        <div class="note" id="givnote">(You must offer something in exchange for the release of liability. Select all that apply.)</div>
         <div class="cond" id="cr">
-          <label id="lded">If refund is partial or includes deductions</label>
+          <label id="lded">If refund is partial or includes deductions, please explain: <span style="color:var(--red)">*</span></label>
           <input type="text" id="refundNotes" placeholder="Describe the partial refund or deductions..." />
         </div>
       </div>
@@ -236,14 +266,24 @@ textarea{min-height:90px;resize:vertical;line-height:1.6;}
     <!-- ── Documents ── -->
     <div class="card">
       <div class="ct" id="s4">Documents to Upload</div>
-      <p id="s4p" style="font-size:13px;color:var(--text2);margin-bottom:14px;line-height:1.6;">Upload the RISC (Retail Installment Sales Contract), buyer's guide, deal jacket, and any other relevant documents. Our system will automatically identify and extract the contract details.</p>
+      <p id="s4p" style="font-size:13px;color:var(--text2);margin-bottom:14px;line-height:1.6;">Please attach clear copies of the following documents: Retail Installment Sale Contract (RISC), Buyer's Guide, 1632 Form (Spanish Language Form, if applicable).</p>
       <div class="dz" id="dz">
-        <input type="file" id="fi" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" multiple onchange="addF(this.files)" />
+        <input type="file" id="fi" accept=".pdf" multiple onchange="addF(this.files)" />
         <div style="font-size:22px;margin-bottom:5px">📎</div>
         <div class="dz-txt" id="dzt">Click to upload or drag files here</div>
-        <div class="dz-sub" id="dzs">PDF, Word, or images · Multiple files accepted</div>
+        <div class="dz-sub" id="dzs">PDF only · Up to 5 files</div>
       </div>
       <div class="fl" id="fl"></div>
+    </div>
+
+    <!-- ── Legal Certification ── -->
+    <div class="card">
+      <div class="ct" id="s5">Legal Certification</div>
+      <p id="certintro" style="font-size:13px;color:var(--text2);line-height:1.6;">By submitting this form, you certify that all the information provided is true and correct to the best of your knowledge. This helps protect your dealership and ensures the agreement is legally valid.</p>
+      <label class="cbrow" id="certrow" onclick="toggleCert(this)">
+        <input type="checkbox" id="certify" />
+        <div class="ol" id="certlabel">I confirm that the information I provided is complete and accurate.</div>
+      </label>
     </div>
 
     <button class="sbtn" id="sb" onclick="go()">
@@ -268,63 +308,94 @@ textarea{min-height:90px;resize:vertical;line-height:1.6;}
 
 <script>
 let lang='en', files=[];
+const MAX_FILES = 5;
 
 const T={
   en:{
     ht:'Settlement Agreement Request',
     hs:'Complete this form to submit a settlement agreement request. A case manager will be assigned and will begin processing the file immediately.',
-    s1:'Your Contact Information', s2:'Deal Details', s3:"What's the dealership giving in return?", s4:'Documents to Upload',
+    s1:'Your Contact Information', s2:'Deal Details', s3:"What's the Dealership Giving in Return?", s4:'Documents to Upload', s5:'Legal Certification',
     lcn:'Your Full Name',
     lfn:'Buyer First Name', lln:'Buyer Last Name', lph:'Phone', lem:'Email', leopt:'(optional)',
-    ldn:'Dealership Name', lwd:'What are you doing for the customer?',
-    llang:'In what language was the deal negotiated?',
-    lhap:'Has this already happened?',
-    hyes:'Yes — this has already been done (e.g., repair completed, refund issued, etc.)',
-    hno:'No — not yet',
-    lwho:'Who is doing the work?',
-    win:'The dealership is handling it in-house',
+    ldn:'Dealership Name',
+    lwd:'What Are You Doing for the Customer?',
+    wdhelp:'Describe clearly what you are offering the customer as part of the settlement: (Example: "We already repaired the brakes in-house." or "We will reimburse $200 for repairs.")',
+    llang:'What language was the deal negotiated in?',
+    langnote:"Note: If the deal was negotiated in Spanish, translated documents (such as the Buyer's Guide and disclosures) must be provided in Spanish as well.",
+    lhap:'Has this already happened or will it happen?',
+    hyes:'This has already been done (e.g., repair completed, refund issued, etc.)',
+    hno:'This will happen after the agreement is signed',
+    lwho:'Who is doing the work (if repairs are part of the agreement)?',
+    win:'Repairs are done by the dealership staff (in-house)',
     w3p:'Repairs are done by a third-party vendor/shop',
-    ltp:'Third Party',
-    lgiv:'Select all that apply',
-    gc:'Cash payment / settlement', gr:'Vehicle repairs',
-    gresc:'Rescission — return of vehicle and cancellation of contract',
-    gref:'Partial refund', goth:'Other',
-    lded:'If refund is partial or includes deductions',
-    s4p:"Upload the RISC (Retail Installment Sales Contract), buyer's guide, deal jacket, and any other relevant documents. Our system will automatically identify and extract the contract details.",
-    dzt:'Click to upload or drag files here', dzs:'PDF, Word, or images · Multiple files accepted',
+    ltp3:'If third-party',
+    tpd:'Dealer is paying for the repair', tpc:'Customer is paying for the repair', tpo:'Other',
+    tpnote:'Note: If a third-party is involved, the vendor (not the dealer) is responsible for the warranty on parts or labor.',
+    lgiv:'What is the dealership giving the customer in return?',
+    gc:'Full refund of down payment', gr:'Partial refund (explain below)',
+    gresc:"Reimbursement for customer's expense",
+    gref:'Vehicle return with no refund', goth:'Other',
+    givnote:'(You must offer something in exchange for the release of liability. Select all that apply.)',
+    lded:'If refund is partial or includes deductions, please explain:',
+    s4p:"Please attach clear copies of the following documents: Retail Installment Sale Contract (RISC), Buyer's Guide, 1632 Form (Spanish Language Form, if applicable).",
+    dzt:'Click to upload or drag files here', dzs:'PDF only · Up to 5 files',
+    certintro:'By submitting this form, you certify that all the information provided is true and correct to the best of your knowledge. This helps protect your dealership and ensures the agreement is legally valid.',
+    certlabel:'I confirm that the information I provided is complete and accurate.',
     sbl:'Submit Request →', sn:'A case manager will be assigned immediately upon submission.',
     lt2:'Submitting…', ls:'Please wait while your request is being submitted.',
     okt:'Request Submitted Successfully',
     okb:'Your request has been received and assigned to a case manager. They will review the documents and prepare the settlement agreement draft.',
     err:'Please fill in all required fields.',
+    errCert:'Please confirm the Legal Certification checkbox to submit.',
+    errTp:'Please select who is paying for the third-party repair.',
+    errTpOther:'Please specify who is paying for the third-party repair.',
+    errDgOther:'Please specify the "Other" item the dealership is giving.',
+    errRefund:'Please explain the partial refund or deductions.',
+    errMaxFiles:'Maximum of 5 files allowed.',
+    errPdfOnly:'Only PDF files are accepted.',
   },
   es:{
     ht:'Solicitud de Acuerdo de Liquidación',
     hs:'Complete este formulario para enviar una solicitud de acuerdo de liquidación. Se asignará un gestor de casos de inmediato.',
-    s1:'Su Información de Contacto', s2:'Detalles del Trato', s3:'¿Qué ofrece el concesionario?', s4:'Documentos',
+    s1:'Su Información de Contacto', s2:'Detalles del Trato', s3:'¿Qué Ofrece el Concesionario a Cambio?', s4:'Documentos', s5:'Certificación Legal',
     lcn:'Su Nombre Completo',
     lfn:'Nombre del Comprador', lln:'Apellido del Comprador', lph:'Teléfono', lem:'Correo electrónico', leopt:'(opcional)',
-    ldn:'Nombre del Concesionario', lwd:'¿Qué está haciendo para el cliente?',
+    ldn:'Nombre del Concesionario',
+    lwd:'¿Qué Está Haciendo por el Cliente?',
+    wdhelp:'Describa claramente lo que le está ofreciendo al cliente como parte del acuerdo: (Ejemplo: "Ya reparamos los frenos internamente." o "Reembolsaremos $200 por reparaciones.")',
     llang:'¿En qué idioma se negoció el trato?',
-    lhap:'¿Ya ha ocurrido esto?',
-    hyes:'Sí — ya se ha realizado (ej. reparación completada, reembolso emitido, etc.)',
-    hno:'No — todavía no',
-    lwho:'¿Quién realiza el trabajo?',
-    win:'El concesionario lo maneja internamente',
+    langnote:'Nota: Si el trato se negoció en español, los documentos traducidos (como la Guía del Comprador y las divulgaciones) también deben proporcionarse en español.',
+    lhap:'¿Esto ya sucedió o va a suceder?',
+    hyes:'Esto ya se ha hecho (ej. reparación completada, reembolso emitido, etc.)',
+    hno:'Esto sucederá después de firmar el acuerdo',
+    lwho:'¿Quién realiza el trabajo (si las reparaciones son parte del acuerdo)?',
+    win:'Las reparaciones las realiza el personal del concesionario (interno)',
     w3p:'Las reparaciones las realiza un proveedor/taller externo',
-    ltp:'Tercero',
-    lgiv:'Seleccione todo lo que aplique',
-    gc:'Pago en efectivo / liquidación', gr:'Reparaciones al vehículo',
-    gresc:'Rescisión — devolución del vehículo y cancelación del contrato',
-    gref:'Reembolso parcial', goth:'Otro',
-    lded:'Si el reembolso es parcial o incluye deducciones',
-    s4p:'Suba el RISC (Contrato de Venta a Plazos), la guía del comprador, el expediente del trato y cualquier otro documento relevante.',
-    dzt:'Haga clic o arrastre archivos aquí', dzs:'PDF, Word o imágenes · Se aceptan varios archivos',
+    ltp3:'Si es un tercero',
+    tpd:'El concesionario paga la reparación', tpc:'El cliente paga la reparación', tpo:'Otro',
+    tpnote:'Nota: Si interviene un tercero, el proveedor (no el concesionario) es responsable de la garantía de piezas o mano de obra.',
+    lgiv:'¿Qué le está dando el concesionario al cliente a cambio?',
+    gc:'Reembolso total del pago inicial', gr:'Reembolso parcial (explicar abajo)',
+    gresc:'Reembolso de gastos del cliente',
+    gref:'Devolución del vehículo sin reembolso', goth:'Otro',
+    givnote:'(Debe ofrecer algo a cambio de la liberación de responsabilidad. Seleccione todo lo que aplique.)',
+    lded:'Si el reembolso es parcial o incluye deducciones, explique:',
+    s4p:'Adjunte copias claras de los siguientes documentos: Contrato de Venta a Plazos (RISC), Guía del Comprador, Formulario 1632 (si aplica).',
+    dzt:'Haga clic o arrastre archivos aquí', dzs:'Solo PDF · Máximo 5 archivos',
+    certintro:'Al enviar este formulario, usted certifica que toda la información proporcionada es verdadera y correcta según su conocimiento. Esto ayuda a proteger su concesionario y garantiza que el acuerdo sea legalmente válido.',
+    certlabel:'Confirmo que la información que proporcioné es completa y precisa.',
     sbl:'Enviar Solicitud →', sn:'Se asignará un gestor de casos de inmediato al enviar.',
     lt2:'Enviando…', ls:'Por favor espere mientras se envía su solicitud.',
     okt:'Solicitud Enviada Exitosamente',
     okb:'Su solicitud ha sido recibida y asignada a un gestor de casos que revisará los documentos y preparará el borrador del acuerdo.',
     err:'Por favor complete todos los campos obligatorios.',
+    errCert:'Por favor confirme la casilla de Certificación Legal para enviar.',
+    errTp:'Por favor seleccione quién paga la reparación del tercero.',
+    errTpOther:'Por favor especifique quién paga la reparación del tercero.',
+    errDgOther:'Por favor especifique el elemento "Otro" que ofrece el concesionario.',
+    errRefund:'Por favor explique el reembolso parcial o las deducciones.',
+    errMaxFiles:'Se permite un máximo de 5 archivos.',
+    errPdfOnly:'Solo se aceptan archivos PDF.',
   }
 };
 
@@ -333,7 +404,7 @@ function setLang(l){
   document.getElementById('ben').classList.toggle('on',l==='en');
   document.getElementById('bes').classList.toggle('on',l==='es');
   const t=T[l];
-  const ids=['ht','hs','s1','s2','s3','s4','lcn','lfn','lln','lph','lem','leopt','ldn','lwd','llang','lhap','hyes','hno','lwho','win','w3p','ltp','lgiv','gc','gr','gresc','gref','goth','lded','s4p','dzt','dzs','sbl','sn','lt2','ls','okt','okb'];
+  const ids=['ht','hs','s1','s2','s3','s4','s5','lcn','lfn','lln','lph','lem','leopt','ldn','lwd','wdhelp','llang','langnote','lhap','hyes','hno','lwho','win','w3p','ltp3','tpd','tpc','tpo','tpnote','lgiv','gc','gr','gresc','gref','goth','givnote','lded','s4p','dzt','dzs','certintro','certlabel','sbl','sn','lt2','ls','okt','okb'];
   ids.forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=t[id]||'';});
 }
 
@@ -342,6 +413,7 @@ function pick(el,name,val){
   el.classList.add('on');
   el.querySelector('input').checked=true;
   if(name==='whoWork') cond('ct',val==='thirdparty');
+  if(name==='tpPayer') cond('cto',val==='other');
 }
 
 function chk(el){
@@ -349,15 +421,24 @@ function chk(el){
   el.querySelector('input').checked=el.classList.contains('on');
 }
 
+function toggleCert(el){
+  el.classList.toggle('on');
+  el.querySelector('input').checked=el.classList.contains('on');
+}
+
 function maybeRefund(){
-  const on=[...document.querySelectorAll('[name="dg"]:checked')].some(c=>c.value.includes('refund')||c.value.includes('Partial'));
+  const on=[...document.querySelectorAll('[name="dg"]:checked')].some(c=>c.value==='Partial refund (explain below)');
   cond('cr',on);
 }
 
 function cond(id,show){ document.getElementById(id).classList.toggle('on',show); }
 
 function addF(newFiles){
-  for(const f of newFiles){ if(!files.find(x=>x.name===f.name&&x.size===f.size)) files.push(f); }
+  for(const f of newFiles){
+    if(!/\.pdf$/i.test(f.name)){ showErr(T[lang].errPdfOnly); continue; }
+    if(files.length>=MAX_FILES){ showErr(T[lang].errMaxFiles); break; }
+    if(!files.find(x=>x.name===f.name&&x.size===f.size)) files.push(f);
+  }
   renderF();
 }
 function rmF(i){ files.splice(i,1); renderF(); }
@@ -377,13 +458,34 @@ async function go(){
   const cn=v('contactName'), fn=v('dealerNameFirst'), ln=v('dealerNameLast'), ds=v('dealershipName'), wd=v('workDesc'), lang2=v('language');
   const ph=v('phone');
   if(!cn||!fn||!ln||!ph||!ds||!wd||!lang2){ showErr(t.err+(!lang2?' ('+t.llang+')':'')); return; }
-  const dg=[...document.querySelectorAll('[name="dg"]:checked')].map(c=>c.value).join(', ');
-  if(!dg){ showErr(lang==='es'?'Seleccione al menos una opción de lo que ofrece el concesionario.':'Please select at least one option for what the dealership is giving in return.'); return; }
+
+  const dgChecked=[...document.querySelectorAll('[name="dg"]:checked')];
+  if(!dgChecked.length){ showErr(lang==='es'?'Seleccione al menos una opción de lo que ofrece el concesionario.':'Please select at least one option for what the dealership is giving in return.'); return; }
+  if(dgChecked.some(c=>c.value==='Other') && !v('dgOtherInput')){ showErr(t.errDgOther); return; }
+  if(dgChecked.some(c=>c.value==='Partial refund (explain below)') && !v('refundNotes')){ showErr(t.errRefund); return; }
+
+  const whoWork=document.querySelector('[name="whoWork"]:checked')?.value||'';
+  const tpPayer=document.querySelector('[name="tpPayer"]:checked')?.value||'';
+  if(whoWork==='thirdparty'){
+    if(!tpPayer){ showErr(t.errTp); return; }
+    if(tpPayer==='other' && !v('tpOtherInput')){ showErr(t.errTpOther); return; }
+  }
+
+  if(!document.getElementById('certify').checked){ showErr(t.errCert); return; }
 
   document.getElementById('eb').style.display='none';
   document.getElementById('sb').disabled=true;
   document.getElementById('fw').style.display='none';
   document.getElementById('loading').style.display='block';
+
+  const dg=dgChecked.map(c=>c.value==='Other' ? ('Other: '+v('dgOtherInput')) : c.value).join(', ');
+
+  let thirdParty='';
+  if(whoWork==='thirdparty'){
+    if(tpPayer==='dealer') thirdParty='Dealer is paying for the repair';
+    else if(tpPayer==='customer') thirdParty='Customer is paying for the repair';
+    else if(tpPayer==='other') thirdParty='Other: '+v('tpOtherInput');
+  }
 
   // Step 1: submit text data only (no files — avoids 6MB body limit)
   const payload={
@@ -391,8 +493,8 @@ async function go(){
     dealerNameFirst:fn, dealerNameLast:ln, phone:ph,
     email:v('email'), dealershipName:ds, workDesc:wd, language:lang2,
     hasHappened:document.querySelector('[name="hasHappened"]:checked')?.value||'',
-    whoWork:document.querySelector('[name="whoWork"]:checked')?.value||'',
-    thirdParty:v('thirdParty'), dealerGiving:dg, refundNotes:v('refundNotes'),
+    whoWork, thirdParty, dealerGiving:dg, refundNotes:v('refundNotes'),
+    certified:true,
     fileNames: files.map(f=>f.name), // names only, binary uploaded separately
   };
 

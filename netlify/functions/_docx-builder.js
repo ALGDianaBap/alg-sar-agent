@@ -126,11 +126,22 @@ function buildPriorActionRecitals(dealerGiving, refundNotes, hasHappened, priorR
   // Prior partial payment or credit already given
   if (refundNotes && refundNotes.trim()) {
     recitals.push(numbered(n++, `In partial resolution of Client's concerns, Dealer has previously provided or agreed to provide the following: ${refundNotes.trim()}.`));
-  } else if (alreadyHappened && /refund|payment|paid|credit/i.test(dealerGiving + workDesc)) {
+  } else if (alreadyHappened && /refund|payment|paid|credit|reimburs/i.test(dealerGiving + workDesc)) {
     recitals.push(numbered(n++, 'In partial resolution of Client\'s concerns, Dealer has previously made a payment or provided a credit to Client.'));
   }
 
   return recitals;
+}
+
+// Builds the THIRD-PARTY OBLIGATIONS clause text. `thirdParty` is either a
+// payer description ("Dealer is paying for the repair" / "Customer is paying
+// for the repair" / "Other: ...") from the current form's third-party
+// sub-question, or (for older records) a bare vendor name. Either way, the
+// vendor-not-dealer warranty note is always included per California practice
+// and per the firm's explicit instruction on the intake form.
+function thirdPartyClause(thirdParty) {
+  const desc = thirdParty.trim();
+  return `The Parties acknowledge that repairs to the Vehicle are being performed by a third-party vendor rather than by Dealer directly. ${desc}. Consistent with the third-party's role, the vendor — not Dealer — is responsible for the warranty on parts or labor performed in connection with such repairs.`;
 }
 
 // ── Deal-type specific terms ──────────────────────────────────────────────────
@@ -150,7 +161,7 @@ function cashKeepTerms(amt, amtWords, dealerGiving, refundNotes, whoWork, thirdP
 
   // Third party obligations
   if (thirdParty && thirdParty.trim()) {
-    terms.push(numberedBold(n++, 'THIRD-PARTY OBLIGATIONS.', `The Parties acknowledge the involvement of ${thirdParty.trim()} in connection with this matter. Dealer shall ensure that any obligations owed by such third party arising from this transaction are satisfied in accordance with the terms herein.`));
+    terms.push(numberedBold(n++, 'THIRD-PARTY OBLIGATIONS.', thirdPartyClause(thirdParty)));
   }
 
   // Prior repairs — confirm warranty / no additional cost
@@ -170,11 +181,31 @@ function rescissionTerms(vehicle, miles, down, downWords, purchDate, dealerGivin
 
   terms.push(numberedBold(n++, 'RETURN OF VEHICLE.', `Within five (5) calendar days of full execution of this Agreement, Client shall return the Vehicle (${vehicle}) to Dealer in its current condition, reasonable wear and tear excepted. Client represents that the Vehicle has approximately ${miles} miles on the odometer at the time of return.`));
   terms.push(numberedBold(n++, 'CANCELLATION OF RETAIL INSTALLMENT SALES CONTRACT.', `Upon receipt of the Vehicle, Dealer shall immediately cancel and rescind the Retail Installment Sales Contract dated ${purchDate}, and all associated financing obligations. Dealer shall notify all lienholders and finance companies within five (5) business days of Vehicle return and provide Client written confirmation thereof.`));
-  terms.push(numberedBold(n++, 'REFUND OF DOWN PAYMENT.', `Within five (5) calendar days of Dealer's receipt of the returned Vehicle, Dealer shall refund to Client the full down payment of ${down} (${downWords}). Payment shall be made payable to Client and Auto Legal Group, LLP, as directed in writing by ALG.`));
 
-  // Additional amounts from Zoho form
-  if (refundNotes && refundNotes.trim()) {
-    terms.push(numberedBold(n++, 'ADDITIONAL REFUND / CREDITS.', `In addition to the down payment refund, the following amounts or credits shall be provided to Client: ${refundNotes.trim()}. Such amounts shall be paid within five (5) calendar days of full execution of this Agreement.`));
+  // Refund clause follows whichever "giving in return" option was actually
+  // selected, so it never contradicts the form answer (e.g. a "Vehicle
+  // return with no refund" selection must not be followed by a promised
+  // full refund clause). Full/Partial refund take priority over a bare "no
+  // refund" selection since dealers sometimes check both — see approved
+  // samples 14/15, where "Vehicle return with no refund" was checked
+  // alongside "Partial refund" and the actual amount governed the clause.
+  const givingFullRefund = /full refund of down payment/i.test(dealerGiving);
+  const givingPartialRefund = /partial refund/i.test(dealerGiving);
+  const givingNoRefund = /no refund/i.test(dealerGiving) && !givingFullRefund && !givingPartialRefund;
+
+  if (givingPartialRefund) {
+    terms.push(numberedBold(n++, 'REFUND OF DOWN PAYMENT.', `Within five (5) calendar days of Dealer's receipt of the returned Vehicle, Dealer shall pay Client a partial return of the down payment as follows: ${(refundNotes && refundNotes.trim()) || '[AMOUNT TO BE SPECIFIED]'}. Payment shall be made payable to Client and Auto Legal Group, LLP, as directed in writing by ALG.`));
+  } else if (givingNoRefund) {
+    terms.push(numberedBold(n++, 'NO REFUND OF DOWN PAYMENT.', `The Parties agree that, in connection with the return of the Vehicle described herein, Client is not entitled to and shall not receive any refund of the down payment.`));
+  } else {
+    // Default (including "Full refund of down payment" and any rescission
+    // inferred from workDesc alone) — the standard rescission remedy.
+    terms.push(numberedBold(n++, 'REFUND OF DOWN PAYMENT.', `Within five (5) calendar days of Dealer's receipt of the returned Vehicle, Dealer shall refund to Client the full down payment of ${down} (${downWords}). Payment shall be made payable to Client and Auto Legal Group, LLP, as directed in writing by ALG.`));
+  }
+
+  // Additional amounts from Zoho form (only when not already covered above)
+  if (!givingPartialRefund && refundNotes && refundNotes.trim()) {
+    terms.push(numberedBold(n++, 'ADDITIONAL REFUND / CREDITS.', `In addition to the above, the following amounts or credits shall be provided to Client: ${refundNotes.trim()}. Such amounts shall be paid within five (5) calendar days of full execution of this Agreement.`));
   }
 
   // Additional dealer obligations
@@ -184,7 +215,7 @@ function rescissionTerms(vehicle, miles, down, downWords, purchDate, dealerGivin
 
   // Third party
   if (thirdParty && thirdParty.trim()) {
-    terms.push(numberedBold(n++, 'THIRD-PARTY OBLIGATIONS.', `The Parties acknowledge the involvement of ${thirdParty.trim()} in connection with this transaction. Dealer shall ensure all obligations owed by such third party are satisfied concurrently with the rescission.`));
+    terms.push(numberedBold(n++, 'THIRD-PARTY OBLIGATIONS.', thirdPartyClause(thirdParty)));
   }
 
   terms.push(numberedBold(n++, 'CANCELLATION OF FINANCING.', 'Dealer shall ensure that all financing associated with the Vehicle purchase is cancelled and that Client bears no further financial obligation related to the Vehicle or the RISC.'));

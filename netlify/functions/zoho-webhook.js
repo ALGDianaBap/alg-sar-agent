@@ -78,13 +78,20 @@ exports.handler = async (event) => {
   const langRaw  = pick('Language', 'Preferred_Language');
   const language = /spanish|español|es\b/i.test(langRaw) ? 'es' : 'en';
 
-  const workDesc     = pick('What are you doing for the customer?', 'What_are_you_doing_for_the_customer');
-  const dealerGiving = pick("What's the dealership giving in return?", 'Whats_the_dealership_giving_in_return');
-  const refundNotes  = pick('If refund is partial or includes deductions', 'If_refund_is_partial_or_includes_deductions');
-  const thirdParty   = pick('Third Party', 'Third_Party');
-  const hasHappened  = pick('Has this already happened?', 'Has_this_already_happened');
-  const whoWork      = pick('Who is doing the work?', 'Who_is_doing_the_work');
-  const isRescission = /rescission|rescind|return.*vehicle|unwind/i.test(workDesc + dealerGiving);
+  // Field labels below are current as of the live form's 2026-07 revision
+  // (which added the third-party payer sub-question, the refined "giving in
+  // return" options, and Legal Certification/Signature). Older label variants
+  // are kept as fallbacks in case Zoho replays an older cached form version.
+  const workDesc     = pick('What Are You Doing for the Customer?', 'What_Are_You_Doing_for_the_Customer', 'What are you doing for the customer?', 'What_are_you_doing_for_the_customer');
+  const dealerGiving = pick('What is the dealership giving the customer in return?', 'What_is_the_dealership_giving_the_customer_in_return', "What's the dealership giving in return?", 'Whats_the_dealership_giving_in_return');
+  const refundNotes  = pick('If refund is partial or includes deductions, please explain:', 'If_refund_is_partial_or_includes_deductions_please_explain', 'If refund is partial or includes deductions', 'If_refund_is_partial_or_includes_deductions');
+  const hasHappened  = pick('Has this already happened or will it happen?', 'Has_this_already_happened_or_will_it_happen', 'Has this already happened?', 'Has_this_already_happened');
+  const whoWork      = pick('Who is doing the work (if repairs are part of the agreement)?', 'Who_is_doing_the_work_if_repairs_are_part_of_the_agreement', 'Who is doing the work?', 'Who_is_doing_the_work');
+  // Replaces the old free-text "Third Party" vendor-name field, which the
+  // live form no longer asks for — it now asks who pays for the repair.
+  const thirdPartyPayerRaw = pick('If third-party', 'If_third-party', 'If_third_party');
+  const thirdParty   = thirdPartyPayerRaw || pick('Third Party', 'Third_Party');
+  const isRescission = /rescission|rescind|unwind|vehicle return|return.*vehicle/i.test(workDesc + dealerGiving);
   const dealType     = isRescission ? 'rescission' : 'cash_keep';
 
   // ── 2. IDENTIFY ATTACHMENTS & ENTRY ID ───────────────────────────────────
